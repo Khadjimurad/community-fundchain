@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>fundqueue — Дашборд (MVP)</title>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, -apple-system; margin: 24px; }
+    .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    h1 { margin-bottom: 8px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 8px; border-bottom: 1px solid #eee; text-align: left; }
+  </style>
+</head>
+<body>
+  <h1>fundqueue — Дашборд (MVP)</h1>
+
+  <div class="card">
+    <h2>Очередь финансирования</h2>
+    <table id="projects">
+      <thead>
+        <tr>
+          <th>Проект</th>
+          <th>Приоритет/Вес</th>
+          <th>Прогресс</th>
+          <th>Не хватает</th>
+          <th>За / Против / Возд. / Явка</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Мой вклад</h2>
+    <div id="me">Загрузка...</div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
