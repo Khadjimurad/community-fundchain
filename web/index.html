@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>FundChain — Traceable Community Fund (MVP)</title>
+  <title data-i18n="app.title">FundChain — Traceable Community Fund (MVP)</title>
   <style>
     /* CSS Variables for theming */
     :root {
@@ -28,7 +28,8 @@
 
     body {
       font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      line-height: 1.6;
+      font-size: 16px; /* Увеличил с стандартных 14px */
+      line-height: 1.7; /* Увеличил с 1.6 */
       color: var(--text-primary);
       background-color: var(--bg-secondary);
     }
@@ -43,10 +44,31 @@
     .header {
       background: var(--bg-primary);
       border-bottom: 1px solid var(--border-color);
-      padding: 1rem 0;
       position: sticky;
       top: 0;
       z-index: 100;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .header-top {
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.75rem 0;
+    }
+
+    .header-top-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-nav {
+      padding: 0.75rem 0;
+    }
+
+    .controls-container {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
 
     .header-content {
@@ -56,7 +78,7 @@
     }
 
     .logo {
-      font-size: 1.5rem;
+      font-size: 1.75rem; /* Увеличил с 1.5rem */
       font-weight: bold;
       color: var(--primary-color);
     }
@@ -70,6 +92,7 @@
       text-decoration: none;
       color: var(--text-secondary);
       font-weight: 500;
+      font-size: 1.05rem; /* Добавил размер шрифта */
       transition: color 0.2s;
     }
 
@@ -82,7 +105,7 @@
       background: var(--bg-primary);
       border-bottom: 1px solid var(--border-color);
       padding: 0.5rem 0;
-      font-size: 0.875rem;
+      font-size: 0.95rem; /* Увеличил с 0.875rem */
       color: var(--text-secondary);
     }
 
@@ -103,7 +126,7 @@
       color: white;
       padding: 0.25rem 0.5rem;
       border-radius: 0.25rem;
-      font-size: 0.75rem;
+      font-size: 0.85rem; /* Увеличил с 0.75rem */
     }
 
     .main {
@@ -128,7 +151,7 @@
     }
 
     .card-title {
-      font-size: 1.25rem;
+      font-size: 1.4rem; /* Увеличил с 1.25rem */
       font-weight: 600;
       margin: 0;
     }
@@ -155,7 +178,7 @@
     }
 
     .metric-value {
-      font-size: 2rem;
+      font-size: 2.25rem; /* Увеличил с 2rem */
       font-weight: bold;
       color: var(--primary-color);
       margin-bottom: 0.5rem;
@@ -163,7 +186,7 @@
 
     .metric-label {
       color: var(--text-secondary);
-      font-size: 0.875rem;
+      font-size: 0.95rem; /* Увеличил с 0.875rem */
     }
 
     /* Tables */
@@ -178,9 +201,10 @@
     }
 
     th, td {
-      padding: 0.75rem;
+      padding: 0.85rem; /* Увеличил с 0.75rem */
       text-align: left;
       border-bottom: 1px solid var(--border-color);
+      font-size: 0.95rem; /* Добавил размер шрифта */
     }
 
     th {
@@ -196,14 +220,14 @@
     /* Buttons */
     .btn {
       display: inline-block;
-      padding: 0.5rem 1rem;
+      padding: 0.6rem 1.2rem; /* Увеличил паддинги */
       border: none;
       border-radius: 0.375rem;
+      font-size: 0.95rem; /* Добавил размер шрифта */
       font-weight: 500;
       text-decoration: none;
       cursor: pointer;
       transition: all 0.2s;
-      font-size: 0.875rem;
     }
 
     .btn-primary {
@@ -226,8 +250,8 @@
     }
 
     .btn-sm {
-      padding: 0.25rem 0.5rem;
-      font-size: 0.75rem;
+      padding: 0.35rem 0.7rem; /* Увеличил с 0.25rem 0.5rem */
+      font-size: 0.85rem; /* Увеличил с 0.75rem */
     }
 
     /* Progress bars */
@@ -248,9 +272,9 @@
     /* Status badges */
     .badge {
       display: inline-block;
-      padding: 0.25rem 0.5rem;
+      padding: 0.3rem 0.6rem; /* Увеличил с 0.25rem 0.5rem */
       border-radius: 0.25rem;
-      font-size: 0.75rem;
+      font-size: 0.8rem; /* Увеличил с 0.75rem */
       font-weight: 500;
     }
 
@@ -292,7 +316,7 @@
 
     .timer {
       font-family: monospace;
-      font-size: 1.125rem;
+      font-size: 1.25rem; /* Увеличил с 1.125rem */
       font-weight: bold;
       color: var(--primary-color);
     }
@@ -312,13 +336,13 @@
     }
 
     .vote-metric-value {
-      font-size: 1.5rem;
+      font-size: 1.65rem; /* Увеличил с 1.5rem */
       font-weight: bold;
       margin-bottom: 0.25rem;
     }
 
     .vote-metric-label {
-      font-size: 0.75rem;
+      font-size: 0.8rem; /* Увеличил с 0.75rem */
       color: var(--text-secondary);
     }
 
@@ -414,25 +438,26 @@
       display: block;
       margin-bottom: 0.5rem;
       font-weight: 500;
+      font-size: 1rem; /* Добавил размер шрифта */
     }
 
     .form-control {
       width: 100%;
-      padding: 0.75rem;
+      padding: 0.8rem; /* Увеличил с 0.75rem */
       border: 1px solid var(--border-color);
       border-radius: 0.375rem;
-      font-size: 0.875rem;
+      font-size: 0.95rem; /* Увеличил с 0.875rem */
     }
 
     .form-text {
-      font-size: 0.75rem;
+      font-size: 0.8rem; /* Увеличил с 0.75rem */
       color: var(--text-secondary);
       margin-top: 0.25rem;
     }
 
     .btn-lg {
-      padding: 0.75rem 1.5rem;
-      font-size: 1rem;
+      padding: 0.8rem 1.6rem; /* Увеличил паддинги */
+      font-size: 1.05rem; /* Увеличил с 1rem */
     }
 
     /* Modal system */
@@ -479,7 +504,7 @@
 
     .modal-title {
       margin: 0;
-      font-size: 1.25rem;
+      font-size: 1.35rem; /* Увеличил с 1.25rem */
       font-weight: 600;
     }
 
@@ -572,7 +597,7 @@
     .form-section h5 {
       margin: 0 0 1rem 0;
       color: var(--text-primary);
-      font-size: 1rem;
+      font-size: 1.1rem; /* Увеличил с 1rem */
     }
 
     .checkbox-group {
@@ -600,9 +625,10 @@
 
     .data-table th,
     .data-table td {
-      padding: 0.75rem;
+      padding: 0.8rem; /* Увеличил с 0.75rem */
       text-align: left;
       border-bottom: 1px solid var(--border-color);
+      font-size: 0.95rem; /* Добавил размер шрифта */
     }
 
     .data-table th {
@@ -620,8 +646,8 @@
     }
 
     .btn-xs {
-      padding: 0.25rem 0.5rem;
-      font-size: 0.75rem;
+      padding: 0.3rem 0.6rem; /* Увеличил с 0.25rem 0.5rem */
+      font-size: 0.8rem; /* Увеличил с 0.75rem */
     }
 
     /* Analytics and reporting */
@@ -645,7 +671,7 @@
     .report-header p {
       margin: 0;
       color: var(--text-secondary);
-      font-size: 0.875rem;
+      font-size: 0.95rem; /* Увеличил с 0.875rem */
     }
 
     .metrics-grid {
@@ -739,7 +765,7 @@
     }
 
     .filter-label {
-      font-size: 0.875rem;
+      font-size: 0.95rem; /* Увеличил с 0.875rem */
       font-weight: 500;
       color: var(--text-secondary);
     }
@@ -748,7 +774,7 @@
       padding: 0.5rem;
       border: 1px solid var(--border-color);
       border-radius: 0.375rem;
-      font-size: 0.875rem;
+      font-size: 0.95rem; /* Увеличил с 0.875rem */
     }
 
     /* Loading states */
@@ -795,7 +821,7 @@
     }
 
     .stat-comparison {
-      font-size: 0.75rem;
+      font-size: 0.85rem; /* Увеличил с 0.75rem */
       color: var(--text-secondary);
       margin-top: 0.25rem;
     }
@@ -806,13 +832,20 @@
         padding: 0 10px;
       }
 
-      .header-content {
+      .header-top-content {
         flex-direction: column;
-        gap: 1rem;
+        gap: 0.75rem;
+        align-items: center;
+      }
+
+      .controls-container {
+        order: -1; /* Переключатели сверху на мобильных */
       }
 
       .nav {
         gap: 1rem;
+        flex-wrap: wrap;
+        justify-content: center;
       }
 
       .dashboard-grid {
@@ -839,21 +872,82 @@
     .mb-2 { margin-bottom: 1rem; }
     .ml-2 { margin-left: 1rem; }
     .mr-2 { margin-right: 1rem; }
+
+    /* Language switcher and controls */
+
+    #language-switcher, #auto-refresh-toggle {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.95rem; /* Увеличил с 0.875rem */
+      border: 1px solid var(--border-color);
+      border-radius: 0.375rem;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    #auto-refresh-toggle {
+      padding: 0.4rem 0.5rem; /* Уменьшенный padding для компактности */
+      font-size: 1.1rem; /* Увеличенный размер иконки */
+      min-width: auto;
+    }
+
+    #language-switcher:hover, #auto-refresh-toggle:hover {
+      background: var(--secondary-color);
+      border-color: var(--primary-color);
+    }
+
+    #language-switcher:focus, #auto-refresh-toggle:focus {
+      outline: 2px solid var(--primary-color);
+      outline-offset: 2px;
+    }
+
+    #auto-refresh-toggle.enabled {
+      background: var(--success-color);
+      color: white;
+      border-color: var(--success-color);
+    }
+
+    #auto-refresh-toggle.disabled {
+      background: var(--danger-color);
+      color: white;
+      border-color: var(--danger-color);
+    }
   </style>
 </head>
 <body>
   <!-- Header -->
   <header class="header">
-    <div class="container">
-      <div class="header-content">
-        <div class="logo">🏛️ FundChain</div>
+    <!-- Первая строка: логотип и переключатели -->
+    <div class="header-top">
+      <div class="container">
+        <div class="header-top-content">
+          <div class="logo" data-i18n="app.logo">🏛️ FundChain</div>
+          <div class="controls-container">
+            <button id="auto-refresh-toggle" class="btn btn-secondary enabled" onclick="app.toggleAutoRefresh()" title="Toggle Auto Refresh">
+              🔄
+            </button>
+            <button id="language-switcher" class="btn btn-secondary" onclick="window.i18n.toggleLanguage()" title="Switch Language">
+              🇺🇸 EN
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Вторая строка: навигационное меню -->
+    <div class="header-nav">
+      <div class="container">
         <nav class="nav">
-          <a href="#" class="nav-link active" data-section="dashboard">Dashboard</a>
-          <a href="#" class="nav-link" data-section="projects">Projects</a>
-          <a href="#" class="nav-link" data-section="voting">Voting</a>
-          <a href="#" class="nav-link" data-section="treasury">Treasury</a>
-          <a href="#" class="nav-link" data-section="personal">My Stats</a>
-          <a href="#" class="nav-link" data-section="admin">Admin</a>
+          <a href="#" class="nav-link active" data-section="dashboard" data-i18n="navigation.dashboard">Dashboard</a>
+          <a href="#" class="nav-link" data-section="projects" data-i18n="navigation.projects">Projects</a>
+          <a href="#" class="nav-link" data-section="voting" data-i18n="navigation.voting">Voting</a>
+          <a href="#" class="nav-link" data-section="treasury" data-i18n="navigation.treasury">Treasury</a>
+          <a href="#" class="nav-link" data-section="personal" data-i18n="navigation.personal">My Stats</a>
+          <a href="#" class="nav-link" data-section="admin" data-i18n="navigation.admin">Admin</a>
         </nav>
       </div>
     </div>
@@ -863,10 +957,10 @@
   <div class="status-bar">
     <div class="container">
       <div class="status-content">
-        <div>Last updated: <span id="last-updated">--</span></div>
+        <div><span data-i18n="status.last_updated">Last updated</span>: <span id="last-updated">--</span></div>
         <div class="k-anonymity-indicator">
-          <span class="k-indicator" id="k-indicator">k≥5 anonymous</span>
-          <span>Privacy protected</span>
+          <span class="k-indicator" id="k-indicator" data-i18n="status.k_anonymous">k≥5 anonymous</span>
+          <span data-i18n="status.privacy_protected">Privacy protected</span>
         </div>
       </div>
     </div>
@@ -878,45 +972,45 @@
       
       <!-- Dashboard Section -->
       <section id="dashboard-section" class="section">
-        <h1>Community Fund Dashboard</h1>
+        <h1 data-i18n="dashboard.title">Community Fund Dashboard</h1>
         
         <!-- Key Metrics -->
         <div class="dashboard-grid">
           <div class="metric-card">
             <div class="metric-value" id="treasury-balance">--</div>
-            <div class="metric-label">Treasury Balance (ETH)</div>
+            <div class="metric-label" data-i18n="dashboard.treasury_balance">Treasury Balance (ETH)</div>
           </div>
           <div class="metric-card">
             <div class="metric-value" id="donations-7d">--</div>
-            <div class="metric-label">Donations (7 days)</div>
+            <div class="metric-label" data-i18n="dashboard.donations_7d">Donations (7 days)</div>
           </div>
           <div class="metric-card">
             <div class="metric-value" id="active-projects">--</div>
-            <div class="metric-label">Active Projects</div>
+            <div class="metric-label" data-i18n="dashboard.active_projects">Active Projects</div>
           </div>
           <div class="metric-card">
             <div class="metric-value" id="soft-cap-reached">--</div>
-            <div class="metric-label">Soft-cap Reached</div>
+            <div class="metric-label" data-i18n="dashboard.soft_cap_reached">Soft-cap Reached</div>
           </div>
         </div>
 
         <!-- Funding Queue -->
         <div class="card">
           <div class="card-header">
-            <h2 class="card-title">Funding Queue</h2>
+            <h2 class="card-title" data-i18n="dashboard.funding_queue">Funding Queue</h2>
             <div class="card-actions">
               <select id="category-filter" class="btn-secondary">
-                <option value="">All Categories</option>
-                <option value="infrastructure">Infrastructure</option>
-                <option value="healthcare">Healthcare</option>
-                <option value="education">Education</option>
-                <option value="aid">Emergency Aid</option>
+                <option value="" data-i18n="filters.all_categories">All Categories</option>
+                <option value="infrastructure" data-i18n="filters.infrastructure">Infrastructure</option>
+                <option value="healthcare" data-i18n="filters.healthcare">Healthcare</option>
+                <option value="education" data-i18n="filters.education">Education</option>
+                <option value="aid" data-i18n="filters.aid">Emergency Aid</option>
               </select>
               <select id="status-filter" class="btn-secondary">
-                <option value="">All Status</option>
-                <option value="active">Active</option>
-                <option value="voting">Voting</option>
-                <option value="ready_to_payout">Ready to Payout</option>
+                <option value="" data-i18n="filters.all_status">All Status</option>
+                <option value="active" data-i18n="projects.active">Active</option>
+                <option value="voting" data-i18n="projects.voting">Voting</option>
+                <option value="ready_to_payout" data-i18n="projects.ready_to_payout">Ready to Payout</option>
               </select>
             </div>
           </div>
@@ -925,20 +1019,20 @@
             <table id="projects-table">
               <thead>
                 <tr>
-                  <th>Project</th>
-                  <th>Priority/Weight</th>
-                  <th>Progress</th>
-                  <th>Needed</th>
-                  <th>Voting Results</th>
-                  <th>ETA</th>
-                  <th>Actions</th>
+                  <th data-i18n="table.project">Project</th>
+                  <th data-i18n="table.priority_weight">Priority/Weight</th>
+                  <th data-i18n="table.progress">Progress</th>
+                  <th data-i18n="table.needed">Needed</th>
+                  <th data-i18n="table.voting_results">Voting Results</th>
+                  <th data-i18n="table.eta">ETA</th>
+                  <th data-i18n="table.actions">Actions</th>
                 </tr>
               </thead>
               <tbody id="projects-tbody">
                 <tr>
                   <td colspan="7" class="loading">
                     <div class="spinner"></div>
-                    Loading projects...
+                    <span data-i18n="table.loading">Loading projects...</span>
                   </td>
                 </tr>
               </tbody>
@@ -950,30 +1044,30 @@
       <!-- Projects Section -->
       <section id="projects-section" class="section hidden">
         <div class="card-header">
-          <h1>Projects</h1>
-          <button class="btn btn-primary" onclick="showCreateProject()">Create Project</button>
+          <h1 data-i18n="projects.title">Projects</h1>
+          <button class="btn btn-primary" onclick="showCreateProject()" data-i18n="projects.create_project">Create Project</button>
         </div>
         
         <div class="filters">
           <div class="filter-group">
-            <label class="filter-label">Category</label>
+            <label class="filter-label" data-i18n="projects.category">Category</label>
             <select id="project-category-filter">
-              <option value="">All Categories</option>
+              <option value="" data-i18n="filters.all_categories">All Categories</option>
             </select>
           </div>
           <div class="filter-group">
-            <label class="filter-label">Status</label>
+            <label class="filter-label" data-i18n="projects.status">Status</label>
             <select id="project-status-filter">
-              <option value="">All Status</option>
+              <option value="" data-i18n="filters.all_status">All Status</option>
             </select>
           </div>
           <div class="filter-group">
-            <label class="filter-label">Period</label>
+            <label class="filter-label" data-i18n="projects.period">Period</label>
             <select id="project-period-filter">
-              <option value="7">Last 7 days</option>
-              <option value="30">Last 30 days</option>
-              <option value="90">Last 90 days</option>
-              <option value="all">All time</option>
+              <option value="7" data-i18n="projects.last_7_days">Last 7 days</option>
+              <option value="30" data-i18n="projects.last_30_days">Last 30 days</option>
+              <option value="90" data-i18n="projects.last_90_days">Last 90 days</option>
+              <option value="all" data-i18n="projects.all_time">All time</option>
             </select>
           </div>
         </div>
@@ -983,20 +1077,20 @@
             <table id="projects-table-main">
               <thead>
                 <tr>
-                  <th>Project</th>
-                  <th>Priority/Weight</th>
-                  <th>Progress</th>
-                  <th>Needed</th>
-                  <th>Voting Results</th>
-                  <th>ETA</th>
-                  <th>Actions</th>
+                  <th data-i18n="table.project">Project</th>
+                  <th data-i18n="table.priority_weight">Priority/Weight</th>
+                  <th data-i18n="table.progress">Progress</th>
+                  <th data-i18n="table.needed">Needed</th>
+                  <th data-i18n="table.voting_results">Voting Results</th>
+                  <th data-i18n="table.eta">ETA</th>
+                  <th data-i18n="table.actions">Actions</th>
                 </tr>
               </thead>
               <tbody id="projects-main-tbody">
                 <tr>
                   <td colspan="7" class="loading">
                     <div class="spinner"></div>
-                    Loading projects...
+                    <span data-i18n="table.loading">Loading projects...</span>
                   </td>
                 </tr>
               </tbody>
@@ -1007,43 +1101,56 @@
 
       <!-- Voting Section -->
       <section id="voting-section" class="section hidden">
-        <h1>Priority Voting</h1>
+        <h1 data-i18n="voting.title">Priority Voting</h1>
         
         <div class="voting-section">
           <div class="voting-timer">
             <div>
-              <strong>Current Round:</strong> <span id="current-round">--</span>
+              <strong data-i18n="voting.current_round">Current Round</strong>: <span id="current-round">--</span>
             </div>
             <div class="timer" id="voting-timer">--:--:--</div>
             <div>
-              <strong>Phase:</strong> <span id="voting-phase">--</span>
+              <strong data-i18n="voting.phase">Phase</strong>: <span id="voting-phase">--</span>
             </div>
           </div>
           
           <div class="vote-results">
             <div class="vote-metric">
               <div class="vote-metric-value" id="total-participants">--</div>
-              <div class="vote-metric-label">Participants</div>
+              <div class="vote-metric-label" data-i18n="voting.participants">Participants</div>
             </div>
             <div class="vote-metric">
               <div class="vote-metric-value" id="total-revealed">--</div>
-              <div class="vote-metric-label">Revealed</div>
+              <div class="vote-metric-label" data-i18n="voting.revealed">Revealed</div>
             </div>
             <div class="vote-metric">
               <div class="vote-metric-value" id="turnout-percentage">--</div>
-              <div class="vote-metric-label">Turnout</div>
+              <div class="vote-metric-label" data-i18n="voting.turnout_percentage">Turnout</div>
             </div>
             <div class="vote-metric">
               <div class="vote-metric-value" id="voting-method">--</div>
-              <div class="vote-metric-label">Method</div>
+              <div class="vote-metric-label" data-i18n="voting.method">Method</div>
             </div>
+          </div>
+          
+          <!-- Testing Controls -->
+          <div class="text-center mt-3">
+            <button class="btn btn-sm btn-primary" onclick="app.loadVotingSection()" title="Обновить результаты голосования">
+              🔄 Обновить
+            </button>
+            <button class="btn btn-sm btn-info ml-2" onclick="app.loadVotingSectionWithFallback()" title="Показать демо-данные голосования">
+              🎭 Демо
+            </button>
+            <button class="btn btn-sm btn-warning ml-2" onclick="resetVotingStatus()" title="Сбросить статус голосования (для тестирования)">
+              🗿 Сбросить
+            </button>
           </div>
         </div>
 
         <!-- Commit Phase Interface -->
         <div id="commit-voting-section" class="card hidden">
           <div class="card-header">
-            <h2 class="card-title">Commit Your Votes</h2>
+            <h2 class="card-title" data-i18n="voting.commit_votes">Commit Your Votes</h2>
           </div>
           <div class="card-body">
             <form id="commit-vote-form">
@@ -1055,7 +1162,7 @@
         <!-- Reveal Phase Interface -->
         <div id="reveal-voting-section" class="card hidden">
           <div class="card-header">
-            <h2 class="card-title">Reveal Your Votes</h2>
+            <h2 class="card-title" data-i18n="voting.reveal_votes">Reveal Your Votes</h2>
           </div>
           <div class="card-body">
             <form id="reveal-vote-form">
@@ -1067,11 +1174,11 @@
         <!-- Voting Complete Section -->
         <div id="voting-complete-section" class="card hidden">
           <div class="card-header">
-            <h2 class="card-title">Voting Round Complete</h2>
+            <h2 class="card-title" data-i18n="voting.voting_complete">Voting Round Complete</h2>
           </div>
           <div class="card-body">
             <div class="alert alert-success">
-              <p>The voting round has been completed and finalized. View the results below.</p>
+              <p data-i18n="voting.voting_completed_message">The voting round has been completed and finalized. View the results below.</p>
             </div>
           </div>
         </div>
@@ -1079,24 +1186,24 @@
         <!-- Current Voting Projects -->
         <div class="card">
           <div class="card-header">
-            <h2 class="card-title">Projects in Current Round</h2>
+            <h2 class="card-title" data-i18n="voting.projects_in_round">Projects in Current Round</h2>
           </div>
           <div class="table-responsive">
             <table>
               <thead>
                 <tr>
-                  <th>Project</th>
-                  <th>Progress</th>
-                  <th>Status</th>
-                  <th>Current Results</th>
-                  <th>Actions</th>
+                  <th data-i18n="table.project">Project</th>
+                  <th data-i18n="table.progress">Progress</th>
+                  <th data-i18n="projects.status">Status</th>
+                  <th data-i18n="voting.current_results">Current Results</th>
+                  <th data-i18n="table.actions">Actions</th>
                 </tr>
               </thead>
               <tbody id="voting-projects-tbody">
                 <tr>
                   <td colspan="5" class="loading">
                     <div class="spinner"></div>
-                    Loading voting projects...
+                    <span data-i18n="voting.loading_voting_projects">Loading voting projects...</span>
                   </td>
                 </tr>
               </tbody>
@@ -1107,75 +1214,26 @@
         <!-- Voting Results History -->
         <div class="card">
           <div class="card-header">
-            <h2 class="card-title">Voting Results</h2>
+            <h2 class="card-title" data-i18n="voting.voting_results">Voting Results</h2>
           </div>
           <div class="table-responsive">
             <table>
               <thead>
                 <tr>
-                  <th>Project ID</th>
-                  <th>For</th>
-                  <th>Against</th>
-                  <th>Abstain</th>
-                  <th>Not Participating</th>
-                  <th>Turnout</th>
-                  <th>Final Priority</th>
+                  <th data-i18n="voting.project_id">Project ID</th>
+                  <th data-i18n="table.for">For</th>
+                  <th data-i18n="table.against">Against</th>
+                  <th data-i18n="table.abstain">Abstain</th>
+                  <th data-i18n="table.not_participating">Not Participating</th>
+                  <th data-i18n="table.turnout">Turnout</th>
+                  <th data-i18n="table.final_priority">Final Priority</th>
                 </tr>
               </thead>
               <tbody id="voting-results-tbody">
                 <tr>
                   <td colspan="7" class="loading">
                     <div class="spinner"></div>
-                    Loading voting results...
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-              <div class="vote-metric-value" id="total-participants">--</div>
-              <div class="vote-metric-label">Participants</div>
-            </div>
-            <div class="vote-metric">
-              <div class="vote-metric-value" id="total-revealed">--</div>
-              <div class="vote-metric-label">Revealed</div>
-            </div>
-            <div class="vote-metric">
-              <div class="vote-metric-value" id="turnout-percentage">--%</div>
-              <div class="vote-metric-label">Turnout</div>
-            </div>
-            <div class="vote-metric">
-              <div class="vote-metric-value" id="voting-method">--</div>
-              <div class="vote-metric-label">Method</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Voting Results</h2>
-            <button class="btn btn-primary" onclick="startVoting()" id="start-voting-btn">Start New Round</button>
-          </div>
-          
-          <div class="table-responsive">
-            <table id="voting-results-table">
-              <thead>
-                <tr>
-                  <th>Project</th>
-                  <th>For</th>
-                  <th>Against</th>
-                  <th>Abstain</th>
-                  <th>Not Participating</th>
-                  <th>Turnout</th>
-                  <th>Priority</th>
-                </tr>
-              </thead>
-              <tbody id="voting-results-tbody">
-                <tr>
-                  <td colspan="7" class="loading">
-                    <div class="spinner"></div>
-                    Loading voting results...
+                    <span data-i18n="voting.loading_voting_results">Loading voting results...</span>
                   </td>
                 </tr>
               </tbody>
@@ -1184,40 +1242,39 @@
         </div>
       </section>
 
-      <!-- Treasury Section -->
       <section id="treasury-section" class="section hidden">
-        <h1>Treasury Overview</h1>
+        <h1 data-i18n="treasury.title">Treasury Overview</h1>
         
         <div class="dashboard-grid">
           <div class="metric-card">
             <div class="metric-value" id="total-balance">--</div>
-            <div class="metric-label">Total Balance</div>
+            <div class="metric-label" data-i18n="treasury.total_balance">Total Balance</div>
           </div>
           <div class="metric-card">
             <div class="metric-value" id="total-donations">--</div>
-            <div class="metric-label">Total Donations</div>
+            <div class="metric-label" data-i18n="treasury.total_donations">Total Donations</div>
           </div>
           <div class="metric-card">
             <div class="metric-value" id="total-allocated">--</div>
-            <div class="metric-label">Total Allocated</div>
+            <div class="metric-label" data-i18n="treasury.total_allocated">Total Allocated</div>
           </div>
           <div class="metric-card">
             <div class="metric-value" id="total-paid-out">--</div>
-            <div class="metric-label">Total Paid Out</div>
+            <div class="metric-label" data-i18n="treasury.total_paid_out">Total Paid Out</div>
           </div>
         </div>
 
         <div class="card">
           <div class="card-header">
-            <h2 class="card-title">Recent Transactions</h2>
+            <h2 class="card-title" data-i18n="treasury.recent_transactions">Recent Transactions</h2>
             <div class="card-actions">
-              <button class="btn btn-secondary" onclick="exportTreasuryData()">Export CSV</button>
+              <button class="btn btn-secondary" onclick="exportTreasuryData()" data-i18n="treasury.export_csv">Export CSV</button>
             </div>
           </div>
           
           <div id="treasury-transactions" class="loading">
             <div class="spinner"></div>
-            Loading transactions...
+            <span data-i18n="treasury.loading_transactions">Loading transactions...</span>
           </div>
         </div>
       </section>
@@ -1225,10 +1282,10 @@
       <!-- Personal Stats Section -->
       <section id="personal-section" class="section hidden">
         <div class="card-header">
-          <h1>My Contribution Stats</h1>
+          <h1 data-i18n="personal.title">My Contribution Stats</h1>
           <div class="card-actions">
-            <input type="text" id="wallet-address" placeholder="Enter wallet address" class="btn-secondary">
-            <button class="btn btn-primary" onclick="loadPersonalStats()">Load Stats</button>
+            <input type="text" id="wallet-address" data-i18n="personal.wallet_address_placeholder" placeholder="Enter wallet address" class="btn-secondary">
+            <button class="btn btn-primary" onclick="loadPersonalStats()" data-i18n="personal.load_stats">Load Stats</button>
           </div>
         </div>
         
@@ -1236,32 +1293,32 @@
           <div class="personal-stats">
             <div class="stat-item">
               <div class="stat-value" id="my-total-donated">--</div>
-              <div class="metric-label">Total Donated (ETH)</div>
+              <div class="metric-label" data-i18n="personal.total_donated">Total Donated (ETH)</div>
               <div class="stat-comparison" id="donation-percentile">--</div>
             </div>
             <div class="stat-item">
               <div class="stat-value" id="my-projects-count">--</div>
-              <div class="metric-label">Projects Supported</div>
+              <div class="metric-label" data-i18n="personal.projects_supported">Projects Supported</div>
               <div class="stat-comparison" id="projects-comparison">--</div>
             </div>
             <div class="stat-item">
               <div class="stat-value" id="my-avg-share">--%</div>
-              <div class="metric-label">Average Share</div>
+              <div class="metric-label" data-i18n="personal.average_share">Average Share</div>
               <div class="stat-comparison" id="share-percentile">--</div>
             </div>
           </div>
 
           <div class="card">
             <div class="card-header">
-              <h2 class="card-title">My Project Allocations</h2>
+              <h2 class="card-title" data-i18n="personal.my_project_allocations">My Project Allocations</h2>
               <div class="card-actions">
-                <button class="btn btn-secondary" onclick="exportPersonalData()">Export My Data</button>
+                <button class="btn btn-secondary" onclick="exportPersonalData()" data-i18n="personal.export_my_data">Export My Data</button>
               </div>
             </div>
             
             <div id="my-allocations" class="loading">
               <div class="spinner"></div>
-              Loading allocations...
+              <span data-i18n="personal.loading_allocations">Loading allocations...</span>
             </div>
           </div>
         </div>
@@ -1269,43 +1326,43 @@
 
       <!-- Admin Section -->
       <section id="admin-section" class="section hidden">
-        <h1>Administration</h1>
+        <h1 data-i18n="admin.title">Administration</h1>
         
         <div class="dashboard-grid">
           <div class="card">
-            <h3>Project Management</h3>
+            <h3 data-i18n="admin.project_management">Project Management</h3>
             <div class="mt-2">
-              <button class="btn btn-primary" onclick="app.showProjectForm()">Create Project</button>
-              <button class="btn btn-secondary ml-2" onclick="app.manageCategories()">Manage Categories</button>
-              <button class="btn btn-secondary ml-2" onclick="app.showProjectsAdmin()">Manage Projects</button>
+              <button class="btn btn-primary" onclick="app.showProjectForm()" data-i18n="admin.create_project">Create Project</button>
+              <button class="btn btn-secondary ml-2" onclick="app.manageCategories()" data-i18n="admin.manage_categories">Manage Categories</button>
+              <button class="btn btn-secondary ml-2" onclick="app.showProjectsAdmin()" data-i18n="admin.manage_projects">Manage Projects</button>
             </div>
           </div>
           
           <div class="card">
-            <h3>Member Management</h3>
+            <h3 data-i18n="admin.member_management">Member Management</h3>
             <div class="mt-2">
-              <button class="btn btn-primary" onclick="app.showMintSBTForm()">Mint SBT</button>
-              <button class="btn btn-secondary ml-2" onclick="app.manageWeights()">Manage Weights</button>
-              <button class="btn btn-secondary ml-2" onclick="app.showMembersAdmin()">View Members</button>
+              <button class="btn btn-primary" onclick="app.showMintSBTForm()" data-i18n="admin.mint_sbt">Mint SBT</button>
+              <button class="btn btn-secondary ml-2" onclick="app.manageWeights()" data-i18n="admin.manage_weights">Manage Weights</button>
+              <button class="btn btn-secondary ml-2" onclick="app.showMembersAdmin()" data-i18n="admin.view_members">View Members</button>
             </div>
           </div>
           
           <div class="card">
-            <h3>Voting Management</h3>
+            <h3 data-i18n="admin.voting_management">Voting Management</h3>
             <div class="mt-2">
-              <button class="btn btn-primary" onclick="app.showStartVotingForm()">Start Voting Round</button>
-              <button class="btn btn-secondary ml-2" onclick="app.showVotingConfig()">Configure Settings</button>
-              <button class="btn btn-secondary ml-2" onclick="app.showVotingHistory()">View History</button>
+              <button class="btn btn-primary" onclick="app.showStartVotingForm()" data-i18n="admin.start_voting_round">Start Voting Round</button>
+              <button class="btn btn-secondary ml-2" onclick="app.showVotingConfig()" data-i18n="admin.configure_settings">Configure Settings</button>
+              <button class="btn btn-secondary ml-2" onclick="app.showVotingHistory()" data-i18n="admin.view_history">View History</button>
             </div>
           </div>
           
           <div class="card">
-            <h3>System Management</h3>
+            <h3 data-i18n="admin.system_management">System Management</h3>
             <div class="mt-2">
-              <div id="indexer-status" class="text-muted mb-2">Checking indexer status...</div>
-              <button class="btn btn-warning" onclick="app.reindexBlockchain()">Force Reindex</button>
-              <button class="btn btn-secondary ml-2" onclick="app.showSystemConfig()">System Config</button>
-              <button class="btn btn-secondary ml-2" onclick="app.showLogsAdmin()">View Logs</button>
+              <div id="indexer-status" class="text-muted mb-2" data-i18n="admin.checking_indexer_status">Checking indexer status...</div>
+              <button class="btn btn-warning" onclick="app.reindexBlockchain()" data-i18n="admin.force_reindex">Force Reindex</button>
+              <button class="btn btn-secondary ml-2" onclick="app.showSystemConfig()" data-i18n="admin.system_config">System Config</button>
+              <button class="btn btn-secondary ml-2" onclick="app.showLogsAdmin()" data-i18n="admin.view_logs">View Logs</button>
             </div>
           </div>
         </div>
@@ -1313,36 +1370,36 @@
         <!-- Export & Reporting Section -->
         <div class="card mt-2">
           <div class="card-header">
-            <h2 class="card-title">Data Export & Reporting</h2>
+            <h2 class="card-title" data-i18n="admin.data_export_reporting">Data Export & Reporting</h2>
           </div>
           <div class="card-body">
             <div class="dashboard-grid">
               <div class="admin-section">
-                <h4>Quick Exports</h4>
+                <h4 data-i18n="admin.quick_exports">Quick Exports</h4>
                 <div class="action-grid">
-                  <button class="btn btn-primary" onclick="app.exportAllDonations()">Export Donations</button>
-                  <button class="btn btn-primary" onclick="app.exportAllAllocations()">Export Allocations</button>
-                  <button class="btn btn-primary" onclick="app.exportVotingResults()">Export Voting</button>
-                  <button class="btn btn-success" onclick="app.exportComprehensiveReport()">Full Report</button>
+                  <button class="btn btn-primary" onclick="app.exportAllDonations()" data-i18n="admin.export_donations">Export Donations</button>
+                  <button class="btn btn-primary" onclick="app.exportAllAllocations()" data-i18n="admin.export_allocations">Export Allocations</button>
+                  <button class="btn btn-primary" onclick="app.exportVotingResults()" data-i18n="admin.export_voting">Export Voting</button>
+                  <button class="btn btn-success" onclick="app.exportComprehensiveReport()" data-i18n="admin.full_report">Full Report</button>
                 </div>
               </div>
               
               <div class="admin-section">
-                <h4>Analytics Reports</h4>
+                <h4 data-i18n="admin.analytics_reports">Analytics Reports</h4>
                 <div class="action-grid">
-                  <button class="btn btn-secondary" onclick="app.generateProjectAnalytics()">Project Analytics</button>
-                  <button class="btn btn-secondary" onclick="app.generateVotingAnalytics()">Voting Analytics</button>
-                  <button class="btn btn-secondary" onclick="app.generateTreasuryAnalytics()">Treasury Analytics</button>
-                  <button class="btn btn-secondary" onclick="app.generatePrivacyReport()">Privacy Report</button>
+                  <button class="btn btn-secondary" onclick="app.generateProjectAnalytics()" data-i18n="admin.project_analytics">Project Analytics</button>
+                  <button class="btn btn-secondary" onclick="app.generateVotingAnalytics()" data-i18n="admin.voting_analytics">Voting Analytics</button>
+                  <button class="btn btn-secondary" onclick="app.generateTreasuryAnalytics()" data-i18n="admin.treasury_analytics">Treasury Analytics</button>
+                  <button class="btn btn-secondary" onclick="app.generatePrivacyReport()" data-i18n="admin.privacy_report">Privacy Report</button>
                 </div>
               </div>
               
               <div class="admin-section">
-                <h4>Custom Export</h4>
+                <h4 data-i18n="admin.custom_export">Custom Export</h4>
                 <div class="action-grid">
-                  <button class="btn btn-info" onclick="app.showExportOptions()">Advanced Export Options</button>
+                  <button class="btn btn-info" onclick="app.showExportOptions()" data-i18n="admin.advanced_export_options">Advanced Export Options</button>
                 </div>
-                <div class="text-muted mt-1">
+                <div class="text-muted mt-1" data-i18n="admin.advanced_export_description">
                   Configure custom exports with date ranges, filters, and formats
                 </div>
               </div>
@@ -1353,10 +1410,10 @@
         <!-- Admin Tables -->
         <div class="card mt-2" id="admin-content-area">
           <div class="card-header">
-            <h2 class="card-title" id="admin-content-title">Select an action above</h2>
+            <h2 class="card-title" id="admin-content-title" data-i18n="admin.select_action">Select an action above</h2>
           </div>
           <div class="card-body" id="admin-content-body">
-            <p class="text-muted">Choose an administration task from the options above to begin.</p>
+            <p class="text-muted" data-i18n="admin.choose_task">Choose an administration task from the options above to begin.</p>
           </div>
         </div>
       </section>
@@ -1366,14 +1423,14 @@
         <div class="modal-backdrop" onclick="app.closeModal()"></div>
         <div class="modal-content">
           <div class="modal-header">
-            <h3 id="modal-title">Admin Action</h3>
-            <button class="modal-close" onclick="app.closeModal()">&times;</button>
+            <h3 id="modal-title" data-i18n="admin.admin_action">Admin Action</h3>
+            <button class="modal-close" onclick="app.closeModal()" data-i18n="buttons.close">&times;</button>
           </div>
           <div class="modal-body" id="modal-body">
             <!-- Dynamic content -->
           </div>
           <div class="modal-footer" id="modal-footer">
-            <button class="btn btn-secondary" onclick="app.closeModal()">Cancel</button>
+            <button class="btn btn-secondary" onclick="app.closeModal()" data-i18n="buttons.cancel">Cancel</button>
           </div>
         </div>
       </div>
@@ -1381,7 +1438,9 @@
     </div>
   </main>
 
+  <!-- Include i18n system -->
+  <script src="./js/i18n.js"></script>
   <!-- Include enhanced JavaScript -->
-  <script src="./app.js?v=1.0.2"></script>
+  <script src="./app.js?v=1.4.11"></script>
 </body>
 </html>

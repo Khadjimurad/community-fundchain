@@ -26,18 +26,18 @@ settings = get_settings()
 router = APIRouter()
 
 # Health check endpoints
-@router.get("/healthz")
+@router.get("/healthz", tags=["🏥 Health"])
 async def healthz():
     """Basic health check endpoint."""
     return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
 
-@router.get("/health")
+@router.get("/health", tags=["🏥 Health"])
 async def health():
     """Health check endpoint for setup scripts."""
     return {"status": "healthy", "service": "fundchain-backend", "timestamp": datetime.utcnow().isoformat()}
 
 # Projects endpoints
-@router.get("/projects", response_model=List[ProjectResponse])
+@router.get("/projects", response_model=List[ProjectResponse], tags=["💼 Projects"])
 async def api_list_projects(
     status: Optional[str] = Query(None, description="Filter by project status"),
     category: Optional[str] = Query(None, description="Filter by category"),
@@ -48,7 +48,7 @@ async def api_list_projects(
     """Get list of projects with optional filtering."""
     return await list_projects(status, category, limit, offset, db)
 
-@router.get("/projects/{project_id}", response_model=ProjectResponse)
+@router.get("/projects/{project_id}", response_model=ProjectResponse, tags=["💼 Projects"])
 async def api_get_project(
     project_id: str = Path(..., description="Project ID"),
     db: AsyncSession = Depends(get_db)
@@ -56,7 +56,7 @@ async def api_get_project(
     """Get a specific project by ID."""
     return await get_project(project_id, db)
 
-@router.get("/projects/{project_id}/progress")
+@router.get("/projects/{project_id}/progress", tags=["💼 Projects"])
 async def api_get_project_progress(
     project_id: str = Path(..., description="Project ID"),
     db: AsyncSession = Depends(get_db)
@@ -64,7 +64,7 @@ async def api_get_project_progress(
     """Get project funding progress and statistics."""
     return await get_project_progress(project_id, db)
 
-@router.get("/projects/category/{category}", response_model=List[ProjectResponse])
+@router.get("/projects/category/{category}", response_model=List[ProjectResponse], tags=["💼 Projects"])
 async def api_get_projects_by_category(
     category: str = Path(..., description="Project category"),
     include_inactive: bool = Query(False, description="Include inactive projects"),
@@ -74,7 +74,7 @@ async def api_get_projects_by_category(
     return await get_projects_by_category(category, include_inactive, db)
 
 # Donations endpoints
-@router.get("/donations", response_model=List[DonationResponse])
+@router.get("/donations", response_model=List[DonationResponse], tags=["💰 Donations"])
 async def api_list_donations(
     donor_address: Optional[str] = Query(None, description="Filter by donor address"),
     project_id: Optional[str] = Query(None, description="Filter by project"),
@@ -85,7 +85,7 @@ async def api_list_donations(
     """Get list of donations with optional filtering."""
     return await list_donations(donor_address, project_id, limit, offset, db)
 
-@router.get("/donations/{receipt_id}")
+@router.get("/donations/{receipt_id}", tags=["💰 Donations"])
 async def api_get_donation(
     receipt_id: str = Path(..., description="Donation receipt ID"),
     db: AsyncSession = Depends(get_db)
@@ -94,7 +94,7 @@ async def api_get_donation(
     return await get_donation(receipt_id, db)
 
 # Allocations endpoints
-@router.get("/allocations")
+@router.get("/allocations", tags=["📈 Allocations"])
 async def api_list_allocations(
     project_id: Optional[str] = Query(None, description="Filter by project"),
     donor_address: Optional[str] = Query(None, description="Filter by donor"),
@@ -107,7 +107,7 @@ async def api_list_allocations(
     return await list_allocations(project_id, donor_address, allocation_type, limit, offset, db)
 
 # Voting endpoints
-@router.get("/votes/priority/summary", response_model=List[VoteResponse])
+@router.get("/votes/priority/summary", response_model=List[VoteResponse], tags=["🗽️ Voting"])
 async def api_get_voting_summary(
     round_id: Optional[int] = Query(None, description="Specific voting round"),
     project_id: Optional[str] = Query(None, description="Filter by project"),
@@ -116,7 +116,7 @@ async def api_get_voting_summary(
     """Get voting results summary."""
     return await get_voting_summary(round_id, project_id, db)
 
-@router.get("/votes/rounds/{round_id}")
+@router.get("/votes/rounds/{round_id}", tags=["🗽️ Voting"])
 async def api_get_voting_round_details(
     round_id: int = Path(..., description="Voting round ID"),
     db: AsyncSession = Depends(get_db)
@@ -125,14 +125,14 @@ async def api_get_voting_round_details(
     return await get_voting_round_details(round_id, db)
 
 # Commit-Reveal Voting endpoints
-@router.get("/votes/current-round")
+@router.get("/votes/current-round", tags=["🗽️ Voting"])
 async def get_current_voting_round(
     db: AsyncSession = Depends(get_db)
 ) -> Dict[str, Any]:
     """Get current active voting round information."""
     return await get_current_voting_round_info(db)
 
-@router.post("/votes/{round_id}/commit")
+@router.post("/votes/{round_id}/commit", tags=["🗽️ Voting"])
 async def commit_vote(
     round_id: int = Path(..., description="Voting round ID"),
     request: Dict[str, Any] = {},
@@ -149,7 +149,7 @@ async def commit_vote(
         "phase": "commit"
     }
 
-@router.post("/votes/{round_id}/reveal")
+@router.post("/votes/{round_id}/reveal", tags=["🗽️ Voting"])
 async def reveal_vote(
     round_id: int = Path(..., description="Voting round ID"),
     request: Dict[str, Any] = {},
@@ -168,7 +168,7 @@ async def reveal_vote(
         "phase": "reveal"
     }
 
-@router.get("/votes/{round_id}/status")
+@router.get("/votes/{round_id}/status", tags=["🗽️ Voting"])
 async def get_voting_round_status(
     round_id: int = Path(..., description="Voting round ID"),
     user_address: Optional[str] = Query(None, description="Check user voting status"),
@@ -178,7 +178,7 @@ async def get_voting_round_status(
     return await get_user_voting_status(round_id, user_address, db)
 
 # Payouts endpoints
-@router.get("/payouts")
+@router.get("/payouts", tags=["💳 Payouts"])
 async def api_list_payouts(
     project_id: Optional[str] = Query(None, description="Filter by project"),
     limit: int = Query(50, le=1000),
@@ -189,7 +189,7 @@ async def api_list_payouts(
     return await list_payouts(project_id, limit, offset, db)
 
 # User stats endpoints
-@router.get("/me/stats", response_model=DonorStatsResponse)
+@router.get("/me/stats", response_model=DonorStatsResponse, tags=["👤 User Stats"])
 async def api_get_user_stats(
     user_address: str = Query(..., description="User wallet address"),
     db: AsyncSession = Depends(get_db)
@@ -198,7 +198,7 @@ async def api_get_user_stats(
     return await get_user_stats(user_address, db)
 
 # Treasury endpoints
-@router.get("/treasury/stats", response_model=TreasuryStatsResponse)
+@router.get("/treasury/stats", response_model=TreasuryStatsResponse, tags=["🏦 Treasury"])
 async def api_get_treasury_stats(
     db: AsyncSession = Depends(get_db)
 ) -> TreasuryStatsResponse:
@@ -206,7 +206,7 @@ async def api_get_treasury_stats(
     return await get_treasury_stats(db)
 
 # Privacy and anonymity endpoints
-@router.get("/privacy/report")
+@router.get("/privacy/report", tags=["🔒 Privacy"])
 async def get_privacy_report(
     data_type: str = Query(..., description="Type of data to analyze"),
     db: AsyncSession = Depends(get_db)
@@ -231,7 +231,7 @@ async def get_privacy_report(
     return privacy_filter.get_anonymity_report(data)
 
 # Export endpoints
-@router.get("/export/donations")
+@router.get("/export/donations", tags=["📊 Export"])
 async def export_donations(
     format: str = Query("csv", description="Export format (csv, json)"),
     donor_address: Optional[str] = Query(None, description="Filter by donor address"),
@@ -271,7 +271,7 @@ async def export_donations(
             }
         })
 
-@router.get("/export/allocations")
+@router.get("/export/allocations", tags=["📊 Export"])
 async def export_allocations(
     format: str = Query("csv", description="Export format (csv, json)"),
     project_id: Optional[str] = Query(None, description="Filter by project"),
@@ -304,7 +304,7 @@ async def export_allocations(
             }
         })
 
-@router.get("/export/voting-results")
+@router.get("/export/voting-results", tags=["📊 Export"])
 async def export_voting_results(
     format: str = Query("csv", description="Export format (csv, json)"),
     round_id: Optional[int] = Query(None, description="Filter by voting round"),
@@ -361,7 +361,7 @@ async def export_voting_results(
             }
         })
 
-@router.get("/export/comprehensive-report")
+@router.get("/export/comprehensive-report", tags=["📊 Export"])
 async def export_comprehensive_report(
     format: str = Query("json", description="Export format (json recommended for comprehensive data)"),
     include_personal_data: bool = Query(False, description="Include personal/sensitive data (requires admin access)"),
@@ -372,7 +372,7 @@ async def export_comprehensive_report(
     """Export comprehensive system report including all data types."""
     
     # Validate comprehensive export request
-    validation = privacy_filter.validate_export_request(50000, "admin" if include_personal_data else "public")
+    validation = privacy_filter.validate_export_request(settings.max_export_records, "admin" if include_personal_data else "public")
     
     if not validation["allowed"]:
         raise HTTPException(status_code=403, detail=validation["reason"])
@@ -474,7 +474,7 @@ async def export_comprehensive_report(
         raise HTTPException(status_code=500, detail="Failed to generate comprehensive report")
 
 # Admin endpoints
-@router.post("/admin/indexer/reindex")
+@router.post("/admin/indexer/reindex", tags=["⚙️ Admin"])
 async def reindex_blockchain(
     contract_name: Optional[str] = Query(None, description="Specific contract to reindex"),
     from_block: Optional[int] = Query(None, description="Starting block number")
@@ -486,7 +486,7 @@ async def reindex_blockchain(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/admin/indexer/status")
+@router.get("/admin/indexer/status", tags=["⚙️ Admin"])
 async def get_indexer_status():
     """Get blockchain indexer status."""
     return {
@@ -495,8 +495,53 @@ async def get_indexer_status():
         "poll_interval": indexer.poll_interval
     }
 
+@router.post("/admin/voting/start-round", tags=["⚙️ Admin"])
+async def start_voting_round(
+    request: Dict[str, Any],
+    db: AsyncSession = Depends(get_db)
+) -> Dict[str, Any]:
+    """Start a new voting round with selected projects."""
+    try:
+        projects = request.get("projects", [])
+        commit_duration = request.get("commit_duration_hours", 168)
+        reveal_duration = request.get("reveal_duration_hours", 72)
+        counting_method = request.get("counting_method", "borda")
+        
+        if not projects:
+            raise HTTPException(status_code=400, detail="At least one project must be selected")
+        
+        # В MVP версии мы симулируем запуск раунда голосования
+        # В полной версии здесь был бы вызов смарт-контракта
+        
+        # Генерируем новый ID раунда
+        round_id = 4  # В реальной версии это было бы получено из блокчейна
+        
+        # Логируем действие
+        logger.info(f"Starting voting round {round_id} with {len(projects)} projects")
+        logger.info(f"Projects: {projects}")
+        logger.info(f"Duration: {commit_duration}h commit, {reveal_duration}h reveal")
+        logger.info(f"Method: {counting_method}")
+        
+        return {
+            "status": "success",
+            "message": "Voting round started successfully",
+            "round_id": round_id,
+            "projects": projects,
+            "commit_duration_hours": commit_duration,
+            "reveal_duration_hours": reveal_duration,
+            "counting_method": counting_method,
+            "start_time": datetime.utcnow().isoformat(),
+            "phase": "commit"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error starting voting round: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to start voting round: {str(e)}")
+
 # Statistics and aggregates
-@router.get("/stats/overview")
+@router.get("/stats/overview", tags=["📈 Statistics"])
 async def get_overview_stats(db: AsyncSession = Depends(get_db)):
     """Get high-level overview statistics."""
     
@@ -518,7 +563,7 @@ async def get_overview_stats(db: AsyncSession = Depends(get_db)):
         "latest_update": datetime.utcnow().isoformat()
     }
 
-@router.get("/reports/project-analytics")
+@router.get("/reports/project-analytics", tags=["📉 Reports"])
 async def get_project_analytics(
     category: Optional[str] = Query(None, description="Filter by category"),
     period_days: int = Query(30, description="Analysis period in days"),
@@ -591,7 +636,7 @@ async def get_project_analytics(
     
     return analytics
 
-@router.get("/reports/voting-analytics")
+@router.get("/reports/voting-analytics", tags=["📉 Reports"])
 async def get_voting_analytics(
     round_id: Optional[int] = Query(None, description="Specific round or latest"),
     db: AsyncSession = Depends(get_db)
@@ -650,7 +695,7 @@ async def get_voting_analytics(
             }
         }
 
-@router.get("/reports/treasury-analytics")
+@router.get("/reports/treasury-analytics", tags=["📉 Reports"])
 async def get_treasury_analytics(
     period_days: int = Query(30, description="Analysis period in days"),
     db: AsyncSession = Depends(get_db)
@@ -691,7 +736,7 @@ async def get_treasury_analytics(
     
     return analytics
 
-@router.get("/stats/categories")
+@router.get("/stats/categories", tags=["📈 Statistics"])
 async def get_category_stats(db: AsyncSession = Depends(get_db)):
     """Get statistics by project category."""
     
@@ -728,13 +773,29 @@ async def get_category_stats(db: AsyncSession = Depends(get_db)):
 def _export_to_csv(data: List[Dict[str, Any]], filename: str) -> StreamingResponse:
     """Export data to CSV format."""
     
-    if not data:
-        raise HTTPException(status_code=404, detail="No data to export")
-    
     output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=data[0].keys())
-    writer.writeheader()
-    writer.writerows(data)
+    
+    if not data:
+        # Create empty CSV with basic headers for empty data
+        if "voting_results" in filename:
+            fieldnames = ["project_id", "for_weight", "against_weight", "abstained_count", 
+                         "not_participating_count", "turnout_percentage", "round_id", "total_votes"]
+        elif "donations" in filename:
+            fieldnames = ["receipt_id", "donor_address", "amount", "timestamp", "tx_hash"]
+        elif "allocations" in filename:
+            fieldnames = ["project_id", "donor_address", "amount", "timestamp", "allocation_type"]
+        else:
+            fieldnames = ["message"]
+            data = [{"message": "No data available"}]
+        
+        writer = csv.DictWriter(output, fieldnames=fieldnames)
+        writer.writeheader()
+        if data:  # Only write rows if there's actual data
+            writer.writerows(data)
+    else:
+        writer = csv.DictWriter(output, fieldnames=data[0].keys())
+        writer.writeheader()
+        writer.writerows(data)
     
     output.seek(0)
     

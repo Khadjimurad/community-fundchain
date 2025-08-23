@@ -15,7 +15,7 @@ services:
       - PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
       - CONTRACT_ADDRESSES_FILE=/app/deployed_contracts.json
       - DEBUG=true
-      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:8001,http://127.0.0.1:8001
       - API_KEY_SECRET=dev_secret_key_change_in_production
       - PRIVACY_K_THRESHOLD=5
       - TREASURY_ADDRESS=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
