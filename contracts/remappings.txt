@@ -1,1 +1,1 @@
-# add remappings if you add external libs
+forge-std/=lib/forge-std/src/
