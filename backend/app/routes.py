@@ -16,7 +16,7 @@ from .api import (
     list_projects, get_project, get_project_progress, get_projects_by_category,
     list_donations, get_donation, list_allocations, get_voting_summary,
     get_voting_round_details, list_payouts, get_user_stats, get_treasury_stats,
-    get_current_voting_round_info, get_user_voting_status
+    get_current_voting_round_info, get_user_voting_status, get_treasury_transactions
 )
 from .privacy import privacy_filter
 from .config import get_settings
@@ -204,6 +204,16 @@ async def api_get_treasury_stats(
 ) -> TreasuryStatsResponse:
     """Get overall treasury statistics."""
     return await get_treasury_stats(db)
+
+@router.get("/treasury/transactions", tags=["🏦 Treasury"])
+async def api_get_treasury_transactions(
+    limit: int = Query(50, le=1000),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db)
+) -> List[Dict[str, Any]]:
+    """Get treasury transactions including donations, allocations, and payouts."""
+    
+    return await get_treasury_transactions(limit, offset, db)
 
 # Privacy and anonymity endpoints
 @router.get("/privacy/report", tags=["🔒 Privacy"])
@@ -804,3 +814,30 @@ def _export_to_csv(data: List[Dict[str, Any]], filename: str) -> StreamingRespon
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+# System Logs endpoints
+@router.get("/admin/logs", tags=["🔧 Administration"])
+async def api_get_system_logs(
+    limit: int = Query(100, le=1000, description="Number of logs to return"),
+    offset: int = Query(0, ge=0, description="Number of logs to skip"),
+    level: Optional[str] = Query(None, description="Filter by log level (INFO, WARNING, ERROR, DEBUG)"),
+    module: Optional[str] = Query(None, description="Filter by module"),
+    db: AsyncSession = Depends(get_db)
+) -> List[Dict[str, Any]]:
+    """Get system logs with optional filtering."""
+    from .api import get_system_logs
+    return await get_system_logs(limit, offset, level, module, db)
+
+@router.post("/admin/logs", tags=["🔧 Administration"])
+async def api_create_system_log(
+    level: str,
+    message: str,
+    module: Optional[str] = None,
+    details: Optional[Dict[str, Any]] = None,
+    user_address: Optional[str] = None,
+    ip_address: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+) -> Dict[str, Any]:
+    """Create a new system log entry."""
+    from .api import create_system_log
+    return await create_system_log(level, message, module, details, user_address, ip_address, db)

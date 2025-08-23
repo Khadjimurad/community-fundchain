@@ -396,42 +396,77 @@ async def get_voting_round_details(
 # Commit-Reveal Voting functions
 async def get_current_voting_round_info(db: AsyncSession) -> Dict[str, Any]:
     """Get current active voting round information."""
-    # В MVP версии симулируем активный раунд голосования
-    # В реальной версии это получалось бы из блокчейна
     
-    # Симулируем новый активный раунд после start-round
-    round_id = 4
+    # Проверяем наличие активного раунда в базе данных
+    active_round_query = select(VotingRound).where(
+        VotingRound.finalized == False
+    ).order_by(desc(VotingRound.round_id)).limit(1)
+    
+    active_round_result = await db.execute(active_round_query)
+    active_round = active_round_result.scalar_one_or_none()
+    
+    if not active_round:
+        # Нет активного раунда
+        return {
+            "round_id": None,
+            "phase": "no_active_round",
+            "phase_message": "No active voting round",
+            "time_remaining": 0,
+            "start_commit": None,
+            "end_commit": None,
+            "end_reveal": None,
+            "counting_method": "weighted",
+            "total_participants": 0,
+            "total_revealed": 0,
+            "total_active_members": 0,
+            "turnout_percentage": 0.0,
+            "projects": []
+        }
+    
+    # Определяем текущую фазу
     now = datetime.utcnow()
     
-    # Симулируем фазу commit для нового раунда
-    phase = "commit"
-    phase_message = "Commit phase is active"
+    if now < active_round.start_commit:
+        phase = "pending"
+        phase_message = "Voting round is pending"
+        time_remaining = int((active_round.start_commit - now).total_seconds())
+    elif now < active_round.end_commit:
+        phase = "commit"
+        phase_message = "Commit phase is active"
+        time_remaining = int((active_round.end_commit - now).total_seconds())
+    elif now < active_round.end_reveal:
+        phase = "reveal"
+        phase_message = "Reveal phase is active"
+        time_remaining = int((active_round.end_reveal - now).total_seconds())
+    else:
+        phase = "ended"
+        phase_message = "Voting round has ended"
+        time_remaining = 0
     
-    # Получаем проекты для голосования (последние активные проекты)
-    projects_query = select(Project).where(
-        Project.status.in_(["active", "funding_ready"])
-    ).limit(5)
+    # Получаем проекты для данного раунда голосования
+    projects_query = select(Project).join(
+        VoteResult, VoteResult.project_id == Project.id
+    ).where(VoteResult.round_id == active_round.round_id)
+    
     projects_result = await db.execute(projects_query)
     projects = projects_result.scalars().all()
     
-    # Симулируем время окончания фаз
-    end_commit = now + timedelta(hours=168)  # 7 дней
-    end_reveal = end_commit + timedelta(hours=72)  # 3 дня
-    time_remaining = int((end_commit - now).total_seconds())
-    
     return {
-        "round_id": round_id,
+        "round_id": active_round.round_id,
         "phase": phase,
         "phase_message": phase_message,
         "time_remaining": time_remaining,
-        "start_commit": now.isoformat(),
-        "end_commit": end_commit.isoformat(),
-        "end_reveal": end_reveal.isoformat(),
-        "counting_method": "borda",
-        "total_participants": 15,
-        "total_revealed": 0,
-        "total_active_members": 15,
-        "turnout_percentage": 0.0,
+        "start_commit": active_round.start_commit.isoformat() if active_round.start_commit else None,
+        "end_commit": active_round.end_commit.isoformat() if active_round.end_commit else None,
+        "end_reveal": active_round.end_reveal.isoformat() if active_round.end_reveal else None,
+        "counting_method": active_round.counting_method or "weighted",
+        "total_participants": active_round.total_participants or 0,
+        "total_revealed": active_round.total_revealed or 0,
+        "total_active_members": active_round.total_active_members or 0,
+        "turnout_percentage": round(
+            (active_round.total_revealed / active_round.total_active_members * 100)
+            if active_round.total_active_members and active_round.total_revealed else 0.0, 1
+        ),
         "projects": [
             {
                 "id": p.id,
@@ -640,6 +675,72 @@ async def get_treasury_stats(
         donors_count=donation_stats.unique_donors or 0
     )
 
+async def get_treasury_transactions(
+    limit: int = Query(50, le=1000),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db)
+) -> List[Dict[str, Any]]:
+    """Get treasury transactions including donations, allocations, and payouts."""
+    
+    transactions = []
+    
+    # Get recent donations
+    donations_query = select(Donation).order_by(desc(Donation.timestamp)).offset(offset).limit(limit)
+    donations_result = await db.execute(donations_query)
+    donations = donations_result.scalars().all()
+    
+    for donation in donations:
+        transactions.append({
+            "id": f"donation_{donation.id}",
+            "hash": donation.transaction_hash,
+            "type": "donation",
+            "amount": float(donation.amount),
+            "timestamp": donation.timestamp,
+            "from_address": donation.donor_address,
+            "to_address": None,
+            "project_id": None
+        })
+    
+    # Get recent allocations
+    allocations_query = select(Allocation).order_by(desc(Allocation.timestamp)).offset(offset).limit(limit)
+    allocations_result = await db.execute(allocations_query)
+    allocations = allocations_result.scalars().all()
+    
+    for allocation in allocations:
+        transactions.append({
+            "id": f"allocation_{allocation.id}",
+            "hash": f"alloc_{allocation.id}",
+            "type": "allocation",
+            "amount": float(allocation.amount),
+            "timestamp": allocation.timestamp,
+            "from_address": None,
+            "to_address": allocation.project_id,
+            "project_id": allocation.project_id
+        })
+    
+    # Get recent payouts
+    payouts_query = select(Payout).order_by(desc(Payout.timestamp)).offset(offset).limit(limit)
+    payouts_result = await db.execute(payouts_query)
+    payouts = payouts_result.scalars().all()
+    
+    for payout in payouts:
+        transactions.append({
+            "id": f"payout_{payout.payout_id}",
+            "hash": payout.tx_hash,
+            "type": "payout",
+            "amount": float(payout.amount),
+            "timestamp": payout.timestamp,
+            "from_address": None,
+            "to_address": payout.recipient_address,
+            "project_id": payout.project_id
+        })
+    
+    # Sort all transactions by timestamp (most recent first)
+    transactions.sort(key=lambda x: x["timestamp"], reverse=True)
+    
+    # Apply limit to combined results
+    return transactions[:limit]
+
 # Helper functions
 def _calculate_project_eta(project: Project, current_allocated: float) -> Optional[str]:
     """Calculate estimated time to reach project target."""
@@ -679,3 +780,78 @@ async def _calculate_donor_percentile(db: AsyncSession, donor_amount: float) -> 
     
     percentile = int((lower_count / total_count) * 100) if total_count > 0 else 0
     return min(99, max(1, percentile))  # Clamp between 1-99
+
+async def get_system_logs(
+    limit: int = Query(100, le=1000),
+    offset: int = Query(0, ge=0),
+    level: Optional[str] = Query(None, description="Filter by log level"),
+    module: Optional[str] = Query(None, description="Filter by module"),
+    db: AsyncSession = Depends(get_db)
+) -> List[Dict[str, Any]]:
+    """Get system logs with optional filtering."""
+    from .models import SystemLog
+    
+    # Build query with filters
+    query = select(SystemLog).order_by(desc(SystemLog.timestamp))
+    
+    if level:
+        query = query.where(SystemLog.level == level.upper())
+    
+    if module:
+        query = query.where(SystemLog.module == module)
+    
+    # Apply pagination
+    query = query.offset(offset).limit(limit)
+    
+    result = await db.execute(query)
+    logs = result.scalars().all()
+    
+    return [
+        {
+            "id": log.id,
+            "timestamp": log.timestamp,
+            "level": log.level,
+            "module": log.module,
+            "message": log.message,
+            "details": log.details,
+            "user_address": log.user_address,
+            "ip_address": log.ip_address
+        }
+        for log in logs
+    ]
+
+async def create_system_log(
+    level: str,
+    message: str,
+    module: Optional[str] = None,
+    details: Optional[Dict[str, Any]] = None,
+    user_address: Optional[str] = None,
+    ip_address: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+) -> Dict[str, Any]:
+    """Create a new system log entry."""
+    from .models import SystemLog
+    
+    log_entry = SystemLog(
+        level=level.upper(),
+        message=message,
+        module=module,
+        details=details,
+        user_address=user_address,
+        ip_address=ip_address
+    )
+    
+    db.add(log_entry)
+    await db.commit()
+    await db.refresh(log_entry)
+    
+    return {
+        "id": log_entry.id,
+        "timestamp": log_entry.timestamp,
+        "level": log_entry.level,
+        "module": log_entry.module,
+        "message": log_entry.message,
+        "details": log_entry.details,
+        "user_address": log_entry.user_address,
+        "ip_address": log_entry.ip_address
+    }

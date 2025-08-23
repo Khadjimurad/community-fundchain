@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title data-i18n="app.title">FundChain — Traceable Community Fund (MVP)</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
     /* CSS Variables for theming */
     :root {
@@ -537,7 +538,7 @@
     .admin-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1rem;
+      gap: 1.5rem;
       margin-bottom: 2rem;
     }
 
@@ -546,11 +547,194 @@
       padding: 1.5rem;
       border-radius: 0.5rem;
       border: 1px solid var(--border-color);
+      transition: box-shadow 0.2s ease;
+    }
+
+    .admin-section:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
 
     .admin-section h4 {
-      margin: 0 0 1rem 0;
+      margin: 0 0 1.5rem 0;
+      font-size: 1.2rem;
+      font-weight: 600;
       color: var(--text-primary);
+      border-bottom: 2px solid var(--primary-color);
+      padding-bottom: 0.5rem;
+    }
+
+    .action-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .action-buttons .btn {
+      justify-content: flex-start;
+      text-align: left;
+      padding: 0.75rem 1rem;
+      font-weight: 500;
+      border-radius: 0.375rem;
+      transition: all 0.2s ease;
+    }
+
+    .action-buttons .btn-lg {
+      padding: 1rem 1.25rem;
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .action-buttons .btn-lg:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .action-buttons .btn i {
+      margin-right: 0.5rem;
+      width: 16px;
+      text-align: center;
+    }
+
+    .status-indicator {
+      background: var(--bg-secondary);
+      padding: 0.75rem;
+      border-radius: 0.375rem;
+      border-left: 4px solid var(--success-color);
+    }
+
+    .status-label {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .status-value {
+      color: var(--success-color);
+      font-weight: 500;
+    }
+
+    .system-status {
+      background: var(--bg-secondary);
+      border-radius: 0.375rem;
+      padding: 1rem;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      padding: 0.5rem;
+      background: white;
+      border-radius: 0.25rem;
+      border-left: 3px solid var(--primary-color);
+    }
+
+    .status-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .status-icon {
+      margin-top: 0.125rem;
+      width: 16px;
+      text-align: center;
+      color: var(--text-secondary);
+    }
+
+    .status-icon.status-running {
+      color: var(--success-color);
+    }
+
+    .status-label {
+      font-weight: 600;
+      color: var(--text-primary);
+      min-width: 120px;
+    }
+
+    .contracts-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.25rem;
+    }
+
+    .contract-tag {
+      background: var(--primary-color);
+      color: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .export-description {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      background: var(--bg-secondary);
+      border-radius: 0.375rem;
+      border-left: 3px solid var(--warning-color);
+    }
+
+    .export-description i {
+      margin-top: 0.125rem;
+      color: var(--warning-color);
+    }
+
+    .export-description span {
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    /* System Management Full Width Section */
+    .system-management-section {
+      margin-top: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .status-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .contracts-status {
+      grid-column: 1 / -1;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .contracts-status .status-label {
+      margin-bottom: 0.5rem;
+    }
+
+    .system-actions {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .system-actions .btn {
+      flex: 0 0 auto;
+    }
+
+    @media (max-width: 768px) {
+      .status-row {
+        grid-template-columns: 1fr;
+      }
+      
+      .system-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .system-actions .btn {
+        width: 100%;
+      }
     }
 
     .action-grid {
@@ -1120,15 +1304,15 @@
               <div class="vote-metric-label" data-i18n="voting.participants">Participants</div>
             </div>
             <div class="vote-metric">
-              <div class="vote-metric-value" id="total-revealed">--</div>
+              <div class="vote-metric-value" id="total-revealed">0</div>
               <div class="vote-metric-label" data-i18n="voting.revealed">Revealed</div>
             </div>
             <div class="vote-metric">
-              <div class="vote-metric-value" id="turnout-percentage">--</div>
+              <div class="vote-metric-value" id="turnout-percentage">0.0%</div>
               <div class="vote-metric-label" data-i18n="voting.turnout_percentage">Turnout</div>
             </div>
             <div class="vote-metric">
-              <div class="vote-metric-value" id="voting-method">--</div>
+              <div class="vote-metric-value" id="voting-method">взвешенное</div>
               <div class="vote-metric-label" data-i18n="voting.method">Method</div>
             </div>
           </div>
@@ -1325,41 +1509,97 @@
       <section id="admin-section" class="section hidden">
         <h1 data-i18n="admin.title">Administration</h1>
         
-        <div class="dashboard-grid">
-          <div class="card">
-            <h3 data-i18n="admin.project_management">Project Management</h3>
-            <div class="mt-2">
-              <button class="btn btn-primary" onclick="window.app.showProjectForm()" data-i18n="admin.create_project">Create Project</button>
-              <button class="btn btn-secondary ml-2" onclick="window.app.manageCategories()" data-i18n="admin.manage_categories">Manage Categories</button>
-              <button class="btn btn-secondary ml-2" onclick="window.app.showProjectsAdmin()" data-i18n="admin.manage_projects">Manage Projects</button>
+        <div class="admin-grid">
+          <div class="admin-section">
+            <h4 data-i18n="admin.project_management">Управление проектами</h4>
+            <div class="action-buttons">
+              <button class="btn btn-primary btn-lg" onclick="window.app.showProjectForm()" data-i18n="admin.create_project">
+                <i class="fas fa-plus"></i> Создать проект
+              </button>
+              <button class="btn btn-secondary" onclick="window.app.manageCategories()" data-i18n="admin.manage_categories">
+                <i class="fas fa-tags"></i> Управление категориями
+              </button>
+              <button class="btn btn-secondary" onclick="window.app.showProjectsAdmin()" data-i18n="admin.manage_projects">
+                <i class="fas fa-list"></i> Управление проектами
+              </button>
             </div>
           </div>
           
-          <div class="card">
-            <h3 data-i18n="admin.member_management">Member Management</h3>
-            <div class="mt-2">
-              <button class="btn btn-primary" onclick="window.app.showMintSBTForm()" data-i18n="admin.mint_sbt">Mint SBT</button>
-              <button class="btn btn-secondary ml-2" onclick="window.app.manageWeights()" data-i18n="admin.manage_weights">Manage Weights</button>
-              <button class="btn btn-secondary ml-2" onclick="window.app.showMembersAdmin()" data-i18n="admin.view_members">View Members</button>
+          <div class="admin-section">
+            <h4 data-i18n="admin.member_management">Управление участниками</h4>
+            <div class="action-buttons">
+              <button class="btn btn-primary btn-lg" onclick="window.app.showMintSBTForm()" data-i18n="admin.mint_sbt">
+                <i class="fas fa-certificate"></i> Создать SBT
+              </button>
+              <button class="btn btn-secondary" onclick="window.app.manageWeights()" data-i18n="admin.manage_weights">
+                <i class="fas fa-weight"></i> Управление весами
+              </button>
+              <button class="btn btn-secondary" onclick="window.app.showMembersAdmin()" data-i18n="admin.view_members">
+                <i class="fas fa-users"></i> Просмотр участников
+              </button>
             </div>
           </div>
           
-          <div class="card">
-            <h3 data-i18n="admin.voting_management">Voting Management</h3>
-            <div class="mt-2">
-              <button class="btn btn-primary" onclick="window.app.showStartVotingForm()" data-i18n="admin.start_voting_round">Start Voting Round</button>
-              <button class="btn btn-secondary ml-2" onclick="window.app.showVotingConfig()" data-i18n="admin.configure_settings">Configure Settings</button>
-              <button class="btn btn-secondary ml-2" onclick="window.app.showVotingHistory()" data-i18n="admin.view_history">View History</button>
+          <div class="admin-section">
+            <h4 data-i18n="admin.voting_management">Управление голосованием</h4>
+            <div class="action-buttons">
+              <button class="btn btn-primary btn-lg" onclick="window.app.showStartVotingForm()" data-i18n="admin.start_voting_round">
+                <i class="fas fa-play"></i> Начать раунд голосования
+              </button>
+              <button class="btn btn-secondary" onclick="window.app.showVotingConfig()" data-i18n="admin.configure_settings">
+                <i class="fas fa-cog"></i> Настройка конфигурации
+              </button>
+              <button class="btn btn-secondary" onclick="window.app.showVotingHistory()" data-i18n="admin.view_history">
+                <i class="fas fa-history"></i> Просмотр истории
+              </button>
             </div>
           </div>
-          
-          <div class="card">
-            <h3 data-i18n="admin.system_management">System Management</h3>
-            <div class="mt-2">
-              <div id="indexer-status" class="text-muted mb-2" data-i18n="admin.checking_indexer_status">Checking indexer status...</div>
-              <button class="btn btn-warning" onclick="window.app.reindexBlockchain()" data-i18n="admin.force_reindex">Force Reindex</button>
-              <button class="btn btn-secondary ml-2" onclick="window.app.showSystemConfig()" data-i18n="admin.system_config">System Config</button>
-              <button class="btn btn-secondary ml-2" onclick="window.app.showLogsAdmin()" data-i18n="admin.view_logs">View Logs</button>
+        </div>
+
+        <!-- System Management Section - Full Width -->
+        <div class="system-management-section">
+          <div class="admin-section">
+            <h4 data-i18n="admin.system_management">Управление системой</h4>
+            
+            <!-- System Status -->
+            <div class="system-status mb-4">
+              <div class="status-row">
+                <div class="status-item">
+                  <i class="fas fa-circle status-icon status-running"></i>
+                  <span class="status-label">Статус индексатора:</span>
+                  <span id="indexer-status" class="status-value">Запущен</span>
+                </div>
+                
+                <div class="status-item">
+                  <i class="fas fa-clock status-icon"></i>
+                  <span class="status-label">Интервал опроса:</span>
+                  <span class="status-value">5s</span>
+                </div>
+              </div>
+              
+              <div class="status-item contracts-status">
+                <i class="fas fa-file-contract status-icon"></i>
+                <span class="status-label">Контракты:</span>
+                <div class="contracts-list">
+                  <span class="contract-tag">Treasury</span>
+                  <span class="contract-tag">Projects</span>
+                  <span class="contract-tag">GovernanceSBT</span>
+                  <span class="contract-tag">BallotCommitReveal</span>
+                  <span class="contract-tag">CommunityMultisig</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="system-actions">
+              <button class="btn btn-warning btn-lg" onclick="window.app.reindexBlockchain()" data-i18n="admin.force_reindex">
+                <i class="fas fa-sync"></i> Принудительная переиндексация
+              </button>
+              <button class="btn btn-secondary" onclick="window.app.showSystemConfig()" data-i18n="admin.system_config">
+                <i class="fas fa-cogs"></i> Конфигурация системы
+              </button>
+              <button class="btn btn-secondary" onclick="window.app.showLogsAdmin()" data-i18n="admin.view_logs">
+                <i class="fas fa-file-alt"></i> Просмотр логов
+              </button>
             </div>
           </div>
         </div>
@@ -1367,37 +1607,56 @@
         <!-- Export & Reporting Section -->
         <div class="card mt-2">
           <div class="card-header">
-            <h2 class="card-title" data-i18n="admin.data_export_reporting">Data Export & Reporting</h2>
+            <h2 class="card-title" data-i18n="admin.data_export_reporting">Экспорт данных и отчеты</h2>
           </div>
           <div class="card-body">
-            <div class="dashboard-grid">
+            <div class="admin-grid">
               <div class="admin-section">
-                <h4 data-i18n="admin.quick_exports">Quick Exports</h4>
-                <div class="action-grid">
-                  <button class="btn btn-primary" onclick="window.app.exportAllDonations()" data-i18n="admin.export_donations">Export Donations</button>
-                  <button class="btn btn-primary" onclick="window.app.exportAllAllocations()" data-i18n="admin.export_allocations">Export Allocations</button>
-                  <button class="btn btn-primary" onclick="window.app.exportVotingResults()" data-i18n="admin.export_voting">Export Voting</button>
-                  <button class="btn btn-success" onclick="window.app.exportComprehensiveReport()" data-i18n="admin.full_report">Full Report</button>
+                <h4 data-i18n="admin.quick_exports">Быстрый экспорт</h4>
+                <div class="action-buttons">
+                  <button class="btn btn-primary btn-lg" onclick="window.app.exportAllDonations()" data-i18n="admin.export_donations">
+                    <i class="fas fa-download"></i> Экспорт пожертвований
+                  </button>
+                  <button class="btn btn-primary" onclick="window.app.exportAllAllocations()" data-i18n="admin.export_allocations">
+                    <i class="fas fa-share-alt"></i> Экспорт распределений
+                  </button>
+                  <button class="btn btn-primary" onclick="window.app.exportVotingResults()" data-i18n="admin.export_voting">
+                    <i class="fas fa-vote-yea"></i> Экспорт голосования
+                  </button>
+                  <button class="btn btn-success" onclick="window.app.exportComprehensiveReport()" data-i18n="admin.full_report">
+                    <i class="fas fa-file-export"></i> Полный отчет
+                  </button>
                 </div>
               </div>
               
               <div class="admin-section">
-                <h4 data-i18n="admin.analytics_reports">Analytics Reports</h4>
-                <div class="action-grid">
-                  <button class="btn btn-secondary" onclick="window.app.generateProjectAnalytics()" data-i18n="admin.project_analytics">Project Analytics</button>
-                  <button class="btn btn-secondary" onclick="window.app.generateVotingAnalytics()" data-i18n="admin.voting_analytics">Voting Analytics</button>
-                  <button class="btn btn-secondary" onclick="window.app.generateTreasuryAnalytics()" data-i18n="admin.treasury_analytics">Treasury Analytics</button>
-                  <button class="btn btn-secondary" onclick="window.app.generatePrivacyReport()" data-i18n="admin.privacy_report">Privacy Report</button>
+                <h4 data-i18n="admin.analytics_reports">Аналитические отчеты</h4>
+                <div class="action-buttons">
+                  <button class="btn btn-info" onclick="window.app.generateProjectAnalytics()" data-i18n="admin.project_analytics">
+                    <i class="fas fa-chart-bar"></i> Аналитика проектов
+                  </button>
+                  <button class="btn btn-info" onclick="window.app.generateVotingAnalytics()" data-i18n="admin.voting_analytics">
+                    <i class="fas fa-chart-pie"></i> Аналитика голосования
+                  </button>
+                  <button class="btn btn-info" onclick="window.app.generateTreasuryAnalytics()" data-i18n="admin.treasury_analytics">
+                    <i class="fas fa-chart-line"></i> Аналитика казначейства
+                  </button>
+                  <button class="btn btn-warning" onclick="window.app.generatePrivacyReport()" data-i18n="admin.privacy_report">
+                    <i class="fas fa-shield-alt"></i> Отчет по конфиденциальности
+                  </button>
                 </div>
               </div>
               
               <div class="admin-section">
-                <h4 data-i18n="admin.custom_export">Custom Export</h4>
-                <div class="action-grid">
-                  <button class="btn btn-info" onclick="window.app.showExportOptions()" data-i18n="admin.advanced_export_options">Advanced Export Options</button>
+                <h4 data-i18n="admin.custom_export">Пользовательский экспорт</h4>
+                <div class="export-description mb-3">
+                  <i class="fas fa-info-circle text-info"></i>
+                  <span class="text-muted">Настройка пользовательского экспорта с диапазонами дат, фильтрами и форматами</span>
                 </div>
-                <div class="text-muted mt-1" data-i18n="admin.advanced_export_description">
-                  Configure custom exports with date ranges, filters, and formats
+                <div class="action-buttons">
+                  <button class="btn btn-primary btn-lg" onclick="window.app.showExportOptions()" data-i18n="admin.advanced_export_options">
+                    <i class="fas fa-cogs"></i> Расширенные опции экспорта
+                  </button>
                 </div>
               </div>
             </div>

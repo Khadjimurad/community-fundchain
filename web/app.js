@@ -582,7 +582,7 @@ class FundChainApp {
     this.updateElement('total-participants', roundInfo.total_participants || 0);
     this.updateElement('total-revealed', roundInfo.total_revealed || 0);
     this.updateElement('turnout-percentage', `${(roundInfo.turnout_percentage || 0).toFixed(1)}%`);
-    this.updateElement('voting-method', roundInfo.counting_method || 'взвешенное');
+    this.updateElement('voting-method', this.getMethodDisplayName(roundInfo.counting_method) || 'взвешенное');
 
     // Update voting controls based on phase
     this.updateVotingControls(roundInfo);
@@ -641,15 +641,26 @@ class FundChainApp {
   // Get display name for voting phase
   getPhaseDisplayName(phase) {
     const phaseNames = {
-      'pending': 'Not Started',
-      'commit': 'Commit Phase',
-      'reveal': 'Reveal Phase',
-      'pending_finalization': 'Pending Finalization',
-      'finalized': 'Finalized',
-      'ended': 'Ended',
-      'no_active_round': 'No Active Round'
+      'pending': 'Не начат',
+      'commit': 'Фаза фиксации',
+      'reveal': 'Фаза раскрытия',
+      'pending_finalization': 'Ожидает финализации',
+      'finalized': 'Завершен',
+      'ended': 'Окончен',
+      'no_active_round': 'Нет активного раунда'
     };
     return phaseNames[phase] || phase;
+  }
+
+  // Get display name for voting method
+  getMethodDisplayName(method) {
+    const methodNames = {
+      'weighted': 'взвешенное',
+      'borda': 'метод Борда',
+      'simple': 'простое',
+      'plurality': 'множественное'
+    };
+    return methodNames[method] || method;
   }
 
   // Update voting controls based on current phase

@@ -252,6 +252,24 @@ class AggregateStats(Base):
         Index('idx_stats_timestamp', 'timestamp'),
     )
 
+class SystemLog(Base):
+    __tablename__ = "system_logs"
+    
+    id = Column(Integer, primary_key=True)
+    timestamp = Column(DateTime, default=func.now(), nullable=False)
+    level = Column(String, nullable=False)  # INFO, WARNING, ERROR, DEBUG
+    module = Column(String, nullable=True)  # API, INDEXER, DATABASE, etc.
+    message = Column(Text, nullable=False)
+    details = Column(JSON, nullable=True)  # Additional structured data
+    user_address = Column(String, nullable=True)  # User who triggered the action
+    ip_address = Column(String, nullable=True)  # IP address of the request
+    
+    __table_args__ = (
+        Index('idx_log_timestamp', 'timestamp'),
+        Index('idx_log_level', 'level'),
+        Index('idx_log_module', 'module'),
+    )
+
 # Pydantic models for API responses
 class ProjectResponse(BaseModel):
     id: str

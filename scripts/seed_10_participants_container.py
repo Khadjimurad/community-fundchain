@@ -13,10 +13,10 @@ import random
 import logging
 
 # Add the app directory to the path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append('/app')
 
-from backend.app.database import get_db_manager
-from backend.app.models import Project, Donation, Allocation, Member, VotingRound, Vote, Payout
+from app.database import get_db_manager
+from app.models import Project, Donation, Allocation, Member, VotingRound, Vote, Payout
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -52,70 +52,70 @@ class TenParticipantSeeder:
             {
                 'name': 'Алексей Волков',
                 'role': 'major_donor',
-                'sbt_weight': 20,
+                'weight': 20,
                 'donation_capacity': Decimal('15.0'),
                 'activity_level': 'high'
             },
             {
                 'name': 'Мария Петрова',
                 'role': 'community_leader', 
-                'sbt_weight': 15,
+                'weight': 15,
                 'donation_capacity': Decimal('8.0'),
                 'activity_level': 'high'
             },
             {
                 'name': 'Дмитрий Козлов',
                 'role': 'active_voter',
-                'sbt_weight': 12,
+                'weight': 12,
                 'donation_capacity': Decimal('5.0'),
                 'activity_level': 'high'
             },
             {
                 'name': 'Екатерина Сидорова',
                 'role': 'regular_member',
-                'sbt_weight': 8,
+                'weight': 8,
                 'donation_capacity': Decimal('3.0'),
                 'activity_level': 'medium'
             },
             {
                 'name': 'Андрей Морозов',
                 'role': 'project_creator',
-                'sbt_weight': 10,
+                'weight': 10,
                 'donation_capacity': Decimal('4.0'),
                 'activity_level': 'medium'
             },
             {
                 'name': 'Ольга Белова',
                 'role': 'frequent_donor',
-                'sbt_weight': 7,
+                'weight': 7,
                 'donation_capacity': Decimal('6.0'),
                 'activity_level': 'medium'
             },
             {
                 'name': 'Павел Новиков',
                 'role': 'occasional_donor',
-                'sbt_weight': 5,
+                'weight': 5,
                 'donation_capacity': Decimal('2.0'),
                 'activity_level': 'low'
             },
             {
                 'name': 'Татьяна Орлова',
                 'role': 'new_member',
-                'sbt_weight': 3,
+                'weight': 3,
                 'donation_capacity': Decimal('1.5'),
                 'activity_level': 'low'
             },
             {
                 'name': 'Сергей Лебедев',
                 'role': 'institutional_rep',
-                'sbt_weight': 18,
+                'weight': 18,
                 'donation_capacity': Decimal('12.0'),
                 'activity_level': 'high'
             },
             {
                 'name': 'Наталья Соколова',
                 'role': 'volunteer',
-                'sbt_weight': 6,
+                'weight': 6,
                 'donation_capacity': Decimal('2.5'),
                 'activity_level': 'medium'
             }
@@ -131,7 +131,7 @@ class TenParticipantSeeder:
                     'address': address,
                     'name': profile['name'],
                     'role': profile['role'],
-                    'sbt_weight': profile['sbt_weight'],
+                    'weight': profile['weight'],  # Changed from weight to weight
                     'donation_capacity': profile['donation_capacity'],
                     'activity_level': profile['activity_level'],
                     'joined_days_ago': random.randint(1, 365)
@@ -140,9 +140,8 @@ class TenParticipantSeeder:
                 # Создание записи в базе данных
                 member = Member(
                     address=address,
-                    sbt_weight=profile['sbt_weight'],
-                    role=profile['role'],
-                    joined_at=datetime.now() - timedelta(days=participant['joined_days_ago'])
+                    weight=profile['weight'],
+                    member_since=datetime.now() - timedelta(days=participant['joined_days_ago'])
                 )
                 
                 session.add(member)
@@ -266,7 +265,7 @@ class TenParticipantSeeder:
                         amount=float(amount),
                         tx_hash=f"0xtest_{participant['id']}_{j}_{random.randint(10000, 99999)}",
                         block_number=1000000 + donation_count,
-                        timestamp=datetime.now() - timedelta(days=random.randint(1, 30))
+                        timestamp=datetime.now() - timedelta(days=random.randint(5, 45))
                     )
                     
                     session.add(donation)
@@ -327,7 +326,7 @@ class TenParticipantSeeder:
                         amount=float(allocation_amount),
                         tx_hash=f"0xalloc_{donation_id}_{project.id}_{random.randint(10000, 99999)}",
                         block_number=1000000 + donation_id,
-                        timestamp=datetime.now()
+                        timestamp=datetime.now() - timedelta(days=random.randint(5, 45))
                     )
                     
                     session.add(allocation)
@@ -366,10 +365,10 @@ class TenParticipantSeeder:
             # Создание раунда голосования
             voting_round = VotingRound(
                 round_id=1,
-                phase='pending',
-                commit_deadline=datetime.now() + timedelta(days=7),
-                reveal_deadline=datetime.now() + timedelta(days=10),
-                created_at=datetime.now()
+                start_commit=datetime.now(),
+                end_commit=datetime.now() + timedelta(days=7),
+                end_reveal=datetime.now() + timedelta(days=10),
+                finalized=False
             )
             
             session.add(voting_round)
@@ -395,7 +394,7 @@ class TenParticipantSeeder:
                         commit_hash=f"0x{random.randint(1000000, 9999999):08x}",
                         tx_hash=f"0x{random.randint(1000000, 9999999):08x}",
                         block_number=2000000 + commit_count,
-                        committed_at=datetime.now() - timedelta(hours=random.randint(1, 48))
+                        committed_at=datetime.now() - timedelta(days=random.randint(5, 45))
                     )
                     
                     session.add(commit_vote)
@@ -415,7 +414,7 @@ class TenParticipantSeeder:
                             weight=participant['sbt_weight'],
                             tx_hash=f"0x{random.randint(1000000, 9999999):08x}",
                             block_number=2000000 + reveal_count,
-                            revealed_at=datetime.now() - timedelta(hours=random.randint(1, 24))
+                            revealed_at=datetime.now() - timedelta(days=random.randint(5, 45))
                         )
                         
                         session.add(reveal_vote)
@@ -452,7 +451,7 @@ class TenParticipantSeeder:
                             amount=payout_amount,
                             recipient_address=f"0xrecipient_{project.id}_{i}",
                             tx_hash=f"0xpayout_{project.id}_{i}_{random.randint(10000, 99999)}",
-                            timestamp=datetime.now() - timedelta(days=random.randint(1, 15))
+                            timestamp=datetime.now() - timedelta(days=random.randint(5, 45))
                         )
                         
                         session.add(payout)
@@ -501,7 +500,7 @@ class TenParticipantSeeder:
 """
         
         for participant in self.participants:
-            report += f"   {participant['name']} ({participant['role']}): {participant['sbt_weight']} SBT, до {participant['donation_capacity']} ETH\n"
+            report += f"   {participant['name']} ({participant['role']}): {participant['weight']} SBT, до {participant['donation_capacity']} ETH\n"
         
         report += f"""
 📋 ДЕТАЛИ ПО ПРОЕКТАМ:

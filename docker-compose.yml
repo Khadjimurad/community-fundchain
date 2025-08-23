@@ -8,6 +8,7 @@ services:
     volumes:
       - ./backend:/app
       - ./contracts/deployed_contracts.json:/app/deployed_contracts.json:ro
+      - ./scripts:/app/scripts:ro
     environment:
       - DATABASE_URL=sqlite+aiosqlite:///./fundchain.db
       - RPC_URL=http://anvil:8545

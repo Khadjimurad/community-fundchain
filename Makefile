@@ -1,4 +1,4 @@
-.PHONY: anvil build deploy backend web demo test clean help test-10-setup test-10-full test-10-quick test-10-help cleanup cleanup-quick cleanup-stats
+.PHONY: anvil build deploy backend web demo test clean help test-10-setup test-10-full test-10-quick test-10-help cleanup cleanup-quick cleanup-stats seed-10-participants
 
 anvil:
 	anvil
@@ -47,6 +47,11 @@ cleanup-stats:
 	@chmod +x scripts/cleanup.sh
 	@./scripts/cleanup.sh --stats
 
+# Data seeding commands
+seed-10-participants:
+	@echo "🌱 Creating seed data for 10 participants..."
+	@python3 scripts/seed_10_participants.py
+
 # Testing with 10 participants
 test-10-setup:
 	@echo "🚀 Setting up test environment with 10 participants..."
@@ -90,6 +95,7 @@ help:
 	@echo "  cleanup        - Full data cleanup with backup"
 	@echo "  cleanup-quick  - Quick data cleanup without backup"
 	@echo "  cleanup-stats  - Show current data statistics"
+	@echo "  seed-10-participants - Create seed data for 10 participants"
 	@echo "  help           - Show this help"
 	@echo ""
 	@echo "🧪 Testing with 10 participants:"
