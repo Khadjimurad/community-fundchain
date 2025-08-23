@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Button Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .btn { padding: 10px 20px; margin: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .btn:hover { background: #0056b3; }
+        #output { margin-top: 20px; padding: 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Test Page for Button Functionality</h1>
+    
+    <button class="btn" onclick="testFunction()">Test Direct Function Call</button>
+    <button class="btn" onclick="window.app && window.app.showProjectsAdmin()">Test app.showProjectsAdmin()</button>
+    <button class="btn" onclick="checkAppObject()">Check App Object</button>
+    
+    <div id="output">
+        <p>Click buttons above to test functionality</p>
+    </div>
+
+    <script>
+        function testFunction() {
+            document.getElementById('output').innerHTML += '<p>✓ Direct function call works!</p>';
+        }
+        
+        function checkAppObject() {
+            const output = document.getElementById('output');
+            if (window.app) {
+                output.innerHTML += '<p>✓ window.app exists</p>';
+                output.innerHTML += '<p>App type: ' + typeof window.app + '</p>';
+                if (typeof window.app.showProjectsAdmin === 'function') {
+                    output.innerHTML += '<p>✓ showProjectsAdmin method exists</p>';
+                } else {
+                    output.innerHTML += '<p>✗ showProjectsAdmin method NOT found</p>';
+                }
+            } else {
+                output.innerHTML += '<p>✗ window.app does NOT exist</p>';
+            }
+        }
+        
+        // Wait for the main app to load
+        setTimeout(() => {
+            console.log('Test page loaded. App object:', window.app);
+        }, 2000);
+    </script>
+    
+    <!-- Include i18n system -->
+    <script src="./js/i18n.js"></script>
+    <!-- Include enhanced JavaScript -->
+    <script src="./app.js?v=1.4.16"></script>
+</body>
+</html>

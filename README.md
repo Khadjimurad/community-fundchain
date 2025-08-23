@@ -148,6 +148,24 @@ docker-compose exec backend pytest tests/ -v
 ./scripts/integration_test.sh
 ```
 
+### Очистка Тестовых Данных
+
+Перед запуском нового тестирования может потребоваться очистка существующих данных:
+
+```bash
+# Полная очистка с резервной копией
+make cleanup
+
+# Быстрая очистка без резервной копии
+make cleanup-quick
+
+# Просмотр статистики данных
+make cleanup-stats
+```
+
+Более подробная информация доступна в [DATA_CLEANUP.md](DATA_CLEANUP.md) и [scripts/README_CLEANUP.md](scripts/README_CLEANUP.md).
+
+
 ### Покрытие Тестами
 - Модульные тесты смарт-контрактов (Foundry)
 - Тесты Backend API (pytest)
@@ -169,6 +187,11 @@ docker-compose down
 # Сброс и повторное заполнение данных
 docker-compose down && rm backend/fundchain.db && docker-compose up -d
 docker-compose exec backend python app/seed_demo_data.py
+
+# Очистка тестовых данных
+make cleanup          # Полная очистка с резервной копией
+make cleanup-quick    # Быстрая очистка без резервной копии
+make cleanup-stats    # Просмотр статистики данных
 
 # Запустить тесты
 ./scripts/integration_test.sh

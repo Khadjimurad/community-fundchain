@@ -1,0 +1,140 @@
+# Additional Makefile targets for 10-participant testing
+# Дополнительные цели Makefile для тестирования с 10 участниками
+
+# Подготовка тестовых данных с 10 участниками
+.PHONY: seed-10-participants
+seed-10-participants:
+	@echo "🌱 Создание тестовых данных для 10 участников..."
+	@python3 scripts/seed_10_participants.py
+
+# Запуск быстрого теста с 10 участниками (только основные проверки)
+.PHONY: test-10-quick
+test-10-quick:
+	@echo "⚡ Быстрое тестирование с 10 участниками..."
+	@python3 scripts/test_10_participants.py
+
+# Запуск полного комплексного тестирования с 10 участниками
+.PHONY: test-10-comprehensive
+test-10-comprehensive:
+	@echo "🧪 Комплексное тестирование с 10 участниками..."
+	@chmod +x scripts/test_10_participants.sh
+	@./scripts/test_10_participants.sh
+
+# Подготовка полной среды для тестирования с 10 участниками
+.PHONY: setup-10-test-env
+setup-10-test-env: anvil deploy backend seed-10-participants
+	@echo "🚀 Тестовая среда для 10 участников готова!"
+	@echo "📝 Можно запускать тесты с помощью: make test-10-comprehensive"
+
+# Очистка и пересоздание тестовой среды
+.PHONY: reset-10-test-env
+reset-10-test-env:
+	@echo "🔄 Пересоздание тестовой среды..."
+	@docker-compose down
+	@docker-compose up -d anvil
+	@sleep 5
+	@make deploy
+	@make backend &
+	@sleep 10
+	@make seed-10-participants
+	@echo "✅ Тестовая среда пересоздана"
+
+# Запуск только Python тестов для 10 участников
+.PHONY: test-10-python
+test-10-python:
+	@echo "🐍 Python тесты для 10 участников..."
+	@python3 scripts/test_10_participants.py
+
+# Запуск тестов производительности с 10 участниками
+.PHONY: test-10-performance
+test-10-performance:
+	@echo "⚡ Тесты производительности с 10 участниками..."
+	@python3 -c "
+import asyncio
+import aiohttp
+import time
+import statistics
+
+async def performance_test():
+    start_time = time.time()
+    tasks = []
+    
+    async with aiohttp.ClientSession() as session:
+        # 50 параллельных запросов
+        for i in range(50):
+            tasks.append(session.get('http://localhost:8000/api/v1/projects'))
+        
+        responses = await asyncio.gather(*tasks, return_exceptions=True)
+        
+    end_time = time.time()
+    duration = end_time - start_time
+    
+    successful = sum(1 for r in responses if hasattr(r, 'status') and r.status == 200)
+    
+    print(f'🚀 Производительность: {successful}/50 запросов за {duration:.2f} секунд')
+    print(f'📊 Скорость: {successful/duration:.1f} запросов/сек')
+
+asyncio.run(performance_test())
+"
+
+# Генерация отчета о тестировании
+.PHONY: test-10-report
+test-10-report:
+	@echo "📋 Генерация отчета о тестировании..."
+	@echo "=== ОТЧЕТ О ТЕСТИРОВАНИИ 10 УЧАСТНИКОВ ===" > test_report.txt
+	@echo "Дата: $$(date)" >> test_report.txt
+	@echo "" >> test_report.txt
+	@echo "1. Состояние сервисов:" >> test_report.txt
+	@curl -s http://localhost:8000/health | jq -r '"   Backend: " + .status' >> test_report.txt || echo "   Backend: недоступен" >> test_report.txt
+	@curl -s http://localhost:8545 > /dev/null 2>&1 && echo "   Anvil: доступен" >> test_report.txt || echo "   Anvil: недоступен" >> test_report.txt
+	@echo "" >> test_report.txt
+	@echo "2. Статистика данных:" >> test_report.txt
+	@curl -s http://localhost:8000/api/v1/treasury/stats | jq -r '"   Общий баланс: " + (.total_balance | tostring) + " ETH"' >> test_report.txt || echo "   Данные недоступны" >> test_report.txt
+	@curl -s http://localhost:8000/api/v1/projects | jq -r '"   Количество проектов: " + (length | tostring)' >> test_report.txt || echo "   Проекты недоступны" >> test_report.txt
+	@echo "" >> test_report.txt
+	@echo "✅ Отчет сохранен в test_report.txt"
+
+# Помощь по тестированию с 10 участниками
+.PHONY: help-10-testing
+help-10-testing:
+	@echo "🧪 ТЕСТИРОВАНИЕ С 10 УЧАСТНИКАМИ"
+	@echo "================================"
+	@echo ""
+	@echo "Доступные команды:"
+	@echo "  make setup-10-test-env      - Подготовить полную тестовую среду"
+	@echo "  make seed-10-participants   - Создать тестовые данные для 10 участников"
+	@echo "  make test-10-quick          - Быстрое тестирование"
+	@echo "  make test-10-comprehensive  - Полное комплексное тестирование"
+	@echo "  make test-10-python         - Только Python тесты"
+	@echo "  make test-10-performance    - Тесты производительности"
+	@echo "  make test-10-report         - Генерация отчета"
+	@echo "  make reset-10-test-env      - Пересоздать тестовую среду"
+	@echo ""
+	@echo "Рекомендуемая последовательность:"
+	@echo "  1. make setup-10-test-env"
+	@echo "  2. make test-10-comprehensive"
+	@echo "  3. make test-10-report"
+	@echo ""
+	@echo "Для отладки:"
+	@echo "  make test-10-quick          - Быстрая проверка"
+	@echo "  make test-10-performance    - Проверка производительности"
+
+# Мониторинг тестовой среды
+.PHONY: monitor-10-test
+monitor-10-test:
+	@echo "📊 Мониторинг тестовой среды с 10 участниками..."
+	@echo "================================================"
+	@echo ""
+	@echo "🏥 Состояние сервисов:"
+	@curl -s http://localhost:8000/health && echo "" || echo "❌ Backend недоступен"
+	@curl -s http://localhost:8545 > /dev/null 2>&1 && echo "✅ Anvil доступен" || echo "❌ Anvil недоступен"
+	@curl -s http://localhost:3000 > /dev/null 2>&1 && echo "✅ Frontend доступен" || echo "⚠️ Frontend недоступен"
+	@echo ""
+	@echo "💰 Статистика Treasury:"
+	@curl -s http://localhost:8000/api/v1/treasury/stats | jq '.' 2>/dev/null || echo "❌ Статистика недоступна"
+	@echo ""
+	@echo "📋 Количество проектов:"
+	@curl -s http://localhost:8000/api/v1/projects | jq 'length' 2>/dev/null || echo "❌ Проекты недоступны"
+	@echo ""
+	@echo "🗳️ Текущий раунд голосования:"
+	@curl -s http://localhost:8000/api/v1/votes/current-round | jq '.' 2>/dev/null || echo "❌ Голосование недоступно"

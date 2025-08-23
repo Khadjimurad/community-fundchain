@@ -9,23 +9,24 @@ class FundChainApp {
     this.refreshTimer = null;
     this.votingTimer = null;
     this.walletAddress = null;
-    this.autoRefreshEnabled = true; // Новое свойство
+    this.autoRefreshEnabled = true; // New property
     
     this.init();
   }
 
   // Initialize the application
   init() {
+    console.log('FundChainApp initializing...');
     this.setupEventListeners();
     this.loadInitialData();
     this.startAutoRefresh();
     
-    // Ожидаем инициализации i18n перед обновлением переключателя
+    // Wait for i18n initialization before updating the switch
     setTimeout(() => {
       this.updateAutoRefreshToggle();
     }, 100);
     
-    console.log('FundChain App initialized');
+    console.log('FundChain App initialized successfully');
   }
 
   // Setup event listeners
@@ -64,6 +65,11 @@ class FundChainApp {
     // Language change event
     window.addEventListener('languageChanged', () => {
       this.updateAutoRefreshToggle();
+      
+      // Update headers and interface when language changes
+      if (this.currentSection === 'voting') {
+        this.loadVotingSection();
+      }
     });
   }
 
@@ -194,7 +200,7 @@ class FundChainApp {
       this.updateLastUpdated();
     } catch (error) {
       console.error('Failed to load initial data:', error);
-      this.showError('Failed to connect to API. Please check if the backend is running.');
+      this.showError(i18n.t('messages.connection_error'));
     }
   }
 
@@ -234,8 +240,13 @@ class FundChainApp {
       this.updateElement('soft-cap-reached', stats.projects.completed);
     }
     
-    // Calculate 7-day donations (placeholder)
-    this.updateElement('donations-7d', '12.5');
+    // Use real data for 7-day donations if available
+    if (stats.donations_7d !== undefined) {
+      this.updateElement('donations-7d', this.formatETH(stats.donations_7d));
+    } else {
+      // If no data available, show empty
+      this.updateElement('donations-7d', '0.000');
+    }
   }
 
   // Load and display projects
@@ -267,21 +278,23 @@ class FundChainApp {
     }
   }
 
-  // Display projects in the table
-  displayProjects(projects, votes) {
-    const tbody = document.getElementById('projects-tbody');
+  // Display projects in the main projects section table
+  displayProjectsMain(projects, votes) {
+    const tbody = document.getElementById('projects-main-tbody');
     if (!tbody) return;
     
     // Create vote lookup
     const votesById = {};
-    votes.forEach(vote => {
-      votesById[vote.project_id] = vote;
-    });
+    if (votes && votes.length > 0) {
+      votes.forEach(vote => {
+        votesById[vote.project_id] = vote;
+      });
+    }
     
     tbody.innerHTML = '';
     
     if (projects.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No projects found</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">' + i18n.t('projects.no_projects_found') + '</td></tr>';
       return;
     }
     
@@ -384,14 +397,16 @@ class FundChainApp {
     
     // Create vote lookup
     const votesById = {};
-    votes.forEach(vote => {
-      votesById[vote.project_id] = vote;
-    });
+    if (votes && votes.length > 0) {
+      votes.forEach(vote => {
+        votesById[vote.project_id] = vote;
+      });
+    }
     
     tbody.innerHTML = '';
     
     if (projects.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No projects found</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">' + i18n.t('projects.no_projects_found') + '</td></tr>';
       return;
     }
     
@@ -451,17 +466,32 @@ class FundChainApp {
     const statusFilter = document.getElementById('project-status-filter');
     
     if (categoryFilter) {
-      // Add common categories
-      const categories = ['healthcare', 'education', 'infrastructure', 'environment', 'social', 'culture'];
-      categories.forEach(category => {
-        const option = document.createElement('option');
-        option.value = category;
-        option.textContent = category.charAt(0).toUpperCase() + category.slice(1);
-        categoryFilter.appendChild(option);
-      });
+      // Clear existing options
+      categoryFilter.innerHTML = `<option value="">${i18n.t('filters.all_categories')}</option>`;
+      
+      // Try to fetch categories from API
+      this.fetchJSON('/stats/categories')
+        .then(response => {
+          if (response && response.data && response.data.length > 0) {
+            response.data.forEach(cat => {
+              const option = document.createElement('option');
+              option.value = cat.category;
+              option.textContent = cat.category;
+              categoryFilter.appendChild(option);
+            });
+          }
+        })
+        .catch(error => {
+          console.error('Failed to fetch categories:', error);
+          // Show error message
+          this.showError(i18n.t('admin_modals.messages.failed_to_load_categories'));
+        });
     }
     
     if (statusFilter) {
+      // Clear existing options
+      statusFilter.innerHTML = '<option value="">' + i18n.t('filters.all_status') + '</option>';
+      
       // Add common statuses
       const statuses = ['active', 'voting', 'ready_to_payout', 'paid', 'cancelled'];
       statuses.forEach(status => {
@@ -496,42 +526,115 @@ class FundChainApp {
   // Voting section functions
   async loadVotingSection() {
     try {
+      // Force update translations when loading voting section
+      if (window.i18n && typeof window.i18n.applyTranslations === 'function') {
+        window.i18n.applyTranslations();
+      }
+      
       // Load current voting round info
       const currentRound = await this.fetchJSON('/votes/current-round');
-      console.log('Current round data:', currentRound);
-      this.displayCurrentVotingRound(currentRound);
       
-      // Load voting results
-      const votingResults = await this.fetchJSON('/votes/priority/summary');
-      console.log('Voting results data:', votingResults);
-      console.log('Voting results length:', votingResults ? votingResults.length : 0);
-      this.displayVotingResults(votingResults);
+      console.log('Voting round data received:', currentRound);
       
-      // Start voting timer if in active phase
-      if (currentRound.phase === 'commit' || currentRound.phase === 'reveal') {
-        this.startVotingTimer(currentRound);
+      // Check if there's actually an active round with valid data
+      if (currentRound && 
+          currentRound.round_id && 
+          currentRound.round_id !== 'N/A' && 
+          currentRound.round_id !== '--' &&
+          currentRound.phase && 
+          currentRound.phase !== 'no_active_round' &&
+          currentRound.phase !== 'N/A' &&
+          currentRound.phase !== '--') {
+        // Display current round information
+        this.displayCurrentVotingRound(currentRound);
+        
+        // Load voting results
+        const votingResults = await this.fetchJSON('/votes/priority/summary');
+        // Display voting results
+        this.displayVotingResults(votingResults);
+        
+        // Start voting timer if in active phase
+        if (currentRound.phase === 'commit' || currentRound.phase === 'reveal') {
+          this.startVotingTimer(currentRound);
+        }
+      } else {
+        // No active round - show appropriate message
+        this.displayNoActiveRound();
       }
       
     } catch (error) {
       console.error('Failed to load voting section:', error);
+      // Show no active round instead of error
+      this.displayNoActiveRound();
     }
   }
 
   // Display current voting round information
   displayCurrentVotingRound(roundInfo) {
-    this.updateElement('current-round', roundInfo.round_id || 'N/A');
+    // Validate round info before displaying
+    if (!roundInfo || !roundInfo.round_id) {
+      this.displayNoActiveRound();
+      return;
+    }
+
+    this.updateElement('current-round', roundInfo.round_id);
     this.updateElement('voting-phase', this.getPhaseDisplayName(roundInfo.phase));
     this.updateElement('total-participants', roundInfo.total_participants || 0);
     this.updateElement('total-revealed', roundInfo.total_revealed || 0);
     this.updateElement('turnout-percentage', `${(roundInfo.turnout_percentage || 0).toFixed(1)}%`);
-    this.updateElement('voting-method', roundInfo.counting_method || 'weighted');
+    this.updateElement('voting-method', roundInfo.counting_method || 'взвешенное');
 
     // Update voting controls based on phase
     this.updateVotingControls(roundInfo);
     
     // Update project list for voting
-    if (roundInfo.projects) {
+    if (roundInfo.projects && roundInfo.projects.length > 0) {
       this.displayVotingProjects(roundInfo.projects, roundInfo.phase);
+    } else {
+      // No projects in round
+      const tbody = document.getElementById('voting-projects-tbody');
+      if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Нет проектов в текущем раунде голосования</td></tr>';
+      }
+    }
+  }
+
+  // Display no active round state
+  displayNoActiveRound() {
+    console.log('Displaying no active round state');
+    
+    this.updateElement('current-round', 'Нет');
+    this.updateElement('voting-phase', 'Нет активного раунда');
+    this.updateElement('total-participants', '0');
+    this.updateElement('total-revealed', '0');
+    this.updateElement('turnout-percentage', '0.0%');
+    this.updateElement('voting-method', 'взвешенное');
+
+    // Hide all voting sections
+    const commitSection = document.getElementById('commit-voting-section');
+    const revealSection = document.getElementById('reveal-voting-section');
+    const votingComplete = document.getElementById('voting-complete-section');
+    
+    [commitSection, revealSection, votingComplete].forEach(section => {
+      if (section) section.classList.add('hidden');
+    });
+
+    // Clear voting projects table
+    const tbody = document.getElementById('voting-projects-tbody');
+    if (tbody) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Нет активного раунда голосования</td></tr>';
+    }
+
+    // Clear voting results table
+    const resultsTbody = document.getElementById('voting-results-tbody');
+    if (resultsTbody) {
+      resultsTbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Нет результатов голосования</td></tr>';
+    }
+
+    // Stop any running timer
+    if (this.votingTimer) {
+      clearInterval(this.votingTimer);
+      this.votingTimer = null;
     }
   }
 
@@ -588,9 +691,9 @@ class FundChainApp {
       const alreadyVotedDiv = document.createElement('div');
       alreadyVotedDiv.className = 'alert alert-success text-center';
       alreadyVotedDiv.innerHTML = `
-        <h5><i class="fas fa-check-circle"></i> Вы уже проголосовали!</h5>
-        <p>Вы успешно зафиксировали свой голос в раунде #${roundInfo.round_id}.</p>
-        <p class="mb-0">Ожидайте начала фазы раскрытия голосов для подтверждения вашего выбора.</p>
+        <h5><i class="fas fa-check-circle"></i> ${i18n.t('voting.commit_phase.already_voted')}</h5>
+        <p>${i18n.t('voting.commit_phase.vote_confirmed', {round_id: roundInfo.round_id})}</p>
+        <p class="mb-0">${i18n.t('voting.commit_phase.wait_for_reveal')}</p>
       `;
       form.appendChild(alreadyVotedDiv);
       return;
@@ -688,9 +791,9 @@ class FundChainApp {
       // User has already revealed votes
       form.innerHTML = `
         <div class="alert alert-success text-center">
-          <h5><i class="fas fa-check-circle"></i> Вы уже раскрыли свои голоса!</h5>
-          <p>Ваши голоса успешно подтверждены и засчитаны в раунде #${roundInfo.round_id}.</p>
-          <p class="mb-0">Дождитесь завершения раунда для просмотра результатов.</p>
+          <h5><i class="fas fa-check-circle"></i> ${i18n.t('voting.reveal_phase.already_revealed')}</h5>
+          <p>${i18n.t('voting.reveal_phase.votes_confirmed', {round_id: roundInfo.round_id})}</p>
+          <p class="mb-0">${i18n.t('voting.reveal_phase.wait_for_results')}</p>
         </div>
       `;
       return;
@@ -700,9 +803,9 @@ class FundChainApp {
       // User hasn't committed a vote
       form.innerHTML = `
         <div class="alert alert-warning text-center">
-          <h5><i class="fas fa-exclamation-triangle"></i> Нет голосов для раскрытия</h5>
-          <p>У вас нет зафиксированных голосов в этом раунде.</p>
-          <p class="mb-0">Чтобы принять участие в голосовании, дождитесь следующего раунда.</p>
+          <h5><i class="fas fa-exclamation-triangle"></i> ${i18n.t('voting.reveal_phase.no_votes_to_reveal')}</h5>
+          <p>${i18n.t('voting.reveal_phase.no_committed_votes')}</p>
+          <p class="mb-0">${i18n.t('voting.reveal_phase.wait_for_next_round')}</p>
         </div>
       `;
       return;
@@ -738,16 +841,14 @@ class FundChainApp {
     
     tbody.innerHTML = '';
     
-    if (projects.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No projects in current voting round</td></tr>';
+    if (!projects || projects.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Нет проектов в текущем раунде голосования</td></tr>';
       return;
     }
     
     // Get voting results for current projects
     this.fetchJSON('/votes/priority/summary')
       .then(votingResults => {
-        console.log('Voting projects results:', votingResults);
-        
         // Create vote lookup
         const votesById = {};
         if (votingResults && votingResults.length > 0) {
@@ -785,16 +886,16 @@ class FundChainApp {
             </td>
             <td class="text-center">
               <div class="vote-results">
-                <span class="badge badge-success" title="За">${vote.for_weight}</span>
-                <span class="badge badge-danger" title="Против">${vote.against_weight}</span>
-                <span class="badge badge-info" title="Воздержался">${vote.abstained_count}</span>
-                <span class="badge badge-secondary" title="Не участвует">${vote.not_participating_count}</span>
+                <span class="badge badge-success" title="${i18n.t('table.for')}">${vote.for_weight}</span>
+                <span class="badge badge-danger" title="${i18n.t('table.against')}">${vote.against_weight}</span>
+                <span class="badge badge-info" title="${i18n.t('table.abstain')}">${vote.abstained_count}</span>
+                <span class="badge badge-secondary" title="${i18n.t('table.not_participating')}">${vote.not_participating_count}</span>
               </div>
-              <div class="text-muted" style="font-size: 0.75rem;">Явка: ${vote.turnout_percentage}%</div>
+              <div class="text-muted" style="font-size: 0.75rem;">${i18n.t('table.turnout')}: ${vote.turnout_percentage}%</div>
             </td>
             <td>
               <button class="btn btn-info btn-sm" onclick="app.viewProject('${project.id}')">
-                Подробно
+                ${i18n.t('buttons.details')}
               </button>
             </td>
           `;
@@ -825,11 +926,11 @@ class FundChainApp {
               <span class="badge badge-info">${phase}</span>
             </td>
             <td class="text-center">
-              <div class="text-muted">Ожидание результатов</div>
+              <div class="text-muted">${i18n.t('voting.waiting_for_results')}</div>
             </td>
             <td>
               <button class="btn btn-info btn-sm" onclick="app.viewProject('${project.id}')">
-                Подробно
+                ${i18n.t('buttons.details')}
               </button>
             </td>
           `;
@@ -841,7 +942,6 @@ class FundChainApp {
 
   // Display voting results
   displayVotingResults(results) {
-    console.log('displayVotingResults called with:', results);
     const tbody = document.getElementById('voting-results-tbody');
     if (!tbody) {
       console.error('voting-results-tbody element not found');
@@ -851,17 +951,14 @@ class FundChainApp {
     tbody.innerHTML = '';
     
     if (!results || results.length === 0) {
-      console.log('No voting results, showing empty message');
-      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Результаты голосования пока недоступны</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Нет результатов голосования</td></tr>`;
       return;
     }
     
-    console.log(`Displaying ${results.length} voting results`);
     results.forEach((result, index) => {
-      console.log(`Processing result ${index}:`, result);
       const row = document.createElement('tr');
       row.innerHTML = `
-        <td>${result.project_id ? result.project_id.substring(0, 8) + '...' : 'N/A'}</td>
+        <td>${result.project_id ? result.project_id.substring(0, 8) + '...' : 'Неизвестно'}</td>
         <td class="text-center">
           <span class="badge badge-success">${result.for_weight || 0}</span>
         </td>
@@ -882,7 +979,6 @@ class FundChainApp {
       
       tbody.appendChild(row);
     });
-    console.log('Voting results displayed successfully');
   }
 
   // Treasury section functions
@@ -891,27 +987,16 @@ class FundChainApp {
       const stats = await this.fetchJSON('/treasury/stats');
       this.updateTreasuryMetrics(stats);
       
-      // Load recent transactions (placeholder)
-      this.displayTreasuryTransactions([]);
+      // Load recent transactions
+      const transactions = await this.fetchJSON('/treasury/transactions?limit=50');
+      this.displayTreasuryTransactions(transactions);
       
     } catch (error) {
       console.error('Failed to load treasury section:', error);
     }
   }
 
-  // Display treasury transactions
-  displayTreasuryTransactions(transactions) {
-    const container = document.getElementById('treasury-transactions');
-    if (!container) return;
-    
-    if (transactions.length === 0) {
-      container.innerHTML = '<div class="text-center text-muted">No recent transactions</div>';
-      return;
-    }
-    
-    // Implementation for transaction display
-    container.innerHTML = '<div class="text-center text-muted">Transaction history will be displayed here</div>';
-  }
+  
 
   // Personal stats functions
   async loadPersonalStats() {
@@ -973,19 +1058,19 @@ class FundChainApp {
     const container = document.getElementById('my-allocations');
     if (!container) return;
     
-    if (allocations.length === 0) {
-      container.innerHTML = '<div class="text-center text-muted">No allocations found</div>';
+    if (!allocations || allocations.length === 0) {
+      container.innerHTML = `<div class="text-center text-muted">${i18n.t('personal.allocations_not_found')}</div>`;
       return;
     }
     
-    let html = '<div class="table-responsive"><table class="table"><thead><tr><th>Project</th><th>Amount</th><th>Share</th></tr></thead><tbody>';
+    let html = `<div class="table-responsive"><table class="table"><thead><tr><th>${i18n.t('personal.project')}</th><th>${i18n.t('personal.amount')}</th><th>${i18n.t('personal.share')}</th></tr></thead><tbody>`;
     
     allocations.forEach(allocation => {
       html += `
         <tr>
-          <td>${allocation.project_id.substring(0, 8)}...</td>
+          <td>${allocation.project_id ? allocation.project_id.substring(0, 8) + '...' : 'Неизвестно'}</td>
           <td>${this.formatETH(allocation.amount)} ETH</td>
-          <td>${allocation.share_percentage}%</td>
+          <td>${allocation.share_percentage || 0}%</td>
         </tr>
       `;
     });
@@ -1012,12 +1097,12 @@ class FundChainApp {
     if (!container) return;
     
     const statusClass = status.running ? 'badge-success' : 'badge-danger';
-    const statusText = status.running ? 'Running' : 'Stopped';
+    const statusText = status.running ? i18n.t('admin.indexer_running') : i18n.t('admin.indexer_stopped');
     
     container.innerHTML = `
-      <div>Indexer Status: <span class="badge ${statusClass}">${statusText}</span></div>
-      <div class="text-muted">Contracts: ${status.contracts.join(', ')}</div>
-      <div class="text-muted">Poll Interval: ${status.poll_interval}s</div>
+      <div>${i18n.t('admin.indexer_status')}: <span class="badge ${statusClass}">${statusText}</span></div>
+      <div class="text-muted">${i18n.t('admin.contracts')}: ${status.contracts && status.contracts.length > 0 ? status.contracts.join(', ') : i18n.t('admin.no_contracts')}</div>
+      <div class="text-muted">${i18n.t('admin.poll_interval')}: ${status.poll_interval || 0}s</div>
     `;
   }
 
@@ -1030,7 +1115,7 @@ class FundChainApp {
   }
 
   formatETH(value) {
-    if (typeof value !== 'number') return '--';
+    if (typeof value !== 'number' || isNaN(value)) return '0.000';
     return value.toFixed(3);
   }
 
@@ -1056,25 +1141,74 @@ class FundChainApp {
       return '<span class="badge badge-success">Target Reached</span>';
     }
     
-    // Simple placeholder calculation
-    const remaining = project.target - project.total_allocated;
-    if (remaining <= 0) {
-      return '<span class="badge badge-success">Complete</span>';
+    // Try to calculate ETA based on recent donation rate if available
+    if (project.donation_rate_7d > 0) {
+      const remaining = project.target - project.total_allocated;
+      if (remaining > 0) {
+        const daysToCompletion = remaining / project.donation_rate_7d;
+        if (daysToCompletion <= 1) {
+          return '<span class="badge badge-warning">Soon</span>';
+        } else if (daysToCompletion <= 7) {
+          return `<span class="badge badge-info">${Math.ceil(daysToCompletion)} days</span>`;
+        } else {
+          return `<span class="text-muted">${Math.ceil(daysToCompletion)} days</span>`;
+        }
+      }
     }
     
-    return '<span class="text-muted">Estimating...</span>';
+    // If no rate data available, show empty
+    return '<span class="text-muted">Недоступно</span>';
   }
 
   showError(message) {
     console.error(message);
-    // Simple error display - in production you'd want a proper toast/notification system
-    alert(message);
+    // Try to show in modal first, then fallback to alert
+    try {
+      const modal = document.getElementById('admin-modal');
+      if (modal && !modal.classList.contains('hidden')) {
+        // Show error in current modal
+        const modalBody = document.getElementById('modal-body');
+        if (modalBody) {
+          modalBody.innerHTML = `
+            <div class="alert alert-danger">
+              <i class="fas fa-exclamation-triangle"></i> ${message}
+            </div>
+            ${modalBody.innerHTML}
+          `;
+        }
+      } else {
+        // Browser fallback
+        console.error(`❌ ${message}`);
+      }
+    } catch (error) {
+      console.error(`❌ ${message}`);
+    }
   }
 
-  showSuccess(message) {
-    console.log('Success:', message);
-    // Simple success display - in production you'd want a proper toast/notification system
-    alert(message);
+  
+  
+  showWarning(message) {
+    console.warn('Warning:', message);
+    // Try to show in modal first, then fallback to alert
+    try {
+      const modal = document.getElementById('admin-modal');
+      if (modal && !modal.classList.contains('hidden')) {
+        // Show warning in current modal
+        const modalBody = document.getElementById('modal-body');
+        if (modalBody) {
+          modalBody.innerHTML = `
+            <div class="alert alert-warning">
+              <i class="fas fa-exclamation-triangle"></i> ${message}
+            </div>
+            ${modalBody.innerHTML}
+          `;
+        }
+      } else {
+        console.warn(`⚠️ ${message}`);
+      }
+    } catch (error) {
+      console.warn(`⚠️ ${message}`);
+    }
   }
 
   updateLastUpdated() {
@@ -1084,13 +1218,13 @@ class FundChainApp {
 
   // Auto-refresh functionality
   startAutoRefresh() {
-    // Останавливаем предыдущий таймер если он существует
+    // Stop previous timer if it exists
     if (this.refreshTimer) {
       clearInterval(this.refreshTimer);
       this.refreshTimer = null;
     }
     
-    // Запускаем только если автообновление включено
+    // Start only if auto-refresh is enabled
     if (this.autoRefreshEnabled) {
       this.refreshTimer = setInterval(() => {
         this.loadSectionData(this.currentSection);
@@ -1111,7 +1245,7 @@ class FundChainApp {
     }
   }
 
-  // Переключатель автообновления
+  // Auto-refresh toggle
   toggleAutoRefresh() {
     this.autoRefreshEnabled = !this.autoRefreshEnabled;
     
@@ -1133,13 +1267,13 @@ class FundChainApp {
     console.log('Auto refresh:', this.autoRefreshEnabled ? 'enabled' : 'disabled');
   }
   
-  // Обновление переводов переключателя автообновления
+  // Update auto-refresh toggle translations
   updateAutoRefreshToggle() {
     const toggleButton = document.getElementById('auto-refresh-toggle');
     if (toggleButton) {
       const icon = '🔄';
       
-      // Обновляем только title (подсказку), иконка остается без текста
+      // Update only the title (tooltip), icon remains without text
       if (this.autoRefreshEnabled) {
         toggleButton.title = i18n.t('controls.auto_refresh_enabled');
       } else {
@@ -1151,7 +1285,18 @@ class FundChainApp {
 
   // Action functions
   async supportProject(projectId) {
-    alert(`${i18n.t('messages.support_project_description')} ${projectId}`);
+    try {
+      // In real implementation, Web3 wallet integration will be here
+      this.showModal(i18n.t('projects.support_project_title'), `
+        <div class="alert alert-info">
+          <strong>${i18n.t('messages.info')}:</strong> ${i18n.t('projects.web3_required')}
+        </div>
+        <p>${i18n.t('projects.project_id')}: ${projectId}</p>
+        <p>${i18n.t('projects.support_coming_soon')}</p>
+      `);
+    } catch (error) {
+      this.showError(i18n.t('projects.support_error'));
+    }
   }
 
   async viewProject(projectId) {
@@ -1167,20 +1312,20 @@ class FundChainApp {
   }
 
   showProjectDetailsModal(project, progress) {
-    const modalTitle = i18n.t('project_details.title');
+    const modalTitle = i18n.t('projects.details_title');
     
     // Format dates
-    const createdDate = new Date(project.created_at).toLocaleDateString();
+    const createdDate = project.created_at ? new Date(project.created_at).toLocaleDateString() : 'Не указано';
     const deadlineText = project.deadline ? 
       new Date(project.deadline).toLocaleDateString() : 
-      i18n.t('project_details.no_deadline');
-    const etaText = progress.eta_estimate ? 
+      'Не установлен';
+    const etaText = progress?.eta_estimate ? 
       new Date(progress.eta_estimate).toLocaleDateString() : 
-      i18n.t('project_details.no_deadline');
+      'Не установлен';
     
     // Calculate additional metrics
-    const progressToTargetPercent = progress.progress_to_target_percent || 0;
-    const progressToSoftCapPercent = progress.progress_to_soft_cap_percent || 0;
+    const progressToTargetPercent = progress?.progress_to_target_percent || 0;
+    const progressToSoftCapPercent = progress?.progress_to_soft_cap_percent || 0;
     
     const modalBody = `
       <div class="project-details-modal">
@@ -1195,43 +1340,43 @@ class FundChainApp {
         
         <!-- Description -->
         <div class="project-section">
-          <h6>${i18n.t('project_details.description')}</h6>
+          <h6>${i18n.t('projects.description')}</h6>
           <p class="project-description">${this.escapeHtml(project.description)}</p>
         </div>
         
         <!-- Funding Information -->
         <div class="project-section">
-          <h6>${i18n.t('project_details.funding_info')}</h6>
+          <h6>${i18n.t('projects.funding_info')}</h6>
           <div class="funding-grid">
             <div class="funding-item">
-              <label>${i18n.t('project_details.target_amount')}:</label>
+              <label>${i18n.t('projects.target_amount')}:</label>
               <span>${this.formatETH(project.target)} ETH</span>
             </div>
             <div class="funding-item">
-              <label>${i18n.t('project_details.soft_cap')}:</label>
+              <label>${i18n.t('projects.soft_cap')}:</label>
               <span>${this.formatETH(project.soft_cap)} ETH</span>
             </div>
             <div class="funding-item">
-              <label>${i18n.t('project_details.hard_cap')}:</label>
-              <span>${this.formatETH(project.hard_cap)} ETH</span>
+              <label>${i18n.t('projects.hard_cap')}:</label>
+              <span>${this.formatETH(project.hard_cap || 0)} ETH</span>
             </div>
             <div class="funding-item">
-              <label>${i18n.t('project_details.total_allocated')}:</label>
-              <span>${this.formatETH(progress.total_allocated)} ETH</span>
+              <label>${i18n.t('projects.total_allocated')}:</label>
+              <span>${this.formatETH(progress?.total_allocated || 0)} ETH</span>
             </div>
             <div class="funding-item">
-              <label>${i18n.t('project_details.total_paid_out')}:</label>
-              <span>${this.formatETH(progress.total_paid_out)} ETH</span>
+              <label>${i18n.t('projects.total_paid_out')}:</label>
+              <span>${this.formatETH(progress?.total_paid_out || 0)} ETH</span>
             </div>
           </div>
         </div>
         
         <!-- Progress Statistics -->
         <div class="project-section">
-          <h6>${i18n.t('project_details.progress_stats')}</h6>
+          <h6>${i18n.t('projects.progress_stats')}</h6>
           <div class="progress-stats">
             <div class="progress-item">
-              <label>${i18n.t('project_details.progress_to_target')}:</label>
+              <label>${i18n.t('projects.progress_to_target')}:</label>
               <div class="progress-bar-container">
                 <div class="progress">
                   <div class="progress-bar" style="width: ${Math.min(100, progressToTargetPercent)}%"></div>
@@ -1240,7 +1385,7 @@ class FundChainApp {
               </div>
             </div>
             <div class="progress-item">
-              <label>${i18n.t('project_details.progress_to_soft_cap')}:</label>
+              <label>${i18n.t('projects.progress_to_soft_cap')}:</label>
               <div class="progress-bar-container">
                 <div class="progress">
                   <div class="progress-bar bg-warning" style="width: ${Math.min(100, progressToSoftCapPercent)}%"></div>
@@ -1249,49 +1394,49 @@ class FundChainApp {
               </div>
             </div>
             <div class="funding-item">
-              <label>${i18n.t('project_details.lacking_to_target')}:</label>
-              <span>${this.formatETH(progress.lacking_to_target)} ETH</span>
+              <label>${i18n.t('projects.lacking_to_target')}:</label>
+              <span>${this.formatETH(progress?.lacking_to_target || 0)} ETH</span>
             </div>
             <div class="funding-item">
-              <label>${i18n.t('project_details.lacking_to_soft_cap')}:</label>
-              <span>${this.formatETH(progress.lacking_to_soft_cap)} ETH</span>
+              <label>${i18n.t('projects.lacking_to_soft_cap')}:</label>
+              <span>${this.formatETH(progress?.lacking_to_soft_cap || 0)} ETH</span>
             </div>
           </div>
         </div>
         
         <!-- Community Information -->
         <div class="project-section">
-          <h6>${i18n.t('project_details.community_info')}</h6>
+          <h6>${i18n.t('projects.community_info')}</h6>
           <div class="community-grid">
             <div class="community-item">
-              <label>${i18n.t('project_details.unique_donors')}:</label>
-              <span>${progress.unique_donors}</span>
+              <label>${i18n.t('projects.unique_donors')}:</label>
+              <span>${progress?.unique_donors || 0}</span>
             </div>
             <div class="community-item">
-              <label>${i18n.t('project_details.allocation_count')}:</label>
-              <span>${progress.allocation_count}</span>
+              <label>${i18n.t('projects.allocation_count')}:</label>
+              <span>${progress?.allocation_count || 0}</span>
             </div>
             <div class="community-item">
-              <label>${i18n.t('project_details.payout_count')}:</label>
-              <span>${progress.payout_count}</span>
+              <label>${i18n.t('projects.payout_count')}:</label>
+              <span>${progress?.payout_count || 0}</span>
             </div>
           </div>
         </div>
         
         <!-- Milestones -->
         <div class="project-section">
-          <h6>${i18n.t('project_details.milestones')}</h6>
+          <h6>${i18n.t('projects.milestones')}</h6>
           <div class="milestones-grid">
             <div class="milestone-item">
-              <label>${i18n.t('project_details.target_reached')}:</label>
-              <span class="badge ${progress.is_target_reached ? 'badge-success' : 'badge-secondary'}">
-                ${progress.is_target_reached ? i18n.t('project_details.yes') : i18n.t('project_details.no')}
+              <label>${i18n.t('projects.target_reached')}:</label>
+              <span class="badge ${progress?.is_target_reached ? 'badge-success' : 'badge-secondary'}">
+                ${progress?.is_target_reached ? i18n.t('projects.yes') : i18n.t('projects.no')}
               </span>
             </div>
             <div class="milestone-item">
-              <label>${i18n.t('project_details.soft_cap_reached')}:</label>
-              <span class="badge ${progress.is_soft_cap_reached ? 'badge-success' : 'badge-secondary'}">
-                ${progress.is_soft_cap_reached ? i18n.t('project_details.yes') : i18n.t('project_details.no')}
+              <label>${i18n.t('projects.soft_cap_reached')}:</label>
+              <span class="badge ${progress?.is_soft_cap_reached ? 'badge-success' : 'badge-secondary'}">
+                ${progress?.is_soft_cap_reached ? i18n.t('projects.yes') : i18n.t('projects.no')}
               </span>
             </div>
           </div>
@@ -1299,18 +1444,18 @@ class FundChainApp {
         
         <!-- Timeline Information -->
         <div class="project-section">
-          <h6>Timeline</h6>
+          <h6>${i18n.t('projects.timeline')}</h6>
           <div class="timeline-grid">
             <div class="timeline-item">
-              <label>${i18n.t('project_details.created_date')}:</label>
+              <label>${i18n.t('projects.created_date')}:</label>
               <span>${createdDate}</span>
             </div>
             <div class="timeline-item">
-              <label>${i18n.t('project_details.deadline')}:</label>
+              <label>${i18n.t('projects.deadline')}:</label>
               <span>${deadlineText}</span>
             </div>
             <div class="timeline-item">
-              <label>${i18n.t('project_details.eta_estimate')}:</label>
+              <label>${i18n.t('projects.eta_estimate')}:</label>
               <span>${etaText}</span>
             </div>
           </div>
@@ -1418,7 +1563,7 @@ class FundChainApp {
       } else if (roundInfo.phase === 'reveal') {
         targetTime = new Date(roundInfo.end_reveal);
       } else {
-        this.updateElement('voting-timer', 'N/A');
+        this.updateElement('voting-timer', '00:00:00');
         return;
       }
 
@@ -1511,8 +1656,14 @@ class FundChainApp {
         if (!confirmSubmit) return;
       }
       
+      // Check for wallet address
+      if (!this.walletAddress) {
+        this.showError(i18n.t('admin_modals.messages.wallet_address_required'));
+        return;
+      }
+      
       // Create hash for commit (simplified - in real implementation this would use Web3)
-      const voteData = { projects, choices, salt, voter: this.walletAddress || 'demo-user' };
+      const voteData = { projects, choices, salt, voter: this.walletAddress };
       const hash = this.simpleHash(JSON.stringify(voteData));
       
       // Submit commit to backend
@@ -1528,7 +1679,7 @@ class FundChainApp {
       // Store vote data locally for reveal phase
       localStorage.setItem(`vote-data-${roundId}`, JSON.stringify(voteData));
       
-      alert(i18n.t('admin_modals.messages.vote_committed_successfully'));
+      this.showSuccess(i18n.t('admin_modals.messages.vote_committed_successfully'));
       
       // Refresh voting section
       this.loadVotingSection();
@@ -1570,7 +1721,7 @@ class FundChainApp {
           })
         });
         
-        alert(i18n.t('admin_modals.messages.vote_revealed_successfully'));
+        this.showSuccess(i18n.t('admin_modals.messages.vote_revealed_successfully'));
         
         // Mark that user has revealed votes for this round
         localStorage.setItem(`vote-revealed-${roundId}`, 'true');
@@ -1606,7 +1757,7 @@ class FundChainApp {
     };
   }
 
-  // Reset user voting status for a specific round (for testing/admin purposes)
+  // Reset user voting status for a specific round (for admin purposes)
   resetUserVotingStatus(roundId) {
     localStorage.removeItem(`vote-data-${roundId}`);
     localStorage.removeItem(`vote-revealed-${roundId}`);
@@ -1615,84 +1766,13 @@ class FundChainApp {
     this.loadVotingSection();
   }
 
-  // Generate demo voting data for testing
-  generateDemoVotingData() {
-    return [
-      {
-        project_id: "proj_001_healthcare_fund",
-        for_weight: 156.5,
-        against_weight: 32.1,
-        abstained_count: 12,
-        not_participating_count: 8,
-        turnout_percentage: 85.2,
-        final_priority: 1
-      },
-      {
-        project_id: "proj_002_education_support", 
-        for_weight: 142.3,
-        against_weight: 45.7,
-        abstained_count: 15,
-        not_participating_count: 11,
-        turnout_percentage: 78.9,
-        final_priority: 2
-      },
-      {
-        project_id: "proj_003_infrastructure",
-        for_weight: 98.7,
-        against_weight: 87.2,
-        abstained_count: 24,
-        not_participating_count: 19,
-        turnout_percentage: 72.1,
-        final_priority: 3
-      }
-    ];
+  // Generate hashed commit
+  generateCommitHash(projects, choices, salt) {
+    const hash = this.simpleHash(JSON.stringify({ projects, choices, salt }));
+    return hash;
   }
 
-  // Load voting section with fallback demo data
-  async loadVotingSectionWithFallback() {
-    try {
-      await this.loadVotingSection();
-    } catch (error) {
-      console.warn('Failed to load real voting data, showing demo data:', error);
-      
-      // Show demo voting results
-      const demoResults = this.generateDemoVotingData();
-      console.log('Using demo voting results:', demoResults);
-      this.displayVotingResults(demoResults);
-      
-      // Show demo round info
-      const demoRound = {
-        round_id: 4,
-        phase: 'reveal',
-        total_participants: 234,
-        total_revealed: 208,
-        turnout_percentage: 88.9,
-        counting_method: 'weighted',
-        projects: [
-          {
-            id: "proj_001_healthcare_fund",
-            name: "Здравоохранение для всех",
-            category: "healthcare",
-            description: "Программа обеспечения доступного здравоохранения для сельских районов",
-            target: 500,
-            total_allocated: 387.5
-          },
-          {
-            id: "proj_002_education_support",
-            name: "Образование будущего", 
-            category: "education",
-            description: "Модернизация образовательных учреждений и внедрение новых технологий",
-            target: 350,
-            total_allocated: 298.2
-          }
-        ]
-      };
-      
-      this.displayCurrentVotingRound(demoRound);
-    }
-  }
-
-  // Simple hash function for demo purposes
+  // Simple hash function for development purposes
   simpleHash(str) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
@@ -1716,17 +1796,18 @@ class FundChainApp {
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
+        this.showSuccess(i18n.t('treasury.export_success'));
       } else {
         throw new Error('Export failed');
       }
     } catch (error) {
-      this.showError('Failed to export treasury data');
+      this.showError(i18n.t('treasury.export_treasury_error'));
     }
   }
 
   async exportPersonalData() {
     if (!this.walletAddress) {
-      this.showError('Please load personal stats first');
+      this.showError(i18n.t('treasury.load_personal_stats_first'));
       return;
     }
     
@@ -1746,43 +1827,44 @@ class FundChainApp {
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
+        this.showSuccess(i18n.t('personal.export_success'));
       } else {
         throw new Error('Export failed');
       }
     } catch (error) {
-      this.showError('Failed to export personal data');
+      this.showError(i18n.t('treasury.export_personal_error'));
     }
   }
 
   // Enhanced export functionality for admin
   async showExportOptions() {
-    const modalTitle = i18n.t('admin_modals.export_data.title');
+    const modalTitle = i18n.t('treasury.export_data_title');
     const modalBody = `
       <div class="form-section">
-        <h5>${i18n.t('admin_modals.export_data.quick_exports')}</h5>
+        <h5>${i18n.t('treasury.quick_export')}</h5>
         <div class="action-grid">
-          <button class="btn btn-primary" onclick="app.exportAllDonations()">${i18n.t('admin_modals.export_data.export_all_donations')}</button>
-          <button class="btn btn-primary" onclick="app.exportAllAllocations()">${i18n.t('admin_modals.export_data.export_all_allocations')}</button>
-          <button class="btn btn-primary" onclick="app.exportVotingResults()">${i18n.t('admin_modals.export_data.export_voting_results')}</button>
-          <button class="btn btn-primary" onclick="app.exportComprehensiveReport()">${i18n.t('admin_modals.export_data.comprehensive_report')}</button>
+          <button class="btn btn-primary" onclick="app.exportAllDonations()">${i18n.t('treasury.export_all_donations')}</button>
+          <button class="btn btn-primary" onclick="app.exportAllAllocations()">${i18n.t('treasury.export_all_allocations')}</button>
+          <button class="btn btn-primary" onclick="app.exportVotingResults()">${i18n.t('treasury.export_voting_results')}</button>
+          <button class="btn btn-primary" onclick="app.exportComprehensiveReport()">${i18n.t('treasury.comprehensive_report')}</button>
         </div>
       </div>
       
       <div class="form-section">
-        <h5>${i18n.t('admin_modals.export_data.custom_export')}</h5>
+        <h5>${i18n.t('treasury.custom_export')}</h5>
         <form id="custom-export-form">
           <div class="form-row">
             <div class="form-group">
-              <label for="export-type">${i18n.t('admin_modals.export_data.data_type')}</label>
+              <label for="export-type">${i18n.t('treasury.data_type')}</label>
               <select class="form-control" id="export-type">
-                <option value="donations">${i18n.t('admin_modals.export_data.donations')}</option>
-                <option value="allocations">${i18n.t('admin_modals.export_data.allocations')}</option>
-                <option value="voting-results">${i18n.t('admin_modals.export_data.voting_results')}</option>
-                <option value="comprehensive">${i18n.t('admin_modals.export_data.comprehensive')}</option>
+                <option value="donations">${i18n.t('treasury.donations')}</option>
+                <option value="allocations">${i18n.t('treasury.allocations')}</option>
+                <option value="voting-results">${i18n.t('treasury.voting_results')}</option>
+                <option value="comprehensive">${i18n.t('treasury.comprehensive')}</option>
               </select>
             </div>
             <div class="form-group">
-              <label for="export-format">${i18n.t('admin_modals.export_data.format')}</label>
+              <label for="export-format">${i18n.t('treasury.format')}</label>
               <select class="form-control" id="export-format">
                 <option value="csv">CSV</option>
                 <option value="json">JSON</option>
@@ -1792,42 +1874,42 @@ class FundChainApp {
           
           <div class="form-row">
             <div class="form-group">
-              <label for="export-date-from">${i18n.t('admin_modals.export_data.from_date_optional')}</label>
+              <label for="export-date-from">${i18n.t('treasury.date_from')}</label>
               <input type="date" class="form-control" id="export-date-from">
             </div>
             <div class="form-group">
-              <label for="export-date-to">${i18n.t('admin_modals.export_data.to_date_optional')}</label>
+              <label for="export-date-to">${i18n.t('treasury.date_to')}</label>
               <input type="date" class="form-control" id="export-date-to">
             </div>
           </div>
           
           <div class="form-group">
-            <label for="export-limit">${i18n.t('admin_modals.export_data.record_limit')}</label>
+            <label for="export-limit">${i18n.t('treasury.record_limit')}</label>
             <input type="number" class="form-control" id="export-limit" value="10000" min="1" max="50000">
-            <div class="form-text">${i18n.t('admin_modals.export_data.max_records_export')}</div>
+            <div class="form-text">${i18n.t('treasury.max_records_export')}</div>
           </div>
           
           <div class="checkbox-group">
             <input type="checkbox" id="include-personal-data">
-            <label for="include-personal-data">${i18n.t('admin_modals.export_data.include_personal_data')}</label>
+            <label for="include-personal-data">${i18n.t('treasury.include_personal_data')}</label>
           </div>
         </form>
       </div>
       
       <div class="form-section">
-        <h5>${i18n.t('admin_modals.export_data.analytics_reports')}</h5>
+        <h5>${i18n.t('treasury.analytics_reports')}</h5>
         <div class="action-grid">
-          <button class="btn btn-secondary" onclick="app.generateProjectAnalytics()">${i18n.t('admin_modals.export_data.project_analytics')}</button>
-          <button class="btn btn-secondary" onclick="app.generateVotingAnalytics()">${i18n.t('admin_modals.export_data.voting_analytics')}</button>
-          <button class="btn btn-secondary" onclick="app.generateTreasuryAnalytics()">${i18n.t('admin_modals.export_data.treasury_analytics')}</button>
-          <button class="btn btn-secondary" onclick="app.generatePrivacyReport()">${i18n.t('admin_modals.export_data.privacy_report')}</button>
+          <button class="btn btn-secondary" onclick="app.generateProjectAnalytics()">${i18n.t('treasury.project_analytics')}</button>
+          <button class="btn btn-secondary" onclick="app.generateVotingAnalytics()">${i18n.t('treasury.voting_analytics')}</button>
+          <button class="btn btn-secondary" onclick="app.generateTreasuryAnalytics()">${i18n.t('treasury.treasury_analytics')}</button>
+          <button class="btn btn-secondary" onclick="app.generatePrivacyReport()">${i18n.t('treasury.privacy_report')}</button>
         </div>
       </div>
     `;
     
     const modalFooter = `
       <button class="btn btn-secondary" onclick="app.closeModal()">${i18n.t('buttons.close')}</button>
-      <button class="btn btn-primary" onclick="app.executeCustomExport()">${i18n.t('admin_modals.export_data.execute_custom_export')}</button>
+      <button class="btn btn-primary" onclick="app.executeCustomExport()">${i18n.t('treasury.execute_export')}</button>
     `;
     
     this.showModal(modalTitle, modalBody, modalFooter);
@@ -1869,7 +1951,7 @@ class FundChainApp {
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
         
-        alert(`${filename} ${i18n.t('admin_modals.messages.exported_successfully')}`);
+        this.showSuccess(`${filename} ${i18n.t('admin_modals.messages.exported_successfully')}`);
       } else {
         throw new Error(`${i18n.t('admin_modals.messages.export_failed')}: ${response.statusText}`);
       }
@@ -1927,38 +2009,39 @@ class FundChainApp {
   async generateProjectAnalytics() {
     try {
       const analytics = await this.fetchJSON('/reports/project-analytics');
-      this.displayAnalyticsReport('Project Analytics', this.renderProjectAnalytics(analytics));
+      this.displayAnalyticsReport(i18n.t('analytics.project_report.title'), this.renderProjectAnalytics(analytics));
     } catch (error) {
-      this.showError('Failed to generate project analytics');
+      this.showError(i18n.t('admin_modals.messages.failed_to_generate_project_analytics'));
     }
   }
 
   async generateVotingAnalytics() {
     try {
       const analytics = await this.fetchJSON('/reports/voting-analytics');
-      this.displayAnalyticsReport('Voting Analytics', this.renderVotingAnalytics(analytics));
+      this.displayAnalyticsReport(i18n.t('analytics.voting_report.title'), this.renderVotingAnalytics(analytics));
     } catch (error) {
-      this.showError('Failed to generate voting analytics');
+      this.showError(i18n.t('admin_modals.messages.failed_to_generate_voting_analytics'));
     }
   }
 
   async generateTreasuryAnalytics() {
     try {
       const analytics = await this.fetchJSON('/reports/treasury-analytics');
-      this.displayAnalyticsReport('Treasury Analytics', this.renderTreasuryAnalytics(analytics));
+      this.displayAnalyticsReport(i18n.t('analytics.treasury_report.title'), this.renderTreasuryAnalytics(analytics));
     } catch (error) {
-      this.showError('Failed to generate treasury analytics');
+      this.showError(i18n.t('admin_modals.messages.failed_to_generate_treasury_analytics'));
     }
   }
 
   async generatePrivacyReport() {
     try {
       const report = await this.fetchJSON('/privacy/report?data_type=donations');
-      this.displayAnalyticsReport('Privacy & K-Anonymity Report', this.renderPrivacyReport(report));
+      this.displayAnalyticsReport(i18n.t('analytics.privacy_report.title'), this.renderPrivacyReport(report));
     } catch (error) {
-      this.showError('Failed to generate privacy report');
+      this.showError(i18n.t('admin_modals.messages.failed_to_generate_privacy_report'));
     }
   }
+
 
   // Analytics report renderers
   renderProjectAnalytics(analytics) {
@@ -1966,25 +2049,25 @@ class FundChainApp {
       <div class="analytics-report">
         <div class="report-header">
           <h4>${i18n.t('analytics.project_report.title')}</h4>
-          <p>${i18n.t('analytics.project_report.generated')}: ${analytics.generated_at}</p>
-          <p>${i18n.t('analytics.project_report.period')}: ${analytics.period_days} ${i18n.t('analytics.project_report.days')} | ${i18n.t('analytics.project_report.category')}: ${analytics.category}</p>
+          <p>${i18n.t('analytics.project_report.generated')}: ${analytics.generated_at || new Date().toLocaleString()}</p>
+          <p>${i18n.t('analytics.project_report.period')}: ${analytics.period_days || 30} ${i18n.t('analytics.project_report.days')} | ${i18n.t('analytics.project_report.category')}: ${analytics.category || i18n.t('analytics.privacy_report.all')}</p>
         </div>
         
         <div class="metrics-grid">
           <div class="metric-card">
-            <div class="metric-value">${analytics.summary.total_projects}</div>
+            <div class="metric-value">${analytics.summary?.total_projects || 0}</div>
             <div class="metric-label">${i18n.t('analytics.project_report.total_projects')}</div>
           </div>
           <div class="metric-card">
-            <div class="metric-value">${this.formatETH(analytics.summary.total_target)}</div>
+            <div class="metric-value">${this.formatETH(analytics.summary?.total_target || 0)}</div>
             <div class="metric-label">${i18n.t('analytics.project_report.total_target')}</div>
           </div>
           <div class="metric-card">
-            <div class="metric-value">${this.formatETH(analytics.summary.total_allocated)}</div>
+            <div class="metric-value">${this.formatETH(analytics.summary?.total_allocated || 0)}</div>
             <div class="metric-label">${i18n.t('analytics.project_report.total_allocated')}</div>
           </div>
           <div class="metric-card">
-            <div class="metric-value">${(analytics.summary.total_allocated / analytics.summary.total_target * 100).toFixed(1)}%</div>
+            <div class="metric-value">${analytics.summary?.total_target && analytics.summary?.total_allocated ? (analytics.summary.total_allocated / analytics.summary.total_target * 100).toFixed(1) : 0}%</div>
             <div class="metric-label">${i18n.t('analytics.project_report.funding_progress')}</div>
           </div>
         </div>
@@ -1994,14 +2077,14 @@ class FundChainApp {
           <table class="data-table">
             <thead><tr><th>${i18n.t('analytics.project_report.status_header')}</th><th>${i18n.t('analytics.project_report.count_header')}</th><th>${i18n.t('analytics.project_report.target_header')}</th><th>${i18n.t('analytics.project_report.allocated_header')}</th></tr></thead>
             <tbody>
-              ${Object.entries(analytics.by_status).map(([status, data]) => `
+              ${analytics.by_status ? Object.entries(analytics.by_status).map(([status, data]) => `
                 <tr>
                   <td><span class="badge badge-info">${status}</span></td>
-                  <td>${data.count}</td>
-                  <td>${this.formatETH(data.total_target)} ETH</td>
-                  <td>${this.formatETH(data.total_allocated)} ETH</td>
+                  <td>${data.count || 0}</td>
+                  <td>${this.formatETH(data.total_target || 0)} ETH</td>
+                  <td>${this.formatETH(data.total_allocated || 0)} ETH</td>
                 </tr>
-              `).join('')}
+              `).join('') : '<tr><td colspan="4" class="text-center text-muted">' + i18n.t('messages.no_data') + '</td></tr>'}
             </tbody>
           </table>
         </div>
@@ -2009,10 +2092,10 @@ class FundChainApp {
         <div class="section">
           <h5>${i18n.t('analytics.project_report.funding_progress_distribution')}</h5>
           <div class="progress-stats">
-            <div>${i18n.t('analytics.project_report.fully_funded')}: ${analytics.funding_progress.fully_funded}</div>
-            <div>${i18n.t('analytics.project_report.over_50_percent')}: ${analytics.funding_progress.over_50_percent}</div>
-            <div>${i18n.t('analytics.project_report.under_50_percent')}: ${analytics.funding_progress.under_50_percent}</div>
-            <div>${i18n.t('analytics.project_report.no_funding')}: ${analytics.funding_progress.no_funding}</div>
+            <div>${i18n.t('analytics.project_report.fully_funded')}: ${analytics.funding_progress?.fully_funded || 0}</div>
+            <div>${i18n.t('analytics.project_report.over_50_percent')}: ${analytics.funding_progress?.over_50_percent || 0}</div>
+            <div>${i18n.t('analytics.project_report.under_50_percent')}: ${analytics.funding_progress?.under_50_percent || 0}</div>
+            <div>${i18n.t('analytics.project_report.no_funding')}: ${analytics.funding_progress?.no_funding || 0}</div>
           </div>
         </div>
       </div>
@@ -2024,25 +2107,25 @@ class FundChainApp {
       <div class="analytics-report">
         <div class="report-header">
           <h4>${i18n.t('analytics.voting_report.title')}</h4>
-          <p>${i18n.t('analytics.voting_report.generated')}: ${analytics.generated_at}</p>
-          <p>${i18n.t('analytics.voting_report.round')}: ${analytics.round_id}</p>
+          <p>${i18n.t('analytics.voting_report.generated')}: ${analytics.generated_at || new Date().toLocaleString()}</p>
+          <p>${i18n.t('analytics.voting_report.round')}: ${analytics.round_id || 'Не указан'}</p>
         </div>
         
         <div class="metrics-grid">
           <div class="metric-card">
-            <div class="metric-value">${analytics.participation_metrics.total_projects_voted}</div>
+            <div class="metric-value">${analytics.participation_metrics?.total_projects_voted || 0}</div>
             <div class="metric-label">${i18n.t('analytics.voting_report.projects_voted_on')}</div>
           </div>
           <div class="metric-card">
-            <div class="metric-value">${analytics.participation_metrics.total_for_votes}</div>
+            <div class="metric-value">${analytics.participation_metrics?.total_for_votes || 0}</div>
             <div class="metric-label">${i18n.t('analytics.voting_report.total_for_votes')}</div>
           </div>
           <div class="metric-card">
-            <div class="metric-value">${analytics.participation_metrics.total_against_votes}</div>
+            <div class="metric-value">${analytics.participation_metrics?.total_against_votes || 0}</div>
             <div class="metric-label">${i18n.t('analytics.voting_report.total_against_votes')}</div>
           </div>
           <div class="metric-card">
-            <div class="metric-value">${analytics.participation_metrics.average_turnout.toFixed(1)}%</div>
+            <div class="metric-value">${analytics.participation_metrics?.average_turnout ? analytics.participation_metrics.average_turnout.toFixed(1) : 0}%</div>
             <div class="metric-label">${i18n.t('analytics.voting_report.average_turnout')}</div>
           </div>
         </div>
@@ -2063,11 +2146,11 @@ class FundChainApp {
               <tbody>
                 ${analytics.project_analysis.map(p => `
                   <tr>
-                    <td>${p.project_id.substring(0, 8)}...</td>
-                    <td>${p.participation_rate.toFixed(1)}%</td>
-                    <td>${p.support_ratio.toFixed(1)}%</td>
-                    <td>${p.engagement_score.toFixed(1)}%</td>
-                    <td><span class="badge badge-${p.consensus_level === 'high' ? 'success' : 'warning'}">${p.consensus_level}</span></td>
+                    <td>${p.project_id ? p.project_id.substring(0, 8) + '...' : 'Неизвестно'}</td>
+                    <td>${p.participation_rate ? p.participation_rate.toFixed(1) : 0}%</td>
+                    <td>${p.support_ratio ? p.support_ratio.toFixed(1) : 0}%</td>
+                    <td>${p.engagement_score ? p.engagement_score.toFixed(1) : 0}%</td>
+                    <td><span class="badge badge-${p.consensus_level === 'high' ? 'success' : 'warning'}">${p.consensus_level || 'Неизвестно'}</span></td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -2083,46 +2166,48 @@ class FundChainApp {
       <div class="analytics-report">
         <div class="report-header">
           <h4>${i18n.t('analytics.treasury_report.title')}</h4>
-          <p>${i18n.t('analytics.treasury_report.generated')}: ${analytics.generated_at}</p>
-          <p>${i18n.t('analytics.treasury_report.period')}: ${analytics.period_days} ${i18n.t('analytics.treasury_report.days')}</p>
+          <p>${i18n.t('analytics.treasury_report.generated')}: ${analytics.generated_at || new Date().toLocaleString()}</p>
         </div>
         
         <div class="metrics-grid">
           <div class="metric-card">
-            <div class="metric-value">${this.formatETH(analytics.treasury_overview.total_balance)}</div>
-            <div class="metric-label">${i18n.t('analytics.treasury_report.total_balance')}</div>
+            <div class="metric-value">${this.formatETH(analytics.summary?.total_earnings || 0)}</div>
+            <div class="metric-label">${i18n.t('analytics.treasury_report.total_earnings')}</div>
           </div>
           <div class="metric-card">
-            <div class="metric-value">${this.formatETH(analytics.treasury_overview.total_donations)}</div>
-            <div class="metric-label">${i18n.t('analytics.treasury_report.total_donations')}</div>
+            <div class="metric-value">${this.formatETH(analytics.summary?.total_fees || 0)}</div>
+            <div class="metric-label">${i18n.t('analytics.treasury_report.total_fees')}</div>
           </div>
           <div class="metric-card">
-            <div class="metric-value">${analytics.flow_analysis.allocation_rate.toFixed(1)}%</div>
-            <div class="metric-label">${i18n.t('analytics.treasury_report.allocation_rate')}</div>
+            <div class="metric-value">${this.formatETH(analytics.summary?.total_withdrawals || 0)}</div>
+            <div class="metric-label">${i18n.t('analytics.treasury_report.total_withdrawals')}</div>
           </div>
           <div class="metric-card">
-            <div class="metric-value">${analytics.flow_analysis.payout_rate.toFixed(1)}%</div>
-            <div class="metric-label">${i18n.t('analytics.treasury_report.payout_rate')}</div>
+            <div class="metric-value">${this.formatETH(analytics.summary?.total_earnings && analytics.summary?.total_fees ? (analytics.summary.total_earnings - analytics.summary.total_fees).toFixed(4) : 0)}</div>
+            <div class="metric-label">${i18n.t('analytics.treasury_report.net_earnings')}</div>
           </div>
         </div>
         
         <div class="section">
-          <h5>${i18n.t('analytics.treasury_report.flow_analysis')}</h5>
-          <div class="flow-chart">
-            <div>💰 ${i18n.t('analytics.treasury_report.donations')}: ${this.formatETH(analytics.flow_analysis.total_inflow)} ETH</div>
-            <div>📋 ${i18n.t('analytics.treasury_report.allocated')}: ${this.formatETH(analytics.flow_analysis.total_allocated)} ETH</div>
-            <div>💸 ${i18n.t('analytics.treasury_report.paid_out')}: ${this.formatETH(analytics.flow_analysis.total_paid_out)} ETH</div>
-            <div>🏦 ${i18n.t('analytics.treasury_report.unallocated')}: ${this.formatETH(analytics.flow_analysis.unallocated_balance)} ETH</div>
-          </div>
-        </div>
-        
-        <div class="section">
-          <h5>${i18n.t('analytics.treasury_report.recent_activity')}</h5>
-          <div>
-            <p>${i18n.t('analytics.treasury_report.recent_donations')}: ${analytics.recent_activity.recent_donations_count}</p>
-            <p>${i18n.t('analytics.treasury_report.recent_allocations')}: ${analytics.recent_activity.recent_allocations_count}</p>
-            <p>${i18n.t('analytics.treasury_report.average_donation_size')}: ${this.formatETH(analytics.recent_activity.average_donation_size)} ETH</p>
-          </div>
+          <h5>${i18n.t('analytics.treasury_report.by_source')}</h5>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>${i18n.t('analytics.treasury_report.source_header')}</th>
+                <th>${i18n.t('analytics.treasury_report.amount_header')}</th>
+                <th>${i18n.t('analytics.treasury_report.fee_header')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${analytics.by_source ? Object.entries(analytics.by_source).map(([source, data]) => `
+                <tr>
+                  <td>${source}</td>
+                  <td>${this.formatETH(data.total_earnings || 0)} ETH</td>
+                  <td>${this.formatETH(data.total_fees || 0)} ETH</td>
+                </tr>
+              `).join('') : '<tr><td colspan="3" class="text-center text-muted">' + i18n.t('messages.no_data') + '</td></tr>'}
+            </tbody>
+          </table>
         </div>
       </div>
     `;
@@ -2132,20 +2217,82 @@ class FundChainApp {
     return `
       <div class="analytics-report">
         <div class="report-header">
-          <h4>Privacy & K-Anonymity Report</h4>
-          <p>K-Anonymity Threshold: ${report.k_threshold || 5}</p>
+          <h4>${i18n.t('analytics.privacy_report.title')}</h4>
+          <p>${i18n.t('analytics.privacy_report.generated')}: ${report.generated_at || new Date().toLocaleString()}</p>
+          <p>${i18n.t('analytics.privacy_report.data_type')}: ${report.data_type || i18n.t('analytics.privacy_report.all')}</p>
         </div>
         
-        <div class="alert alert-info">
-          <strong>Privacy Protection Status:</strong> This system implements k-anonymity protection 
-          to ensure individual privacy while maintaining transparency.
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-value">${report.k_anonymity?.threshold || 0}</div>
+            <div class="metric-label">${i18n.t('analytics.privacy_report.k_anonymity_threshold')}</div>
+          </div>
         </div>
         
         <div class="section">
-          <h5>Data Protection Summary</h5>
-          <p>All public data exports are filtered to maintain k-anonymity protection.</p>
-          <p>Personal data exports require explicit user consent and address verification.</p>
-          <p>Administrative exports include additional privacy safeguards.</p>
+          <h5>${i18n.t('analytics.privacy_report.privacy_metrics')}</h5>
+          <div class="privacy-stats">
+            <div class="stat-item">
+              <div class="stat-label">${i18n.t('analytics.privacy_report.total_records')}</div>
+              <div class="stat-value">${report.privacy_metrics?.total_records || 0}</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">${i18n.t('analytics.privacy_report.anonymized_records')}</div>
+              <div class="stat-value">${report.privacy_metrics?.anonymized_records || 0}</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">${i18n.t('analytics.privacy_report.privacy_compliant')}</div>
+              <div class="stat-value">
+                <span class="badge badge-${report.privacy_metrics?.is_compliant ? 'success' : 'danger'}">
+                  ${report.privacy_metrics?.is_compliant ? i18n.t('analytics.privacy_report.yes') : i18n.t('analytics.privacy_report.no')}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        ${report.k_anonymity?.groups ? `
+          <div class="section">
+            <h5>K-Anonymity Groups</h5>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Group Size</th>
+                  <th>Count</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${Object.entries(report.k_anonymity.groups).map(([size, count]) => `
+                  <tr>
+                    <td>${size}</td>
+                    <td>${count}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  renderPrivacyReport(report) {
+    return `
+      <div class="analytics-report">
+        <div class="report-header">
+          <h4>${i18n.t('modal.privacy_report.title')}</h4>
+          <p>${i18n.t('modal.privacy_report.k_anonymity_threshold')}: ${report.k_threshold || 5}</p>
+        </div>
+        
+        <div class="alert alert-info">
+          <strong>${i18n.t('modal.privacy_report.privacy_protection_status')}:</strong> ${i18n.t('modal.privacy_report.privacy_system_implements')}
+        </div>
+        
+        <div class="section">
+          <h5>${i18n.t('modal.privacy_report.data_protection_summary')}</h5>
+          <p>${i18n.t('modal.privacy_report.public_exports_filtered')}</p>
+          <p>${i18n.t('modal.privacy_report.personal_data_export_requires')}</p>
+          <p>${i18n.t('modal.privacy_report.admin_exports_include')}</p>
         </div>
       </div>
     `;
@@ -2204,7 +2351,7 @@ class FundChainApp {
           </div>
           
           <div class="checkbox-group">
-            <input type="checkbox" id="soft-cap-enabled">
+            <input type="checkbox" id="soft-cap-enabled" checked>
             <label for="soft-cap-enabled">${i18n.t('modal.enable_soft_cap')}</label>
           </div>
         </div>
@@ -2229,9 +2376,6 @@ class FundChainApp {
   }
 
   async submitCreateProject() {
-    const form = document.getElementById('create-project-form');
-    const formData = new FormData(form);
-    
     const projectData = {
       name: document.getElementById('project-name').value,
       description: document.getElementById('project-description').value,
@@ -2260,20 +2404,64 @@ class FundChainApp {
     }
     
     try {
-      // In a real implementation, this would call the API to create the project
-      console.log('Creating project:', projectData);
-      alert(i18n.t('modal.validation.project_creation_simulated'));
+      const response = await this.fetchJSON('/admin/projects', {
+        method: 'POST',
+        body: JSON.stringify(projectData)
+      });
+      
+      this.showSuccess(i18n.t('projects.creation_success'));
       this.closeModal();
+      
+      // Refresh projects list if on projects admin page
+      if (this.currentSection === 'admin') {
+        this.showProjectsAdmin();
+      }
+      
     } catch (error) {
+      console.error('Failed to create project:', error);
       this.showError(i18n.t('modal.validation.failed_to_create_project'));
     }
   }
 
   async manageCategories() {
     const modalTitle = i18n.t('admin_modals.manage_categories.title');
+    
+    // Fetch categories from the backend
+    let categoriesData = [];
+    try {
+      const response = await this.fetchJSON('/stats/categories');
+      categoriesData = response.data || [];
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_load_categories'));
+      return;
+    }
+    
+    // Generate the categories table body
+    let categoriesTableBody = '';
+    if (categoriesData.length > 0) {
+      categoriesTableBody = categoriesData.map(cat => `
+        <tr>
+          <td>${cat.category}</td>
+          <td>${cat.active_projects || 0}</td>
+          <td>${cat.max_limit || 10}</td>
+          <td class="action-buttons">
+            <button class="btn btn-xs btn-secondary" onclick="window.app.editCategory('${cat.category}')">${i18n.t('admin_modals.manage_categories.edit')}</button>
+            <button class="btn btn-xs btn-danger" onclick="window.app.deleteCategory('${cat.category}')" style="margin-left: 5px;">${i18n.t('admin_modals.manage_categories.delete')}</button>
+          </td>
+        </tr>
+      `).join('');
+    } else {
+      categoriesTableBody = `
+        <tr>
+          <td colspan="4" class="text-center">${i18n.t('admin_modals.manage_categories.no_categories')}</td>
+        </tr>
+      `;
+    }
+    
     const modalBody = `
       <div class="form-section">
-        <h5>${i18n.t('admin_modals.manage_categories.add_new_category')}</h5>
+        <h5>${i18n.t('admin_modals.manage_categories.title')}</h5>
         <div class="form-row">
           <div class="form-group">
             <label for="new-category-name">${i18n.t('admin_modals.manage_categories.category_name')}</label>
@@ -2283,8 +2471,10 @@ class FundChainApp {
             <label for="new-category-limit">${i18n.t('admin_modals.manage_categories.max_active_projects')}</label>
             <input type="number" class="form-control" id="new-category-limit" value="10" min="1">
           </div>
+          <div class="form-group">
+            <button class="btn btn-primary" onclick="app.addCategory()">${i18n.t('admin_modals.manage_categories.add_category')}</button>
+          </div>
         </div>
-        <button class="btn btn-primary" onclick="app.addCategory()">${i18n.t('admin_modals.manage_categories.add_category')}</button>
       </div>
       
       <div class="form-section">
@@ -2299,33 +2489,7 @@ class FundChainApp {
             </tr>
           </thead>
           <tbody id="categories-table-body">
-            <tr>
-              <td>Infrastructure</td>
-              <td>3</td>
-              <td>10</td>
-              <td class="action-buttons">
-                <button class="btn btn-xs btn-secondary">${i18n.t('admin_modals.manage_categories.edit')}</button>
-                <button class="btn btn-xs btn-danger">${i18n.t('admin_modals.manage_categories.delete')}</button>
-              </td>
-            </tr>
-            <tr>
-              <td>Healthcare</td>
-              <td>2</td>
-              <td>8</td>
-              <td class="action-buttons">
-                <button class="btn btn-xs btn-secondary">${i18n.t('admin_modals.manage_categories.edit')}</button>
-                <button class="btn btn-xs btn-danger">${i18n.t('admin_modals.manage_categories.delete')}</button>
-              </td>
-            </tr>
-            <tr>
-              <td>Education</td>
-              <td>1</td>
-              <td>5</td>
-              <td class="action-buttons">
-                <button class="btn btn-xs btn-secondary">${i18n.t('admin_modals.manage_categories.edit')}</button>
-                <button class="btn btn-xs btn-danger">${i18n.t('admin_modals.manage_categories.delete')}</button>
-              </td>
-            </tr>
+            ${categoriesTableBody}
           </tbody>
         </table>
       </div>
@@ -2335,40 +2499,40 @@ class FundChainApp {
   }
 
   async showMintSBTForm() {
-    const modalTitle = i18n.t('admin_modals.mint_sbt.title');
+    const modalTitle = i18n.t('modal.mint_sbt.title');
     const modalBody = `
       <form id="mint-sbt-form">
         <div class="alert alert-info">
-          <strong>${i18n.t('admin_modals.mint_sbt.note')}</strong> ${i18n.t('admin_modals.mint_sbt.sbt_description')}
+          <strong>${i18n.t('modal.mint_sbt.note')}:</strong> ${i18n.t('modal.mint_sbt.sbt_description')}
         </div>
         
         <div class="form-row">
           <div class="form-group">
-            <label for="sbt-recipient">${i18n.t('admin_modals.mint_sbt.recipient_address')}</label>
+            <label for="sbt-recipient">${i18n.t('modal.mint_sbt.recipient_address')}</label>
             <input type="text" class="form-control" id="sbt-recipient" 
-                   placeholder="${i18n.t('placeholders.wallet_address_placeholder')}" pattern="^0x[a-fA-F0-9]{40}$" required>
+                   placeholder="0x..." pattern="^0x[a-fA-F0-9]{40}$" required>
           </div>
           <div class="form-group">
-            <label for="sbt-donation-amount">${i18n.t('admin_modals.mint_sbt.donation_amount_eth')}</label>
+            <label for="sbt-donation-amount">${i18n.t('modal.mint_sbt.donation_amount_eth')}</label>
             <input type="number" class="form-control" id="sbt-donation-amount" 
                    step="0.01" min="0.01" required>
-            <div class="form-text">${i18n.t('admin_modals.mint_sbt.weight_determines')}</div>
+            <div class="form-text">${i18n.t('modal.mint_sbt.donation_amount_help')}</div>
           </div>
         </div>
         
         <div class="form-section">
-          <h5>${i18n.t('admin_modals.mint_sbt.weight_configuration')}</h5>
+          <h5>${i18n.t('modal.mint_sbt.weight_configuration')}</h5>
           <div class="form-row">
             <div class="form-group">
-              <label for="weight-mode">${i18n.t('admin_modals.mint_sbt.weight_calculation_mode')}</label>
+              <label for="weight-mode">${i18n.t('modal.mint_sbt.weight_calculation_mode')}</label>
               <select class="form-control" id="weight-mode">
-                <option value="linear">${i18n.t('admin_modals.mint_sbt.linear_ratio')}</option>
-                <option value="quadratic">${i18n.t('admin_modals.mint_sbt.quadratic_diminishing')}</option>
-                <option value="logarithmic">${i18n.t('admin_modals.mint_sbt.logarithmic_heavy')}</option>
+                <option value="linear">${i18n.t('modal.mint_sbt.linear_ratio')}</option>
+                <option value="quadratic">${i18n.t('modal.mint_sbt.quadratic_diminishing')}</option>
+                <option value="logarithmic">${i18n.t('modal.mint_sbt.logarithmic_heavy')}</option>
               </select>
             </div>
             <div class="form-group">
-              <label for="calculated-weight">${i18n.t('admin_modals.mint_sbt.calculated_weight')}</label>
+              <label for="calculated-weight">${i18n.t('modal.mint_sbt.calculated_weight')}</label>
               <input type="text" class="form-control" id="calculated-weight" readonly>
             </div>
           </div>
@@ -2378,7 +2542,7 @@ class FundChainApp {
     
     const modalFooter = `
       <button class="btn btn-secondary" onclick="app.closeModal()">${i18n.t('buttons.cancel')}</button>
-      <button class="btn btn-primary" onclick="app.submitMintSBT()">${i18n.t('admin_modals.mint_sbt.mint_sbt')}</button>
+      <button class="btn btn-primary" onclick="app.submitMintSBT()">${i18n.t('modal.mint_sbt.title')}</button>
     `;
     
     this.showModal(modalTitle, modalBody, modalFooter);
@@ -2411,62 +2575,62 @@ class FundChainApp {
   }
 
   async showStartVotingForm() {
-    const modalTitle = i18n.t('admin_modals.start_voting.title');
+    const modalTitle = i18n.t('modal.start_voting.title');
     const modalBody = `
       <form id="start-voting-form">
         <div class="alert alert-warning">
-          <strong>${i18n.t('admin_modals.start_voting.warning')}</strong> ${i18n.t('admin_modals.start_voting.override_warning')}
+          <strong>${i18n.t('modal.start_voting.warning')}</strong> ${i18n.t('modal.start_voting.override_warning')}
         </div>
         
         <div class="form-section">
-          <h5>${i18n.t('admin_modals.start_voting.timing_configuration')}</h5>
+          <h5>${i18n.t('modal.start_voting.timing_configuration')}</h5>
           <div class="form-row">
             <div class="form-group">
-              <label for="commit-duration">${i18n.t('admin_modals.start_voting.commit_phase_duration')}</label>
+              <label for="commit-duration">${i18n.t('modal.start_voting.commit_phase_duration')}</label>
               <input type="number" class="form-control" id="commit-duration" value="168" min="1">
-              <div class="form-text">${i18n.t('admin_modals.start_voting.commit_default')}</div>
+              <div class="form-text">${i18n.t('modal.start_voting.commit_default')}</div>
             </div>
             <div class="form-group">
-              <label for="reveal-duration">${i18n.t('admin_modals.start_voting.reveal_phase_duration')}</label>
+              <label for="reveal-duration">${i18n.t('modal.start_voting.reveal_phase_duration')}</label>
               <input type="number" class="form-control" id="reveal-duration" value="72" min="1">
-              <div class="form-text">${i18n.t('admin_modals.start_voting.reveal_default')}</div>
+              <div class="form-text">${i18n.t('modal.start_voting.reveal_default')}</div>
             </div>
           </div>
         </div>
         
         <div class="form-section">
-          <h5>${i18n.t('admin_modals.start_voting.voting_configuration')}</h5>
+          <h5>${i18n.t('modal.start_voting.voting_configuration')}</h5>
           <div class="form-row">
             <div class="form-group">
-              <label for="counting-method">${i18n.t('admin_modals.start_voting.counting_method')}</label>
+              <label for="counting-method">${i18n.t('modal.start_voting.counting_method')}</label>
               <select class="form-control" id="counting-method">
-                <option value="weighted">${i18n.t('admin_modals.start_voting.weighted_voting')}</option>
-                <option value="borda">${i18n.t('admin_modals.start_voting.borda_count')}</option>
+                <option value="weighted">${i18n.t('modal.start_voting.weighted_voting')}</option>
+                <option value="borda">${i18n.t('modal.start_voting.borda_count')}</option>
               </select>
             </div>
             <div class="form-group">
-              <label for="cancellation-threshold">${i18n.t('admin_modals.start_voting.auto_cancellation_threshold')}</label>
+              <label for="cancellation-threshold">${i18n.t('modal.start_voting.auto_cancellation_threshold')}</label>
               <input type="number" class="form-control" id="cancellation-threshold" value="66" min="1" max="100">
-              <div class="form-text">${i18n.t('admin_modals.start_voting.minimum_turnout')}</div>
+              <div class="form-text">${i18n.t('modal.start_voting.minimum_turnout')}</div>
             </div>
           </div>
           
           <div class="checkbox-group">
             <input type="checkbox" id="enable-auto-cancellation" checked>
-            <label for="enable-auto-cancellation">${i18n.t('admin_modals.start_voting.enable_auto_cancellation')}</label>
+            <label for="enable-auto-cancellation">${i18n.t('modal.start_voting.enable_auto_cancellation')}</label>
           </div>
         </div>
         
         <div class="form-section" id="project-selection">
-          <h5>${i18n.t('admin_modals.start_voting.select_projects_voting')}</h5>
-          <div class="text-muted mb-2">${i18n.t('admin_modals.start_voting.loading_projects')}</div>
+          <h5>${i18n.t('modal.start_voting.select_projects_voting')}</h5>
+          <div class="text-muted mb-2">${i18n.t('modal.start_voting.loading_projects')}</div>
         </div>
       </form>
     `;
     
     const modalFooter = `
       <button class="btn btn-secondary" onclick="app.closeModal()">${i18n.t('buttons.cancel')}</button>
-      <button class="btn btn-primary" onclick="app.submitStartVoting()">${i18n.t('admin_modals.start_voting.start_voting_round')}</button>
+      <button class="btn btn-primary" onclick="app.submitStartVoting()">${i18n.t('modal.start_voting.start_voting_round')}</button>
     `;
     
     this.showModal(modalTitle, modalBody, modalFooter);
@@ -2480,15 +2644,15 @@ class FundChainApp {
       const projects = await this.fetchJSON('/projects?status=active&limit=100');
       const container = document.getElementById('project-selection');
       
-      if (projects.length === 0) {
+      if (!projects || projects.length === 0) {
         container.innerHTML = `
-          <h5>${i18n.t('admin_modals.start_voting.select_projects_voting')}</h5>
-          <div class="alert alert-warning">${i18n.t('admin_modals.start_voting.no_active_projects')}</div>
+          <h5>${i18n.t('modal.start_voting.select_projects_voting')}</h5>
+          <div class="alert alert-warning">${i18n.t('modal.start_voting.no_active_projects')}</div>
         `;
         return;
       }
       
-      let html = `<h5>${i18n.t('admin_modals.start_voting.select_projects_voting')}</h5>`;
+      let html = `<h5>${i18n.t('modal.start_voting.select_projects_voting')}</h5>`;
       projects.forEach(project => {
         html += `
           <div class="checkbox-group">
@@ -2504,13 +2668,20 @@ class FundChainApp {
       container.innerHTML = html;
     } catch (error) {
       console.error('Failed to load projects for voting:', error);
+      const container = document.getElementById('project-selection');
+      if (container) {
+        container.innerHTML = `
+          <h5>${i18n.t('modal.start_voting.select_projects_voting')}</h5>
+          <div class="alert alert-danger">${i18n.t('messages.connection_error')}</div>
+        `;
+      }
     }
   }
 
   async reindexBlockchain() {
     try {
       await this.fetchJSON('/admin/indexer/reindex', { method: 'POST' });
-      alert(i18n.t('admin_modals.messages.blockchain_reindexing_initiated'));
+      this.showSuccess(i18n.t('admin_modals.messages.blockchain_reindexing_initiated'));
       // Refresh indexer status
       this.loadAdminSection();
     } catch (error) {
@@ -2521,33 +2692,120 @@ class FundChainApp {
   // Modal system
   showModal(title, body, footer = '') {
     const modal = document.getElementById('admin-modal');
-    document.getElementById('modal-title').textContent = title;
-    document.getElementById('modal-body').innerHTML = body;
-    document.getElementById('modal-footer').innerHTML = footer || `
-      <button class="btn btn-secondary" onclick="app.closeModal()">${i18n.t('admin_modals.messages.close')}</button>
-    `;
-    modal.classList.remove('hidden');
+    if (modal) {
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-body').innerHTML = body;
+      document.getElementById('modal-footer').innerHTML = footer || `
+        <button class="btn btn-secondary" onclick="app.closeModal()">${i18n.t('admin_modals.messages.close')}</button>
+      `;
+      modal.classList.remove('hidden');
+    } else {
+      console.error('Admin modal not found');
+    }
   }
 
   closeModal() {
     const modal = document.getElementById('admin-modal');
-    modal.classList.add('hidden');
+    if (modal) {
+      modal.classList.add('hidden');
+    }
+  }
+  
+  // Show success message
+  showSuccess(message) {
+    console.log('Success:', message);
+    // Try to show in modal first, then fallback to alert
+    try {
+      const modal = document.getElementById('admin-modal');
+      if (modal && !modal.classList.contains('hidden')) {
+        // Show success in current modal
+        const modalBody = document.getElementById('modal-body');
+        if (modalBody) {
+          modalBody.innerHTML = `
+            <div class="alert alert-success">
+              <i class="fas fa-check-circle"></i> ${message}
+            </div>
+            ${modalBody.innerHTML}
+          `;
+        }
+      } else {
+        console.log(`✅ ${message}`);
+      }
+    } catch (error) {
+      console.log(`✅ ${message}`);
+    }
   }
 
   // Additional admin functions
   async showProjectsAdmin() {
     try {
       const projects = await this.fetchJSON('/projects?limit=100');
-      this.displayAdminContent('Project Management', this.renderProjectsAdminTable(projects));
+      this.displayAdminContent(i18n.t('admin.project_management'), this.renderProjectsAdminTable(projects));
     } catch (error) {
-      this.showError('Failed to load projects');
+      console.error('Failed to load projects from API:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_load_projects'));
     }
+  }
+  async showCategoriesAdmin() {
+    try {
+      const categories = await this.fetchJSON('/categories');
+      this.displayAdminContent(i18n.t('admin.manage_categories'), this.renderCategoriesAdminTable(categories));
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_load_categories'));
+    }
+  }
+  
+  renderCategoriesAdminTable(categories) {
+    let html = `
+      <div class="mb-3">
+        <button class="btn btn-primary" onclick="app.manageCategories()">' + i18n.t('admin.manage_categories') + '</button>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>${i18n.t('admin_modals.manage_categories.category')}</th>
+            <th>${i18n.t('admin_modals.manage_categories.active_projects')}</th>
+            <th>${i18n.t('admin_modals.manage_categories.max_limit')}</th>
+            <th>${i18n.t('admin_modals.manage_categories.actions')}</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+    
+    if (categories && categories.length > 0) {
+      categories.forEach(cat => {
+        html += `
+          <tr>
+            <td><strong>${this.escapeHtml(cat.category || cat.name)}</strong></td>
+            <td>${cat.active_projects || 0}</td>
+            <td>${cat.max_limit || 10}</td>
+            <td class="action-buttons">
+              <button class="btn btn-xs btn-secondary" onclick="app.editCategory('${cat.category || cat.name}')">${i18n.t('admin_modals.manage_categories.edit')}</button>
+              <button class="btn btn-xs btn-danger" onclick="app.deleteCategory('${cat.category || cat.name}')">${i18n.t('admin_modals.manage_categories.delete')}</button>
+            </td>
+          </tr>
+        `;
+      });
+    } else {
+      html += '<tr><td colspan="4" class="text-center text-muted">' + i18n.t('admin_modals.manage_categories.no_categories_found') + '</td></tr>';
+    }
+    
+    html += '</tbody></table>';
+    return html;
   }
 
   renderProjectsAdminTable(projects) {
     let html = `
-      <div class="mb-2">
-        <button class="btn btn-primary" onclick="app.showProjectForm()">${i18n.t('admin_modals.project_management.add_new_project')}</button>
+      <div class="mb-3">
+        <button class="btn btn-primary" onclick="window.app.showProjectForm()">${i18n.t('admin_modals.project_management.add_new_project')}</button>
+        <div class="mt-2 text-muted">
+          <small>
+            <strong>${i18n.t('admin_modals.project_management.instruction')}</strong><br>
+            • <strong>${i18n.t('admin_modals.project_management.cancel_button')}</strong> - ${i18n.t('admin_modals.project_management.cancel_instruction')}<br>
+            • <strong>🗑️ ${i18n.t('admin_modals.project_management.delete_button')}</strong> - ${i18n.t('admin_modals.project_management.delete_instruction')}
+          </small>
+        </div>
       </div>
       <table class="data-table">
         <thead>
@@ -2564,38 +2822,43 @@ class FundChainApp {
         <tbody>
     `;
     
-    projects.forEach(project => {
-      const progress = (project.total_allocated / project.target * 100).toFixed(1);
-      html += `
-        <tr>
-          <td><strong>${this.escapeHtml(project.name)}</strong></td>
-          <td><span class="badge badge-info">${this.escapeHtml(project.category)}</span></td>
-          <td><span class="badge badge-${this.getStatusBadgeClass(project.status)}">${project.status}</span></td>
-          <td>${this.formatETH(project.target)} ETH</td>
-          <td>${this.formatETH(project.total_allocated)} ETH</td>
-          <td>${progress}%</td>
-          <td class="action-buttons">
-            <button class="btn btn-xs btn-secondary" onclick="app.editProject('${project.id}')">${i18n.t('buttons.edit')}</button>
-            <button class="btn btn-xs btn-warning" onclick="app.pauseProject('${project.id}')">${i18n.t('admin_modals.project_management.pause')}</button>
-            <button class="btn btn-xs btn-danger" onclick="app.cancelProject('${project.id}')">${i18n.t('buttons.cancel')}</button>
-          </td>
-        </tr>
-      `;
-    });
+    if (projects && projects.length > 0) {
+      projects.forEach(project => {
+        const progress = (project.total_allocated / project.target * 100).toFixed(1);
+        html += `
+          <tr>
+            <td><strong>${this.escapeHtml(project.name)}</strong></td>
+            <td><span class="badge badge-info">${this.escapeHtml(project.category)}</span></td>
+            <td><span class="badge badge-${this.getStatusBadgeClass(project.status)}">${project.status}</span></td>
+            <td>${this.formatETH(project.target)} ETH</td>
+            <td>${this.formatETH(project.total_allocated)} ETH</td>
+            <td>${progress}%</td>
+            <td class="action-buttons">
+              <button class="btn btn-xs btn-secondary" onclick="window.app.editProject('${project.id}')" title="${i18n.t('admin_modals.project_management.edit_project')}">${i18n.t('buttons.edit')}</button>
+              <button class="btn btn-xs btn-warning" onclick="window.app.pauseProject('${project.id}')" title="${i18n.t('admin_modals.project_management.pause_project')}">${i18n.t('admin_modals.project_management.pause')}</button>
+              <br style="margin: 2px 0;">
+              <button class="btn btn-xs btn-danger" onclick="window.app.cancelProject('${project.id}')" title="${i18n.t('admin_modals.project_management.cancel_project')}">${i18n.t('admin_modals.project_management.cancel_button')}</button>
+              <button class="btn btn-xs btn-danger" onclick="window.app.deleteProject('${project.id}')" title="${i18n.t('admin_modals.project_management.delete_instruction')}" style="margin-left: 5px; background-color: #8b0000; border-color: #8b0000;">🗑️ ${i18n.t('buttons.delete')}</button>
+            </td>
+          </tr>
+        `;
+      });
+    } else {
+      html += '<tr><td colspan="7" class="text-center text-muted">' + i18n.t('admin_modals.project_management.no_projects_found') + '</td></tr>';
+    }
     
     html += '</tbody></table>';
     return html;
   }
 
   async showMembersAdmin() {
-    // Simulate member data
-    const members = [
-      { address: '0x1234...5678', sbt_weight: 5.2, total_donated: 5.0, voting_power: 5.2, status: 'active' },
-      { address: '0x9876...1234', sbt_weight: 3.1, total_donated: 3.5, voting_power: 3.1, status: 'active' },
-      { address: '0xabcd...efgh', sbt_weight: 1.8, total_donated: 2.1, voting_power: 1.8, status: 'inactive' }
-    ];
-    
-    this.displayAdminContent('Member Management', this.renderMembersAdminTable(members));
+    try {
+      const members = await this.fetchJSON('/members?limit=100');
+      this.displayAdminContent(i18n.t('admin_modals.member_management.title'), this.renderMembersAdminTable(members));
+    } catch (error) {
+      console.error('Failed to load members:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_load_members'));
+    }
   }
 
   renderMembersAdminTable(members) {
@@ -2618,23 +2881,27 @@ class FundChainApp {
         <tbody>
     `;
     
-    members.forEach(member => {
-      const statusClass = member.status === 'active' ? 'success' : 'secondary';
-      const statusText = member.status === 'active' ? i18n.t('admin_modals.member_management.active') : i18n.t('admin_modals.member_management.inactive');
-      html += `
-        <tr>
-          <td><code>${member.address}</code></td>
-          <td>${member.sbt_weight.toFixed(3)}</td>
-          <td>${this.formatETH(member.total_donated)} ETH</td>
-          <td>${member.voting_power.toFixed(3)}</td>
-          <td><span class="badge badge-${statusClass}">${statusText}</span></td>
-          <td class="action-buttons">
-            <button class="btn btn-xs btn-secondary" onclick="app.updateMemberWeight('${member.address}')">${i18n.t('admin_modals.member_management.update_weight')}</button>
-            <button class="btn btn-xs btn-warning" onclick="app.toggleMemberStatus('${member.address}')">${i18n.t('admin_modals.member_management.toggle_status')}</button>
-          </td>
-        </tr>
-      `;
-    });
+    if (members && members.length > 0) {
+      members.forEach(member => {
+        const statusClass = member.status === 'active' ? 'success' : 'secondary';
+        const statusText = member.status === 'active' ? i18n.t('admin_modals.member_management.active') : i18n.t('admin_modals.member_management.inactive');
+        html += `
+          <tr>
+            <td><code>${member.address}</code></td>
+            <td>${(member.sbt_weight || 0).toFixed(3)}</td>
+            <td>${this.formatETH(member.total_donated || 0)} ETH</td>
+            <td>${(member.voting_power || 0).toFixed(3)}</td>
+            <td><span class="badge badge-${statusClass}">${statusText}</span></td>
+            <td class="action-buttons">
+              <button class="btn btn-xs btn-secondary" onclick="app.updateMemberWeight('${member.address}')">${i18n.t('admin_modals.member_management.update_weight')}</button>
+              <button class="btn btn-xs btn-warning" onclick="app.toggleMemberStatus('${member.address}')">${i18n.t('admin_modals.member_management.toggle_status')}</button>
+            </td>
+          </tr>
+        `;
+      });
+    } else {
+      html += '<tr><td colspan="6" class="text-center text-muted">' + i18n.t('admin_modals.member_management.no_members_found') + '</td></tr>';
+    }
     
     html += '</tbody></table>';
     return html;
@@ -2643,15 +2910,10 @@ class FundChainApp {
   async showVotingHistory() {
     try {
       const rounds = await this.fetchJSON('/votes/rounds?limit=10');
-      this.displayAdminContent('Voting History', this.renderVotingHistoryTable(rounds));
+      this.displayAdminContent(i18n.t('admin_modals.voting_history.title'), this.renderVotingHistoryTable(rounds));
     } catch (error) {
-      // Simulate voting rounds data
-      const rounds = [
-        { round_id: 3, start_date: '2024-01-15', end_date: '2024-01-25', status: 'completed', participants: 127, turnout: 70 },
-        { round_id: 2, start_date: '2024-01-01', end_date: '2024-01-10', status: 'completed', participants: 89, turnout: 65 },
-        { round_id: 1, start_date: '2023-12-15', end_date: '2023-12-28', status: 'completed', participants: 156, turnout: 85 }
-      ];
-      this.displayAdminContent('Voting History', this.renderVotingHistoryTable(rounds));
+      console.error('Failed to load voting rounds:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_load_voting_history'));
     }
   }
 
@@ -2675,113 +2937,310 @@ class FundChainApp {
         <tbody>
     `;
     
-    rounds.forEach(round => {
-      const statusClass = round.status === 'completed' ? 'success' : 'warning';
-      const statusText = round.status === 'completed' ? i18n.t('admin_modals.voting_history.completed') : round.status;
-      html += `
-        <tr>
-          <td><strong>#${round.round_id}</strong></td>
-          <td>${round.start_date}</td>
-          <td>${round.end_date}</td>
-          <td><span class="badge badge-${statusClass}">${statusText}</span></td>
-          <td>${round.participants}</td>
-          <td>${round.turnout}%</td>
-          <td class="action-buttons">
-            <button class="btn btn-xs btn-secondary" onclick="app.viewRoundDetails(${round.round_id})">${i18n.t('admin_modals.voting_history.view_details')}</button>
-            <button class="btn btn-xs btn-secondary" onclick="app.exportRoundResults(${round.round_id})">${i18n.t('admin_modals.voting_history.export')}</button>
-          </td>
-        </tr>
-      `;
-    });
+    if (rounds && rounds.length > 0) {
+      rounds.forEach(round => {
+        const statusClass = round.status === 'completed' ? 'success' : 'warning';
+        const statusText = round.status === 'completed' ? i18n.t('admin_modals.voting_history.completed') : round.status;
+        html += `
+          <tr>
+            <td><strong>#${round.round_id}</strong></td>
+            <td>${round.start_date || 'Не указано'}</td>
+            <td>${round.end_date || 'Не указано'}</td>
+            <td><span class="badge badge-${statusClass}">${statusText}</span></td>
+            <td>${round.participants || 0}</td>
+            <td>${round.turnout || 0}%</td>
+            <td class="action-buttons">
+              <button class="btn btn-xs btn-secondary" onclick="app.viewRoundDetails(${round.round_id})">${i18n.t('admin_modals.voting_history.view_details')}</button>
+              <button class="btn btn-xs btn-secondary" onclick="app.exportRoundResults(${round.round_id})">${i18n.t('admin_modals.voting_history.export')}</button>
+            </td>
+          </tr>
+        `;
+      });
+    } else {
+      html += '<tr><td colspan="7" class="text-center text-muted">' + i18n.t('admin_modals.voting_history.no_rounds_found') + '</td></tr>';
+    }
     
     html += '</tbody></table>';
     return html;
   }
 
-  async showSystemConfig() {
-    const modalTitle = i18n.t('admin_modals.system_config.title');
-    const modalBody = `
-      <div class="form-section">
-        <h5>${i18n.t('admin_modals.system_config.smart_contract_addresses')}</h5>
-        <div class="form-group">
-          <label for="treasury-address">${i18n.t('admin_modals.system_config.treasury_contract')}</label>
-          <input type="text" class="form-control" id="treasury-address" value="0x..." readonly>
-        </div>
-        <div class="form-group">
-          <label for="ballot-address">${i18n.t('admin_modals.system_config.ballot_contract')}</label>
-          <input type="text" class="form-control" id="ballot-address" value="0x..." readonly>
-        </div>
-        <div class="form-group">
-          <label for="sbt-address">${i18n.t('admin_modals.system_config.sbt_contract')}</label>
-          <input type="text" class="form-control" id="sbt-address" value="0x..." readonly>
-        </div>
+  // Display treasury transactions
+  displayTreasuryTransactions(transactions) {
+    const container = document.getElementById('treasury-transactions');
+    if (!container) return;
+    
+    if (!transactions || transactions.length === 0) {
+      container.innerHTML = '<div class="text-center text-muted">' + i18n.t('treasury.no_recent_transactions') + '</div>';
+      return;
+    }
+    
+    // Create table for transactions
+    let html = `
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>${i18n.t('transaction.hash')}</th>
+              <th>${i18n.t('transaction.type')}</th>
+              <th>${i18n.t('transaction.amount')}</th>
+              <th>${i18n.t('transaction.time')}</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+    
+    transactions.forEach(tx => {
+      const timestamp = new Date(tx.timestamp).toLocaleString();
+      html += `
+        <tr>
+          <td>${tx.hash ? tx.hash.substring(0, 10) + '...' : 'Неизвестно'}</td>
+          <td>${tx.type || 'Неизвестно'}</td>
+          <td>${this.formatETH(tx.amount)} ETH</td>
+          <td>${timestamp}</td>
+        </tr>
+      `;
+    });
+    
+    html += `
+          </tbody>
+        </table>
       </div>
-      
-      <div class="form-section">
-        <h5>${i18n.t('admin_modals.system_config.system_parameters')}</h5>
-        <div class="form-row">
+    `;
+    
+    container.innerHTML = html;
+  }
+
+  async showSystemConfig() {
+    try {
+      const config = await this.fetchJSON('/admin/system/config');
+      const modalTitle = i18n.t('admin_modals.system_config.title');
+      const modalBody = `
+        <div class="form-section">
+          <h5>${i18n.t('admin_modals.system_config.smart_contract_addresses')}</h5>
           <div class="form-group">
-            <label for="k-anonymity">${i18n.t('admin_modals.system_config.k_anonymity_threshold')}</label>
-            <input type="number" class="form-control" id="k-anonymity" value="5" min="2">
+            <label for="treasury-address">${i18n.t('admin_modals.system_config.treasury_contract')}</label>
+            <input type="text" class="form-control" id="treasury-address" value="${config.treasury_address || '0x...'}" readonly>
           </div>
           <div class="form-group">
-            <label for="max-export">${i18n.t('admin_modals.system_config.max_export_records')}</label>
-            <input type="number" class="form-control" id="max-export" value="10000" min="100">
+            <label for="ballot-address">${i18n.t('admin_modals.system_config.ballot_contract')}</label>
+            <input type="text" class="form-control" id="ballot-address" value="${config.ballot_address || '0x...'}" readonly>
+          </div>
+          <div class="form-group">
+            <label for="sbt-address">${i18n.t('admin_modals.system_config.sbt_contract')}</label>
+            <input type="text" class="form-control" id="sbt-address" value="${config.sbt_address || '0x...'}" readonly>
           </div>
         </div>
         
-        <div class="form-row">
-          <div class="form-group">
-            <label for="default-commit-duration">${i18n.t('admin_modals.system_config.default_commit_duration')}</label>
-            <input type="number" class="form-control" id="default-commit-duration" value="168" min="1">
+        <div class="form-section">
+          <h5>${i18n.t('admin_modals.system_config.system_parameters')}</h5>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="k-anonymity">${i18n.t('admin_modals.system_config.k_anonymity_threshold')}</label>
+              <input type="number" class="form-control" id="k-anonymity" value="${config.k_anonymity_threshold || 5}" min="2">
+            </div>
+            <div class="form-group">
+              <label for="max-export">${i18n.t('admin_modals.system_config.max_export_records')}</label>
+              <input type="number" class="form-control" id="max-export" value="${config.max_export_records || 10000}" min="100">
+            </div>
           </div>
-          <div class="form-group">
-            <label for="default-reveal-duration">${i18n.t('admin_modals.system_config.default_reveal_duration')}</label>
-            <input type="number" class="form-control" id="default-reveal-duration" value="72" min="1">
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="default-commit-duration">${i18n.t('admin_modals.system_config.default_commit_duration')}</label>
+              <input type="number" class="form-control" id="default-commit-duration" value="${config.default_commit_duration || 168}" min="1">
+            </div>
+            <div class="form-group">
+              <label for="default-reveal-duration">${i18n.t('admin_modals.system_config.default_reveal_duration')}</label>
+              <input type="number" class="form-control" id="default-reveal-duration" value="${config.default_reveal_duration || 72}" min="1">
+            </div>
           </div>
         </div>
-      </div>
+        
+        <div class="form-section">
+          <h5>${i18n.t('admin_modals.system_config.security_settings')}</h5>
+          <div class="checkbox-group">
+            <input type="checkbox" id="enable-privacy-filters" ${config.enable_privacy_filters ? 'checked' : ''}>
+            <label for="enable-privacy-filters">${i18n.t('admin_modals.system_config.enable_privacy_filters')}</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="require-sbt-voting" ${config.require_sbt_voting ? 'checked' : ''}>
+            <label for="enable-privacy-filters">${i18n.t('admin_modals.system_config.require_sbt_voting')}</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="enable-auto-finalization" ${config.enable_auto_finalization ? 'checked' : ''}>
+            <label for="enable-auto-finalization">${i18n.t('admin_modals.system_config.enable_auto_finalization')}</label>
+          </div>
+        </div>
+      `;
       
-      <div class="form-section">
-        <h5>${i18n.t('admin_modals.system_config.security_settings')}</h5>
-        <div class="checkbox-group">
-          <input type="checkbox" id="enable-privacy-filters" checked>
-          <label for="enable-privacy-filters">${i18n.t('admin_modals.system_config.enable_privacy_filters')}</label>
-        </div>
-        <div class="checkbox-group">
-          <input type="checkbox" id="require-sbt-voting" checked>
-          <label for="require-sbt-voting">${i18n.t('admin_modals.system_config.require_sbt_voting')}</label>
-        </div>
-        <div class="checkbox-group">
-          <input type="checkbox" id="enable-auto-finalization">
-          <label for="enable-auto-finalization">${i18n.t('admin_modals.system_config.enable_auto_finalization')}</label>
-        </div>
-      </div>
-    `;
-    
-    const modalFooter = `
-      <button class="btn btn-secondary" onclick="app.closeModal()">${i18n.t('buttons.cancel')}</button>
-      <button class="btn btn-primary" onclick="app.saveSystemConfig()">${i18n.t('admin_modals.system_config.save_configuration')}</button>
-    `;
-    
-    this.showModal(modalTitle, modalBody, modalFooter);
+      const modalFooter = `
+        <button class="btn btn-secondary" onclick="app.closeModal()">${i18n.t('buttons.cancel')}</button>
+        <button class="btn btn-primary" onclick="app.saveSystemConfig()">${i18n.t('admin_modals.system_config.save_configuration')}</button>
+      `;
+      
+      this.showModal(modalTitle, modalBody, modalFooter);
+    } catch (error) {
+      console.error('Failed to load system config:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_load_system_config'));
+    }
   }
 
   displayAdminContent(title, content) {
     document.getElementById('admin-content-title').textContent = title;
     document.getElementById('admin-content-body').innerHTML = content;
   }
+  
+  // Helper functions for rendering admin tables
+  renderWeightsManagementTable(members) {
+    let html = `
+      <div class="mb-3">
+        <button class="btn btn-primary" onclick="app.bulkUpdateWeights()">${i18n.t('admin_modals.member_management.bulk_update_weights')}</button>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>${i18n.t('admin_modals.member_management.address')}</th>
+            <th>${i18n.t('admin_modals.member_management.sbt_weight')}</th>
+            <th>${i18n.t('admin_modals.member_management.total_donated')}</th>
+            <th>${i18n.t('admin_modals.member_management.voting_power')}</th>
+            <th>${i18n.t('admin_modals.member_management.actions')}</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+    members.forEach(member => {
+      html += `
+        <tr>
+          <td>${member.address}</td>
+          <td>${member.sbtWeight}</td>
+          <td>${member.totalDonated}</td>
+          <td>${member.votingPower}</td>
+          <td>
+            <button class="btn btn-warning" onclick="app.editMember('${member.address}')">${i18n.t('admin_modals.member_management.edit')}</button>
+            <button class="btn btn-danger" onclick="app.deleteMember('${member.address}')">${i18n.t('admin_modals.member_management.delete')}</button>
+          </td>
+        </tr>
+      `;
+    });
+    html += '</tbody></table>';
+    this.displayAdminContent(i18n.t('admin_modals.member_management.title'), html);
+  }
 
-  // Функция для обновления интерфейса голосования
+  renderCategoriesManagementTable(categories) {
+    let html = `
+      <div class="mb-3">
+        <button class="btn btn-primary" onclick="app.manageCategories()">' + i18n.t('admin.manage_categories') + '</button>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>${i18n.t('admin_modals.manage_categories.category_name')}</th>
+            <th>${i18n.t('admin_modals.manage_categories.active_projects')}</th>
+            <th>${i18n.t('admin_modals.manage_categories.max_limit')}</th>
+            <th>${i18n.t('admin_modals.manage_categories.actions')}</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+    
+    if (members && members.length > 0) {
+      members.forEach(member => {
+        html += `
+          <tr>
+            <td><code>${member.address}</code></td>
+            <td>${(member.sbt_weight || 0).toFixed(3)}</td>
+            <td>${this.formatETH(member.total_donated || 0)} ETH</td>
+            <td>${(member.voting_power || 0).toFixed(3)}</td>
+            <td>
+              <button class="btn btn-xs btn-secondary" onclick="app.updateMemberWeight('${member.address}')">${i18n.t('admin_modals.member_management.update_weight')}</button>
+            </td>
+          </tr>
+        `;
+      });
+    } else {
+      html += '<tr><td colspan="5" class="text-center text-muted">' + i18n.t('admin_modals.member_management.no_members_found') + '</td></tr>';
+    }
+    
+    html += '</tbody></table>';
+    return html;
+  }
+  
+  renderVotingConfigForm(config) {
+    return `
+      <div class="form-section">
+        <h5>${i18n.t('admin_modals.system_config.voting_configuration')}</h5>
+        <form id="voting-config-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="default-commit-duration">${i18n.t('admin_modals.system_config.default_commit_duration')}</label>
+              <input type="number" class="form-control" id="default-commit-duration" value="${config?.default_commit_duration || 168}" min="1">
+            </div>
+            <div class="form-group">
+              <label for="default-reveal-duration">${i18n.t('admin_modals.system_config.default_reveal_duration')}</label>
+              <input type="number" class="form-control" id="default-reveal-duration" value="${config?.default_reveal_duration || 72}" min="1">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="counting-method">${i18n.t('admin_modals.system_config.counting_method')}</label>
+            <select class="form-control" id="counting-method">
+              <option value="weighted" ${config?.counting_method === 'weighted' ? 'selected' : ''}>${i18n.t('admin_modals.system_config.weighted_voting')}</option>
+              <option value="borda" ${config?.counting_method === 'borda' ? 'selected' : ''}>${i18n.t('admin_modals.system_config.borda_count')}</option>
+            </select>
+          </div>
+          <button type="button" class="btn btn-primary" onclick="app.saveVotingConfig()">${i18n.t('admin_modals.system_config.save_configuration')}</button>
+        </form>
+      </div>
+    `;
+  }
+  
+  renderLogsTable(logs) {
+    let html = `
+      <div class="mb-3">
+        <button class="btn btn-secondary" onclick="app.refreshLogs()">${i18n.t('refresh_logs')}</button>
+        <button class="btn btn-secondary ml-2" onclick="app.exportLogs()">${i18n.t('export_logs')}</button>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>${i18n.t('time')}</th>
+            <th>${i18n.t('level')}</th>
+            <th>${i18n.t('module')}</th>
+            <th>${i18n.t('message')}</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+    
+    if (logs && logs.length > 0) {
+      logs.forEach(log => {
+        const levelClass = log.level === 'ERROR' ? 'danger' : log.level === 'WARNING' ? 'warning' : 'info';
+        html += `
+          <tr>
+            <td>${new Date(log.timestamp).toLocaleString()}</td>
+            <td><span class="badge badge-${levelClass}">${log.level}</span></td>
+            <td>${log.module || 'Неизвестно'}</td>
+            <td>${this.escapeHtml(log.message)}</td>
+          </tr>
+        `;
+      });
+    } else {
+      html += '<tr><td colspan="4" class="text-center text-muted">' + i18n.t('logs_not_found') + '</td></tr>';
+    }
+    
+    html += '</tbody></table>';
+    return html;
+  }
+
+  // Helper function to refresh the voting interface
   async refreshVotingSection() {
     try {
       console.log('Refreshing voting section...');
       
-      // Обновляем информацию о текущем раунде
+      // Update current round information
       const currentRound = await this.fetchJSON('/votes/current-round');
       this.displayCurrentVotingRound(currentRound);
       
-      // Обновляем результаты голосования
+      // Update voting results
       const votingResults = await this.fetchJSON('/votes/priority/summary');
       this.displayVotingResults(votingResults);
       
@@ -2790,8 +3249,332 @@ class FundChainApp {
       console.error('Error refreshing voting section:', error);
     }
   }
+  
+  // Helper functions for forms
+  showEditCategoryForm(categoryName, categoryData) {
+    const modalTitle = i18n.t('edit_category_title', { categoryName: categoryName });
+    const modalBody = `
+      <form id="edit-category-form">
+        <div class="form-group">
+          <label for="edit-category-name">${i18n.t('admin_modals.manage_categories.category_name')}</label>
+          <input type="text" class="form-control" id="edit-category-name" value="${categoryName}" readonly>
+        </div>
+        <div class="form-group">
+          <label for="edit-category-limit">${i18n.t('admin_modals.manage_categories.max_active_projects')}</label>
+          <input type="number" class="form-control" id="edit-category-limit" value="${categoryData.max_limit || 10}" min="1">
+        </div>
+      </form>
+    `;
+    
+    const modalFooter = `
+      <button class="btn btn-secondary" onclick="app.closeModal()">${i18n.t('buttons.cancel')}</button>
+      <button class="btn btn-primary" onclick="app.saveEditCategory('${categoryName}')">${i18n.t('buttons.save')}</button>
+    `;
+    
+    this.showModal(modalTitle, modalBody, modalFooter);
+  }
+  
+  showEditProjectForm(project) {
+    const modalTitle = i18n.t('edit_project_title', { projectName: project.name });
+    const modalBody = `
+      <form id="edit-project-form">
+        <div class="form-group">
+          <label for="edit-project-name">${i18n.t('modal.project_name')}</label>
+          <input type="text" class="form-control" id="edit-project-name" value="${this.escapeHtml(project.name)}" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-project-description">${i18n.t('modal.description')}</label>
+          <textarea class="form-control" id="edit-project-description" required>${this.escapeHtml(project.description)}</textarea>
+        </div>
+        <div class="form-group">
+          <label for="edit-project-category">${i18n.t('modal.category')}</label>
+          <input type="text" class="form-control" id="edit-project-category" value="${this.escapeHtml(project.category)}" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-project-target">${i18n.t('modal.target_amount_eth')}</label>
+            <input type="number" class="form-control" id="edit-project-target" value="${project.target}" step="0.01" min="0.01" required>
+          </div>
+          <div class="form-group">
+            <label for="edit-project-soft-cap">${i18n.t('modal.soft_cap_eth')}</label>
+            <input type="number" class="form-control" id="edit-project-soft-cap" value="${project.soft_cap}" step="0.01" min="0.01" required>
+          </div>
+        </div>
+      </form>
+    `;
+    
+    const modalFooter = `
+      <button class="btn btn-secondary" onclick="app.closeModal()">${i18n.t('buttons.cancel')}</button>
+      <button class="btn btn-primary" onclick="app.saveEditProject('${project.id}')">${i18n.t('buttons.save')}</button>
+    `;
+    
+    this.showModal(modalTitle, modalBody, modalFooter);
+  }
+  
+  showUpdateMemberWeightForm(member) {
+    const modalTitle = i18n.t('update_member_weight_title', { address: member.address.substring(0, 8) });
+    const modalBody = `
+      <form id="update-weight-form">
+        <div class="form-group">
+          <label for="new-weight">${i18n.t('new_sbt_weight')}</label>
+          <input type="number" class="form-control" id="new-weight" value="${member.sbt_weight || 0}" step="0.001" min="0">
+        </div>
+        <div class="form-group">
+          <label for="weight-reason">${i18n.t('weight_change_reason')}</label>
+          <textarea class="form-control" id="weight-reason" placeholder="${i18n.t('weight_change_reason_placeholder')}"></textarea>
+        </div>
+      </form>
+    `;
+    
+    const modalFooter = `
+      <button class="btn btn-secondary" onclick="app.closeModal()">${i18n.t('buttons.cancel')}</button>
+      <button class="btn btn-primary" onclick="app.saveMemberWeight('${member.address}')">${i18n.t('admin_modals.member_management.update_weight')}</button>
+    `;
+    
+    this.showModal(modalTitle, modalBody, modalFooter);
+  }
+  
+  showAddProjectForm() {
+    const modalTitle = i18n.t('admin_modals.project_management.add_project');
+    const modalBody = `
+      <form id="add-project-form">
+        <div class="form-group">
+          <label for="add-project-name">${i18n.t('modal.project_name')}</label>
+          <input type="text" class="form-control" id="add-project-name" required>
+        </div>
+        <div class="form-group">
+          <label for="add-project-description">${i18n.t('modal.description')}</label>
+          <textarea class="form-control" id="add-project-description" required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="add-project-category">${i18n.t('modal.category')}</label>
+          <input type="text" class="form-control" id="add-project-category" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="add-project-target">${i18n.t('modal.target_amount_eth')}</label>
+            <input type="number" class="form-control" id="add-project-target" step="0.01" min="0.01" required>
+          </div>
+          <div class="form-group">
+            <label for="add-project-soft-cap">${i18n.t('modal.soft_cap_eth')}</label>
+            <input type="number" class="form-control" id="add-project-soft-cap" step="0.01" min="0.01" required>
+          </div>
+        </div>
+      </form>
+    `;
+    
+    const modalFooter = `
+      <button class="btn btn-secondary" onclick="app.closeModal()">${i18n.t('buttons.cancel')}</button>
+      <button class="btn btn-primary" onclick="app.addProject()">${i18n.t('buttons.add')}</button>
+    `;
+    
+    this.showModal(modalTitle, modalBody, modalFooter);
+  }
+  
+  showAddMemberForm() {
+    const modalTitle = i18n.t('admin_modals.member_management.add_member');
+    const modalBody = `
+      <form id="add-member-form">
+        <div class="form-group">
+          <label for="add-member-address">${i18n.t('modal.ens_or_wallet_address')}</label>
+          <input type="text" class="form-control" id="add-member-address" required>
+        </div>
+        <div class="form-group">
+          <label for="add-member-role">${i18n.t('modal.role')}</label>
+          <select class="form-control" id="add-member-role" required>
+            <option value="admin">${i18n.t('roles.admin')}</option>
+            <option value="user">${i18n.t('roles.user')}</option>
+          </select>
+        </div>
+      </form>
+    `;
+    
+    const modalFooter = `
+      <button class="btn btn-secondary" onclick="app.closeModal()">${i18n.t('buttons.cancel')}</button>
+      <button class="btn btn-primary" onclick="app.addMember()">${i18n.t('buttons.add')}</button>
+    `;
+    
+    this.showModal(modalTitle, modalBody, modalFooter);
+  }
+  
+  showEditMemberForm(member) {
+    const modalTitle = i18n.t('admin_modals.member_management.edit_member');
+    const modalBody = `
+      <form id="edit-member-form">
+        <div class="form-group">
+          <label for="edit-member-address">${i18n.t('modal.ens_or_wallet_address')}</label>
+          <input type="text" class="form-control" id="edit-member-address" value="${this.escapeHtml(member.address)}" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-member-role">${i18n.t('modal.role')}</label>
+          <select class="form-control" id="edit-member-role" required>
+            <option value="admin"${member.role === 'admin' ? ' selected' : ''}>${i18n.t('roles.admin')}</option>
+            <option value="user"${member.role === 'user' ? ' selected' : ''}>${i18n.t('roles.user')}</option>
+          </select>
+        </div>
+      </form>
+    `;
+    
+    const modalFooter = `
+      <button class="btn btn-secondary" onclick="app.closeModal()">${i18n.t('buttons.cancel')}</button>
+      <button class="btn btn-primary" onclick="app.saveEditMember('${member.address}')">${i18n.t('buttons.save')}</button>
+    `;
+    
+    this.showModal(modalTitle, modalBody, modalFooter);
+  }
+  
+  showSupportProjectForm(project) {
+    const modalTitle = `${i18n.t('titles.support_project')}: ${project.name}`;
+    const modalBody = `
+      <div class="alert alert-info">
+        ${i18n.t('messages.support_project')}
+      </div>
+      <div class="d-flex justify-content-between">
+        <div class="form-group">
+          <label for="supportAmount">${i18n.t('labels.support_amount')}</label>
+          <input type="number" class="form-control" id="supportAmount" placeholder="${i18n.t('placeholders.support_amount')}">
+        </div>
+        <div class="form-group">
+          <label for="supportPeriod">${i18n.t('labels.support_period')}</label>
+          <select class="form-control" id="supportPeriod">
+            <option value="1">${i18n.t('periods.month')}</option>
+            <option value="12">${i18n.t('periods.year')}</option>
+          </select>
+        </div>
+      </div>
+    `;
+    const modalFooter = `
+      <button class="btn btn-primary" onclick="app.supportProject('${project.id}')">${i18n.t('buttons.support_project')}</button>
+      <button class="btn btn-secondary" onclick="app.closeModal()">${i18n.t('buttons.close')}</button>
+    `;
+    
+    this.showModal(modalTitle, modalBody, modalFooter);
+  }
+  
+  showBulkUpdateWeightsForm(members) {
+    const modalTitle = i18n.t('bulk_update_weights_title');
+    const modalBody = `
+      <div class="alert alert-info">
+        <strong>${i18n.t('instruction')}:</strong> ${i18n.t('bulk_update_weights_instruction')}
+      </div>
+      <form id="bulk-update-weights-form">
+        <div class="form-group">
+          <label for="bulk-weight">${i18n.t('new_sbt_weight')}</label>
+          <input type="number" class="form-control" id="bulk-weight" step="0.001" min="0" value="1.0">
+        </div>
+        <div class="form-group">
+          <label for="bulk-reason">${i18n.t('weight_change_reason')}</label>
+          <textarea class="form-control" id="bulk-reason" placeholder="${i18n.t('bulk_weight_change_reason_placeholder')}"></textarea>
+        </div>
+        <div class="form-group">
+          <label>${i18n.t('select_members')}:</label>
+          <div class="member-selection">
+            ${members.map(member => `
+              <div class="checkbox-group">
+                <input type="checkbox" id="member-${member.address}" value="${member.address}" class="member-checkbox">
+                <label for="member-${member.address}">
+                  ${member.address.substring(0, 8)}... (${i18n.t('current_weight')}: ${(member.sbt_weight || 0).toFixed(3)})
+                </label>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </form>
+    `;
+    
+    const modalFooter = `
+      <button class="btn btn-secondary" onclick="app.closeModal()">${i18n.t('buttons.cancel')}</button>
+      <button class="btn btn-primary" onclick="app.saveBulkWeights()">${i18n.t('update_weights')}</button>
+    `;
+    
+    this.showModal(modalTitle, modalBody, modalFooter);
+  }
+  
+  showRoundDetailsModal(roundDetails) {
+    const modalTitle = i18n.t('round_details_title', { roundId: roundDetails.round_id });
+    const modalBody = `
+      <div class="round-details">
+        <div class="form-section">
+          <h5>${i18n.t('basic_information')}</h5>
+          <div class="details-grid">
+            <div class="detail-item">
+              <label>${i18n.t('status')}:</label>
+              <span class="badge badge-${roundDetails.status === 'completed' ? 'success' : 'warning'}">${roundDetails.status}</span>
+            </div>
+            <div class="detail-item">
+              <label>${i18n.t('start_date')}:</label>
+              <span>${new Date(roundDetails.start_date).toLocaleString()}</span>
+            </div>
+            <div class="detail-item">
+              <label>${i18n.t('end_date')}:</label>
+              <span>${new Date(roundDetails.end_date).toLocaleString()}</span>
+            </div>
+            <div class="detail-item">
+              <label>${i18n.t('participants')}:</label>
+              <span>${roundDetails.participants || 0}</span>
+            </div>
+            <div class="detail-item">
+              <label>${i18n.t('turnout')}:</label>
+              <span>${roundDetails.turnout || 0}%</span>
+            </div>
+          </div>
+        </div>
+        
+        ${roundDetails.projects ? `
+          <div class="form-section">
+            <h5>${i18n.t('projects_in_voting')}</h5>
+            <div class="projects-list">
+              ${roundDetails.projects.map(project => `
+                <div class="project-item">
+                  <strong>${this.escapeHtml(project.name)}</strong>
+                  <span class="badge badge-info">${this.escapeHtml(project.category)}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+    
+    const modalFooter = `
+      <button class="btn btn-secondary" onclick="app.closeModal()">${i18n.t('buttons.close')}</button>
+      <button class="btn btn-primary" onclick="app.exportRoundResults(${roundDetails.round_id})">${i18n.t('export_results')}</button>
+    `;
+    
+    this.showModal(modalTitle, modalBody, modalFooter);
+  }
 
-  // Placeholder functions for additional admin actions
+  async editCategory(categoryName) {
+    try {
+      const response = await this.fetchJSON(`/admin/categories/${encodeURIComponent(categoryName)}`);
+      // Show edit form with current data
+      this.showEditCategoryForm(categoryName, response);
+    } catch (error) {
+      console.error('Failed to fetch category data:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_load_category_data'));
+    }
+  }
+
+  async deleteCategory(categoryName) {
+    const confirmMessage = `${i18n.t('admin_modals.messages.delete_category_confirm')} "${categoryName}"?`;
+    
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+    
+    try {
+      await this.fetchJSON(`/admin/categories/${encodeURIComponent(categoryName)}`, {
+        method: 'DELETE'
+      });
+      
+      this.showSuccess(i18n.t('admin_modals.messages.category_deleted_successfully', { name: categoryName }));
+      this.manageCategories();
+    } catch (error) {
+      console.error('Failed to delete category:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_delete_category') + ': ' + error.message);
+    }
+  }
+
   async addCategory() {
     const name = document.getElementById('new-category-name').value;
     const limit = document.getElementById('new-category-limit').value;
@@ -2801,7 +3584,27 @@ class FundChainApp {
       return;
     }
     
-    alert(`${i18n.t('admin_modals.messages.simulated_actions.add_category')} "${name}" ${i18n.t('admin_modals.messages.simulated_actions.with_limit')} ${limit} ${i18n.t('admin_modals.messages.simulated_actions.simulated')}`);
+    try {
+      const response = await this.fetchJSON('/admin/categories', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: name,
+          max_limit: parseInt(limit) || 10
+        })
+      });
+      
+      this.showSuccess(i18n.t('admin_modals.messages.category_added_successfully', { name: name }));
+      
+      // Clear the form
+      document.getElementById('new-category-name').value = '';
+      document.getElementById('new-category-limit').value = '10';
+      
+      // Refresh the categories modal
+      this.manageCategories();
+    } catch (error) {
+      console.error('Failed to add category:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_add_category') + ': ' + error.message);
+    }
   }
 
   async submitMintSBT() {
@@ -2810,12 +3613,32 @@ class FundChainApp {
     const weightMode = document.getElementById('weight-mode').value;
     
     if (!recipient || !donationAmount) {
-      this.showError(i18n.t('admin_modals.messages.fill_required_fields'));
+      this.showError(i18n.t('validation.fill_required_fields'));
       return;
     }
     
-    alert(`${i18n.t('admin_modals.messages.simulated_actions.mint_sbt_for')} ${recipient} ${i18n.t('admin_modals.messages.simulated_actions.with_amount')} ${donationAmount} ETH (${weightMode} ${i18n.t('admin_modals.messages.simulated_actions.weight')}) ${i18n.t('admin_modals.messages.simulated_actions.simulated')}`);
-    this.closeModal();
+    try {
+      const response = await this.fetchJSON('/admin/sbt/mint', {
+        method: 'POST',
+        body: JSON.stringify({
+          recipient_address: recipient,
+          donation_amount: parseFloat(donationAmount),
+          weight_mode: weightMode
+        })
+      });
+      
+      this.showSuccess(i18n.t('admin_modals.messages.sbt_creation_success'));
+      this.closeModal();
+      
+      // Refresh members list if on members admin page
+      if (this.currentSection === 'admin') {
+        this.showMembersAdmin();
+      }
+      
+    } catch (error) {
+      console.error('Failed to mint SBT:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_create_sbt') + ': ' + error.message);
+    }
   }
 
   async submitStartVoting() {
@@ -2823,23 +3646,23 @@ class FundChainApp {
     const commitDuration = document.getElementById('commit-duration')?.value || 168;
     const revealDuration = document.getElementById('reveal-duration')?.value || 72;
     const countingMethod = document.getElementById('counting-method')?.value || 'borda';
-    const autoCancellation = document.getElementById('auto-cancellation')?.checked || false;
-    const cancellationThreshold = document.getElementById('cancellation-threshold')?.value || 25;
+    const autoCancellation = document.getElementById('enable-auto-cancellation')?.checked || false;
+    const cancellationThreshold = document.getElementById('cancellation-threshold')?.value || 66;
     
     if (selectedProjects.length === 0) {
-      this.showError(i18n.t('admin_modals.messages.select_at_least_one_project'));
+      this.showError(i18n.t('validation.select_at_least_one_project'));
       return;
     }
     
     try {
-      // Показываем индикатор загрузки
+      // Show loading indicator
       const submitButton = document.querySelector('button[onclick="app.submitStartVoting()"]');
       if (submitButton) {
         submitButton.disabled = true;
-        submitButton.textContent = 'Запуск...';
+        submitButton.textContent = i18n.t('starting');
       }
       
-      // Формируем данные для отправки
+      // Prepare data to send
       const votingData = {
         projects: selectedProjects,
         commit_duration_hours: parseInt(commitDuration),
@@ -2849,57 +3672,33 @@ class FundChainApp {
         auto_cancellation_threshold: parseInt(cancellationThreshold)
       };
       
-      console.log('Starting voting round with data:', votingData);
+      // Try to make API call
+      const response = await this.fetchJSON('/admin/voting/start-round', {
+        method: 'POST',
+        body: JSON.stringify(votingData)
+      });
       
-      // Пытаемся сделать API вызов (если эндпоинт существует)
-      let response;
-      try {
-        console.log('Making API call to /admin/voting/start-round with data:', votingData);
-        
-        response = await this.fetchJSON('/admin/voting/start-round', {
-          method: 'POST',
-          body: JSON.stringify(votingData)
-        });
-        
-        console.log('API call successful, response:', response);
-      } catch (apiError) {
-        // Если API эндпоинт не найден, симулируем успешный запуск
-        console.warn('API endpoint not found or error occurred:', apiError);
-        console.log('Full error details:', {
-          message: apiError.message,
-          stack: apiError.stack,
-          lastResponse: this.lastResponse
-        });
-        
-        response = {
-          status: 'success',
-          message: 'Раунд голосования запущен (симуляция)',
-          round_id: 4,
-          projects: selectedProjects
-        };
-      }
-      
-      // Показываем результат
+      // Show result
       if (response.status === 'success' || response.round_id) {
-        this.showSuccess(`Раунд голосования #${response.round_id || 4} успешно запущен с ${selectedProjects.length} проектами!`);
+        this.showSuccess(i18n.t('voting.round_started_successfully', { roundId: response.round_id || 'Неизвестно', count: selectedProjects.length }));
         
-        // Обновляем интерфейс голосования
+        // Refresh voting interface
         await this.refreshVotingSection();
         
-        // Закрываем модальное окно
+        // Close modal
         this.closeModal();
         
-        // Переключаемся на раздел голосования для демонстрации
+        // Switch to voting section
         this.switchSection('voting');
       } else {
-        throw new Error(response.message || 'Неизвестная ошибка');
+        throw new Error(response.message || i18n.t('unknown_error'));
       }
       
     } catch (error) {
       console.error('Error starting voting round:', error);
-      this.showError(`Ошибка запуска раунда голосования: ${error.message}`);
+      this.showError(i18n.t('admin_modals.messages.failed_to_start_voting_round') + ': ' + error.message);
     } finally {
-      // Восстанавливаем кнопку
+      // Restore button
       const submitButton = document.querySelector('button[onclick="app.submitStartVoting()"]');
       if (submitButton) {
         submitButton.disabled = false;
@@ -2908,58 +3707,416 @@ class FundChainApp {
     }
   }
 
-  async manageWeights() { alert(i18n.t('admin_modals.messages.weight_management_interface_simulated')); }
-  async showVotingConfig() { alert(i18n.t('admin_modals.messages.voting_configuration_interface_simulated')); }
-  async showLogsAdmin() { alert(i18n.t('admin_modals.messages.system_logs_interface_simulated')); }
-  async editProject(id) { alert(i18n.t('admin_modals.messages.edit_project_simulated').replace('{id}', id)); }
-  async pauseProject(id) { alert(i18n.t('admin_modals.messages.pause_project_simulated').replace('{id}', id)); }
-  async cancelProject(id) { alert(i18n.t('admin_modals.messages.cancel_project_simulated').replace('{id}', id)); }
-  async updateMemberWeight(address) { alert(i18n.t('admin_modals.messages.update_member_weight_simulated').replace('{address}', address)); }
-  async toggleMemberStatus(address) { alert(i18n.t('admin_modals.messages.toggle_member_status_simulated').replace('{address}', address)); }
-  async viewRoundDetails(roundId) { alert(i18n.t('admin_modals.messages.view_round_details_simulated').replace('{roundId}', roundId)); }
-  async exportRoundResults(roundId) { alert(i18n.t('admin_modals.messages.export_round_results_simulated').replace('{roundId}', roundId)); }
-  async saveSystemConfig() { alert(i18n.t('admin_modals.messages.simulated_actions.save_system_configuration')); this.closeModal(); }
+  async manageWeights() { 
+    try {
+      const members = await this.fetchJSON('/members?limit=100');
+      this.displayAdminContent(i18n.t('admin_modals.member_management.title'), this.renderWeightsManagementTable(members));
+    } catch (error) {
+      console.error('Failed to load members for weight management:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_load_members_for_weight_management'));
+    }
+  }
   
-  // Reset voting status for current user (for testing)
+  async bulkUpdateWeights() {
+    try {
+      const members = await this.fetchJSON('/members?limit=100');
+      this.showBulkUpdateWeightsForm(members);
+    } catch (error) {
+      console.error('Failed to load members for bulk update:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_load_members_for_bulk_update'));
+    }
+  }
+  
+  async showVotingConfig() { 
+    try {
+      const config = await this.fetchJSON('/admin/voting/config');
+      this.displayAdminContent(i18n.t('admin_modals.system_config.title'), this.renderVotingConfigForm(config));
+    } catch (error) {
+      console.error('Failed to load voting config:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_load_voting_config'));
+    }
+  }
+  
+  async showLogsAdmin() { 
+    try {
+      const logs = await this.fetchJSON('/admin/logs?limit=100');
+      this.displayAdminContent(i18n.t('system_logs'), this.renderLogsTable(logs));
+    } catch (error) {
+      console.error('Failed to load system logs:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_load_system_logs'));
+    }
+  }
+  // Helper function to get project name by ID
+  getProjectNameById(id) {
+    // Try to find project name in table headers
+    const adminContentBody = document.getElementById('admin-content-body');
+    if (adminContentBody) {
+      const projectRow = adminContentBody.querySelector(`button[onclick*="'${id}'"]`);
+      if (projectRow) {
+        const rowElement = projectRow.closest('tr');
+        if (rowElement) {
+          const nameCell = rowElement.querySelector('td:first-child strong');
+          if (nameCell) {
+            return nameCell.textContent;
+          }
+        }
+      }
+    }
+    
+    // If not found, return shortened ID
+    return id.length > 20 ? id.substring(0, 20) + '...' : id;
+  }
+
+  async editProject(id) { 
+    try {
+      const project = await this.fetchJSON(`/projects/${id}`);
+      this.showEditProjectForm(project);
+    } catch (error) {
+      console.error('Failed to fetch project data:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_load_project_data'));
+    }
+  }
+  
+  async pauseProject(id) { 
+    try {
+      const response = await this.fetchJSON(`/admin/projects/${id}/pause`, {
+        method: 'POST'
+      });
+      
+      this.showSuccess(i18n.t('admin_modals.messages.project_suspension_success'));
+      this.showProjectsAdmin();
+    } catch (error) {
+      console.error('Failed to pause project:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_suspend_project') + ': ' + error.message);
+    }
+  }
+  async cancelProject(id) { 
+    // Show confirmation dialog
+    const projectName = this.getProjectNameById(id);
+    const confirmMessage = i18n.t('admin_modals.project_management.confirm_cancel_project', { projectName: projectName });
+    
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+    
+    try {
+      // Send request to cancel project
+      const response = await this.fetchJSON(`/admin/projects/${id}/cancel`, {
+        method: 'POST',
+        body: JSON.stringify({
+          reason: i18n.t('admin_modals.project_management.cancelled_by_admin')
+        })
+      });
+      
+      this.showSuccess(i18n.t('admin_modals.messages.project_cancelled_successfully', { projectName: projectName }));
+      
+      // Refresh project list
+      this.showProjectsAdmin();
+      
+    } catch (error) {
+      console.error('Error canceling project:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_cancel_project') + ': ' + error.message);
+    }
+  }
+  
+  async deleteProject(id) {
+    // Show confirmation dialog
+    const projectName = this.getProjectNameById(id);
+    const confirmMessage = i18n.t('admin_modals.project_management.delete_project_confirm', { projectName: projectName });
+    
+    const userInput = prompt(confirmMessage);
+    
+    if (userInput !== 'DELETE') {
+      if (userInput !== null) { // User did not cancel dialog
+        this.showWarning(i18n.t('admin_modals.project_management.delete_cancelled'));
+      }
+      return;
+    }
+    
+    try {
+      // Send request for complete deletion
+      const response = await this.fetchJSON(`/admin/projects/${id}`, {
+        method: 'DELETE'
+      });
+      
+      this.showSuccess(i18n.t('admin_modals.project_management.project_deleted_successfully', { projectName: projectName }));
+      
+      // Update project list
+      this.showProjectsAdmin();
+      
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      this.showError(i18n.t('admin_modals.project_management.failed_to_delete_project') + ': ' + error.message);
+    }
+  }
+  
+  async updateMemberWeight(address) { 
+    try {
+      const member = await this.fetchJSON(`/members/${address}`);
+      this.showUpdateMemberWeightForm(member);
+    } catch (error) {
+      console.error('Failed to fetch member data:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_load_member_data_for_weight_update'));
+    }
+  }
+  
+  async toggleMemberStatus(address) { 
+    try {
+      const response = await this.fetchJSON(`/admin/members/${address}/toggle-status`, {
+        method: 'POST'
+      });
+      
+      this.showSuccess(i18n.t('admin.member_status_success'));
+      this.showMembersAdmin();
+    } catch (error) {
+      console.error('Failed to toggle member status:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_toggle_member_status') + ': ' + error.message);
+    }
+  }
+  
+  async viewRoundDetails(roundId) { 
+    try {
+      const roundDetails = await this.fetchJSON(`/admin/voting/rounds/${roundId}`);
+      this.showRoundDetailsModal(roundDetails);
+    } catch (error) {
+      console.error('Failed to fetch round details:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_load_voting_round_details'));
+    }
+  }
+  
+  async exportRoundResults(roundId) { 
+    try {
+      await this.performExport(`/admin/voting/rounds/${roundId}/export`, `round_${roundId}_results`, 'csv');
+    } catch (error) {
+      console.error('Failed to export round results:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_export_round_results') + ': ' + error.message);
+    }
+  }
+  async saveSystemConfig() { 
+    try {
+      // Get data from form
+      const configData = {
+        k_anonymity_threshold: parseInt(document.getElementById('k-anonymity')?.value || '5'),
+        max_export_records: parseInt(document.getElementById('max-export')?.value || '10000'),
+        default_commit_duration: parseInt(document.getElementById('default-commit-duration')?.value || '168'),
+        default_reveal_duration: parseInt(document.getElementById('default-reveal-duration')?.value || '72'),
+        enable_privacy_filters: document.getElementById('enable-privacy-filters')?.checked || false,
+        require_sbt_voting: document.getElementById('require-sbt-voting')?.checked || false,
+        enable_auto_finalization: document.getElementById('enable-auto-finalization')?.checked || false
+      };
+      
+      const response = await this.fetchJSON('/admin/system/config', {
+        method: 'POST',
+        body: JSON.stringify(configData)
+      });
+      
+      this.showSuccess(i18n.t('admin.system_settings_success'));
+      this.closeModal();
+    } catch (error) {
+      console.error('Error saving system config:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_save_system_config') + ': ' + error.message);
+    }
+  }
+  
+  // Additional save functions
+  async saveEditCategory(categoryName) {
+    try {
+      const newLimit = parseInt(document.getElementById('edit-category-limit').value);
+      
+      const response = await this.fetchJSON(`/admin/categories/${encodeURIComponent(categoryName)}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          max_limit: newLimit
+        })
+      });
+      
+      this.showSuccess(i18n.t('admin.category_update_success'));
+      this.closeModal();
+      this.manageCategories();
+    } catch (error) {
+      console.error('Error updating category:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_update_category') + ': ' + error.message);
+    }
+  }
+  
+  async saveEditProject(projectId) {
+    try {
+      const projectData = {
+        name: document.getElementById('edit-project-name').value,
+        description: document.getElementById('edit-project-description').value,
+        category: document.getElementById('edit-project-category').value,
+        target: parseFloat(document.getElementById('edit-project-target').value),
+        soft_cap: parseFloat(document.getElementById('edit-project-soft-cap').value)
+      };
+      
+      const response = await this.fetchJSON(`/admin/projects/${projectId}`, {
+        method: 'PUT',
+        body: JSON.stringify(projectData)
+      });
+      
+      this.showSuccess(i18n.t('projects.update_success'));
+      this.closeModal();
+      this.showProjectsAdmin();
+    } catch (error) {
+      console.error('Error updating project:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_update_project') + ': ' + error.message);
+    }
+  }
+  
+  async saveMemberWeight(address) {
+    try {
+      const newWeight = parseFloat(document.getElementById('new-weight').value);
+      const reason = document.getElementById('weight-reason').value;
+      
+      const response = await this.fetchJSON(`/admin/members/${address}/weight`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          sbt_weight: newWeight,
+          reason: reason
+        })
+      });
+      
+      this.showSuccess(i18n.t('admin.member_weight_success'));
+      this.closeModal();
+      this.showMembersAdmin();
+    } catch (error) {
+      console.error('Error updating member weight:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_update_member_weight') + ': ' + error.message);
+    }
+  }
+  
+  async saveBulkWeights() {
+    try {
+      const newWeight = parseFloat(document.getElementById('bulk-weight').value);
+      const reason = document.getElementById('bulk-reason').value;
+      const selectedMembers = Array.from(document.querySelectorAll('.member-checkbox:checked')).map(cb => cb.value);
+      
+      if (selectedMembers.length === 0) {
+        this.showError(i18n.t('admin_modals.messages.select_at_least_one_member'));
+        return;
+      }
+      
+      const response = await this.fetchJSON('/admin/members/bulk-update-weights', {
+        method: 'POST',
+        body: JSON.stringify({
+          addresses: selectedMembers,
+          new_weight: newWeight,
+          reason: reason
+        })
+      });
+      
+      this.showSuccess(i18n.t('admin_modals.messages.member_weights_updated_successfully', { count: selectedMembers.length }));
+      this.closeModal();
+      this.manageWeights();
+    } catch (error) {
+      console.error('Error bulk updating weights:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_bulk_update_weights') + ': ' + error.message);
+    }
+  }
+  
+  async saveVotingConfig() {
+    try {
+      const configData = {
+        default_commit_duration: parseInt(document.getElementById('default-commit-duration').value),
+        default_reveal_duration: parseInt(document.getElementById('default-reveal-duration').value),
+        counting_method: document.getElementById('counting-method').value
+      };
+      
+      const response = await this.fetchJSON('/admin/voting/config', {
+        method: 'POST',
+        body: JSON.stringify(configData)
+      });
+      
+      this.showSuccess(i18n.t('voting.settings_success'));
+      this.closeModal();
+    } catch (error) {
+      console.error('Error saving voting config:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_save_voting_config') + ': ' + error.message);
+    }
+  }
+  
+  // Additional utility functions
+  async refreshLogs() {
+    try {
+      await this.showLogsAdmin();
+    } catch (error) {
+      console.error('Error refreshing logs:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_refresh_logs'));
+    }
+  }
+  
+  async exportLogs() {
+    try {
+      await this.performExport('/admin/logs/export', 'system_logs', 'csv');
+    } catch (error) {
+      console.error('Error exporting logs:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_export_logs'));
+    }
+  }
+  
+  // Reset voting status for current user (for admin)
   async resetVotingStatus() {
     try {
       const currentRound = await this.fetchJSON('/votes/current-round');
       if (currentRound && currentRound.round_id) {
         this.resetUserVotingStatus(currentRound.round_id);
-        alert(`Статус голосования сброшен для раунда #${currentRound.round_id}. Теперь вы можете голосовать заново.`);
+        this.showSuccess(i18n.t('voting.reset_success', { round_id: currentRound.round_id }));
       } else {
-        alert('Нет активного раунда голосования.');
+        this.showWarning(i18n.t('voting.no_active_round'));
       }
     } catch (error) {
       console.error('Error resetting voting status:', error);
-      alert('Ошибка при сбросе статуса голосования.');
+      this.showError(i18n.t('voting.reset_error'));
     }
   }
 
   async startVoting() {
-    alert(i18n.t('admin_modals.messages.start_new_voting_round_interface'));
+    try {
+      const response = await this.fetchJSON('/admin/voting/start', {
+        method: 'POST'
+      });
+      
+      this.showSuccess(i18n.t('voting.round_start_success'));
+      this.loadVotingSection();
+    } catch (error) {
+      console.error('Failed to start voting:', error);
+      this.showError(i18n.t('admin_modals.messages.failed_to_start_voting') + ': ' + error.message);
+    }
   }
 }
 
 // Global functions for onclick handlers
-window.showCreateProject = () => app.showProjectForm();
-window.loadPersonalStats = () => app.loadPersonalStats();
-window.exportTreasuryData = () => app.exportTreasuryData();
-window.exportPersonalData = () => app.exportPersonalData();
-window.showProjectForm = () => app.showProjectForm();
-window.managecategories = () => app.managecategories();
-window.mintSBT = () => app.mintSBT();
-window.manageWeights = () => app.manageWeights();
-window.startVotingRound = () => app.startVotingRound();
-window.configureVoting = () => app.configureVoting();
-window.reindexBlockchain = () => app.reindexBlockchain();
-window.startVoting = () => app.startVoting();
-window.resetVotingStatus = () => app.resetVotingStatus();
+window.showCreateProject = () => window.app.showProjectForm();
+window.loadPersonalStats = () => window.app.loadPersonalStats();
+window.exportTreasuryData = () => window.app.exportTreasuryData();
+window.exportPersonalData = () => window.app.exportPersonalData();
+window.showProjectForm = () => window.app.showProjectForm();
+window.manageCategories = () => window.app.manageCategories();
+window.mintSBT = () => window.app.showMintSBTForm();
+window.manageWeights = () => window.app.manageWeights();
+window.startVotingRound = () => window.app.showStartVotingForm();
+window.configureVoting = () => window.app.showVotingConfig();
+window.reindexBlockchain = () => window.app.reindexBlockchain();
+window.startVoting = () => window.app.startVoting();
+window.resetVotingStatus = () => window.app.resetVotingStatus();
 
 // Initialize the application
-const app = new FundChainApp();
+function initializeApp() {
+  console.log('Initializing FundChain app...');
+  window.app = new FundChainApp();
+  console.log('App object created:', window.app);
+}
+
+// Wait for DOM to be ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+  initializeApp();
+}
 
 // Handle page unload
 window.addEventListener('beforeunload', () => {
-  app.stopAutoRefresh();
+  if (window.app) {
+    window.app.stopAutoRefresh();
+  }
 });
