@@ -151,15 +151,7 @@ update_other_frontend_files() {
         log "✅ app-core.js обновлен"
     fi
     
-    # Обновляем contract-interface.js если он существует
-    if [ -f "web/contract-interface.js" ]; then
-        log "Обновление contract-interface.js..."
-        sed -i.bak -e "s/0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65/$MULTISIG_ADDRESS/g" \
-                   -e "s/0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266/$TREASURY_ADDRESS/g" \
-                   -e "s/0x70997970C51812dc3A010C7d01b50e0d17dc79C8/$PROJECTS_ADDRESS/g" \
-                   "web/contract-interface.js"
-        log "✅ contract-interface.js обновлен"
-    fi
+
 }
 
 # Создание файла конфигурации для frontend
