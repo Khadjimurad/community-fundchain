@@ -654,17 +654,17 @@ async def get_treasury_stats(
     allocation_result = await db.execute(allocation_query)
     allocation_stats = allocation_result.first()
     
-    # Get payout totals
+    # Get payout totals (only executed payouts with multisig_tx_id)
     payout_query = select(
         func.sum(Payout.amount).label('total_paid_out')
-    )
+    ).where(Payout.multisig_tx_id.isnot(None))
     
     payout_result = await db.execute(payout_query)
     payout_stats = payout_result.first()
     
-    # Get active projects count
+    # Get active projects count (including new statuses)
     active_projects_query = select(func.count(Project.id)).where(
-        Project.status.in_(["active", "funding_ready", "voting", "ready_to_payout"])
+        Project.status.in_(["active", "funding_ready", "voting", "ready_to_payout", "3", "4", "5"])
     )
     
     active_projects_result = await db.execute(active_projects_query)
@@ -674,8 +674,9 @@ async def get_treasury_stats(
     total_allocated = float(allocation_stats.total_allocated or 0)
     total_paid_out = float(payout_stats.total_paid_out or 0)
     
-    # Treasury balance = donations - payouts
-    total_balance = total_donations - total_paid_out
+    # Treasury balance = donations - allocated (not payouts)
+    # This represents the actual available balance for new allocations
+    total_balance = total_donations - total_allocated
     
     return TreasuryStatsResponse(
         total_balance=total_balance,

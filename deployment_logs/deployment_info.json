@@ -1,0 +1,65 @@
+{
+  "deployment": {
+    "timestamp": "2025-08-24T18:25:00.000Z",
+    "network": "anvil-local",
+    "chainId": 31337,
+    "blockNumber": "0",
+    "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "privateKey": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+  },
+  "contracts": {
+    "Treasury": {
+      "address": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
+      "name": "Treasury",
+      "description": "Контракт казны для управления средствами"
+    },
+    "Projects": {
+      "address": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+      "name": "Projects",
+      "description": "Контракт управления проектами"
+    },
+    "GovernanceSBT": {
+      "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+      "name": "GovernanceSBT",
+      "description": "Soulbound токен для управления"
+    },
+    "BallotCommitReveal": {
+      "address": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
+      "name": "BallotCommitReveal",
+      "description": "Контракт голосования с коммит-ривеал схемой"
+    },
+    "CommunityMultisig": {
+      "address": "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
+      "name": "CommunityMultisig",
+      "description": "Мультисиг контракт для управления сообществом"
+    }
+  },
+  "accounts": {
+    "owner1": {
+      "address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "privateKey": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+      "description": "Основной владелец"
+    },
+    "owner2": {
+      "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      "privateKey": "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
+      "description": "Второй владелец"
+    },
+    "owner3": {
+      "address": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+      "privateKey": "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a",
+      "description": "Третий владелец"
+    }
+  },
+  "configuration": {
+    "multisigRequired": 2,
+    "sbtWeightCap": 100,
+    "sbtBaseDonationUnit": "1000000000000000000",
+    "sbtMinimumDonation": "100000000000000000",
+    "defaultCommitDuration": "604800",
+    "defaultRevealDuration": "259200",
+    "defaultCancellationThreshold": 66,
+    "defaultMaxActivePerCategory": 10,
+    "globalSoftCapEnabled": false
+  }
+}

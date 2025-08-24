@@ -218,9 +218,30 @@ class FundChainApp {
       const overviewStats = await this.fetchJSON('/stats/overview');
       this.updateOverviewMetrics(overviewStats);
       
+      // Set up auto-refresh for dashboard
+      this.setupDashboardAutoRefresh();
+      
     } catch (error) {
       console.error('Failed to load dashboard:', error);
     }
+  }
+
+  // Setup automatic dashboard refresh
+  setupDashboardAutoRefresh() {
+    // Clear existing timer
+    if (this.dashboardRefreshTimer) {
+      clearInterval(this.dashboardRefreshTimer);
+    }
+    
+    // Set up new timer to refresh dashboard every 30 seconds
+    this.dashboardRefreshTimer = setInterval(async () => {
+      console.log('🔄 Auto-refreshing dashboard...');
+      try {
+        await this.loadDashboard();
+      } catch (error) {
+        console.error('Auto-refresh failed:', error);
+      }
+    }, 30000); // 30 seconds
   }
 
   // Update treasury metrics
@@ -4364,6 +4385,49 @@ class FundChainApp {
     } catch (error) {
       console.error('Failed to start voting:', error);
       this.showError(i18n.t('admin_modals.messages.failed_to_start_voting') + ': ' + error.message);
+    }
+  }
+  
+  // Get payout status badge for projects
+  getPayoutStatusBadge(project) {
+    const status = project.status;
+    const statusMap = {
+      '1': 'draft',
+      '2': 'proposed', 
+      '3': 'under_review',
+      '4': 'partially_funded',
+      '5': 'ready_to_payout',
+      '6': 'completed',
+      '7': 'cancelled',
+      'active': 'active',
+      'voting': 'voting',
+      'ready_to_payout': 'ready_to_payout',
+      'paid': 'paid',
+      'cancelled': 'cancelled'
+    };
+    
+    const displayStatus = statusMap[status] || status;
+    
+    switch (displayStatus) {
+      case 'completed':
+      case '6':
+        return '<span class="badge badge-success">Выплачено ✅</span>';
+      case 'ready_to_payout':
+      case '5':
+        return '<span class="badge badge-warning">Готово к выплате 💸</span>';
+      case 'voting':
+        return '<span class="badge badge-info">В голосовании 🗳️</span>';
+      case 'partially_funded':
+      case '4':
+        return '<span class="badge badge-primary">Частично профинансирован 📊</span>';
+      case 'under_review':
+      case '3':
+        return '<span class="badge badge-secondary">На рассмотрении 📋</span>';
+      case 'cancelled':
+      case '7':
+        return '<span class="badge badge-danger">Отменено ❌</span>';
+      default:
+        return `<span class="badge badge-secondary">${displayStatus}</span>`;
     }
   }
 }

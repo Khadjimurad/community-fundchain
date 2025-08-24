@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
 contract GovernanceSBT {
@@ -36,6 +35,16 @@ contract GovernanceSBT {
     constructor() { 
         admin = msg.sender; 
     }
+    
+    function weightOf(address who) external view returns (uint256) {
+        if (!hasToken[who]) return 0;
+        
+        if (weightMode == WeightMode.Manual || manualWeight[who] > 0) {
+            return manualWeight[who];
+        }
+        
+        return _calculateWeight(totalDonated[who]);
+    }
 
     function mint(address to, uint256 donationAmount) external {
         require(msg.sender == admin, "only admin");
@@ -60,7 +69,7 @@ contract GovernanceSBT {
         require(msg.sender == admin, "only admin");
         require(hasToken[who], "no token");
         
-        uint256 oldWeight = weightOf(who);
+        uint256 oldWeight = _calculateWeight(totalDonated[who]);
         totalDonated[who] = newTotalDonated;
         uint256 newWeight = _calculateWeight(newTotalDonated);
         
@@ -72,7 +81,7 @@ contract GovernanceSBT {
         require(hasToken[who], "no token");
         require(w <= weightCap, "weight exceeds cap");
         
-        uint256 oldWeight = weightOf(who);
+        uint256 oldWeight = _calculateWeight(totalDonated[who]);
         manualWeight[who] = w;
         
         emit WeightUpdated(who, oldWeight, w, totalDonated[who]);
@@ -99,16 +108,6 @@ contract GovernanceSBT {
         totalMembers--;
         
         emit Burned(from);
-    }
-    
-    function weightOf(address who) external view returns (uint256) {
-        if (!hasToken[who]) return 0;
-        
-        if (weightMode == WeightMode.Manual || manualWeight[who] > 0) {
-            return manualWeight[who];
-        }
-        
-        return _calculateWeight(totalDonated[who]);
     }
     
     // Internal weight calculation

@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
 interface IGovSBT {
@@ -336,5 +335,4 @@ contract BallotCommitReveal {
     function againstOf(uint256 roundId, bytes32 projectId) external view returns (uint256) { 
         return rounds[roundId].againstWeight[projectId]; 
     }
-}
 }

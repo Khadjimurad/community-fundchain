@@ -7,11 +7,12 @@ import csv
 import json
 import io
 import logging
+from sqlalchemy import select, func
 
 logger = logging.getLogger(__name__)
 
 from .database import get_db
-from .models import ProjectResponse, DonationResponse, VoteResponse, DonorStatsResponse, TreasuryStatsResponse
+from .models import ProjectResponse, DonationResponse, VoteResponse, DonorStatsResponse, TreasuryStatsResponse, Donation
 from .api import (
     list_projects, get_project, get_project_progress, get_projects_by_category,
     list_donations, get_donation, list_allocations, get_voting_summary,
@@ -613,10 +614,18 @@ async def get_overview_stats(db: AsyncSession = Depends(get_db)):
     treasury_stats = await get_treasury_stats(db)
     projects = await list_projects(status=None, category=None, limit=1000, offset=0, db=db)
     
-    # Calculate additional metrics
-    active_projects = [p for p in projects if p.status in ["active", "funding_ready", "voting"]]
-    completed_projects = [p for p in projects if p.status == "paid"]
-    pending_projects = [p for p in projects if p.status == "draft"]
+    # Calculate additional metrics with proper status mapping
+    active_projects = [p for p in projects if str(p.status) in ["active", "funding_ready", "voting", "3", "4", "5"]]
+    completed_projects = [p for p in projects if str(p.status) in ["paid", "6"]]
+    pending_projects = [p for p in projects if str(p.status) in ["draft", "1", "2"]]
+    
+    # Calculate 7-day donations
+    from datetime import datetime, timedelta
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    
+    donations_7d_query = select(func.sum(Donation.amount)).where(Donation.timestamp >= seven_days_ago)
+    donations_7d_result = await db.execute(donations_7d_query)
+    donations_7d = donations_7d_result.scalar() or 0
     
     return {
         "treasury": treasury_stats.model_dump(),
@@ -627,6 +636,7 @@ async def get_overview_stats(db: AsyncSession = Depends(get_db)):
             "pending": len(pending_projects),
             "success_rate": (len(completed_projects) / len(projects) * 100) if projects else 0
         },
+        "donations_7d": float(donations_7d),
         "latest_update": datetime.utcnow().isoformat()
     }
 

@@ -26,12 +26,15 @@ class Settings(BaseSettings):
     # Server
     host: str = Field(default="127.0.0.1", env="HOST")
     port: int = Field(default=8000, env="PORT")
+    backend_host: str = Field(default="127.0.0.1", env="HOST")
+    backend_port: int = Field(default=8000, env="PORT")
     
     # Database
     database_url: str = Field(default="sqlite+aiosqlite:///./fundchain.db", env="DATABASE_URL")
     
     # Blockchain
     rpc_url: str = Field(default="http://127.0.0.1:8545", env="RPC_URL")
+    web3_provider_uri: str = Field(default="http://127.0.0.1:8545", env="WEB3_PROVIDER_URI")
     chain_id: int = Field(default=31337, env="CHAIN_ID")
     start_block: int = Field(default=0, env="START_BLOCK")
     

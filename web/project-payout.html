@@ -275,6 +275,31 @@
                 <button id="propose-button" class="btn btn-primary" data-i18n="project_payout.step_2_content.propose_payout">Propose Payout</button>
               </div>
             </div>
+            
+            <!-- Test button to show manual form -->
+            <div class="form-group" style="margin-top: 1rem; text-align: center;">
+              <button id="test-show-form" class="btn btn-info btn-xs">Test: Show Manual Form</button>
+            </div>
+            
+            <!-- Manual Transaction ID Input Form (shown after proposal) -->
+            <div id="manual-tx-form" class="form-group" style="margin-top: 1rem; padding: 1rem; border: 1px solid var(--border-color); border-radius: 0.375rem; background: var(--bg-secondary); display: none;">
+              <h4 style="margin-bottom: 0.5rem; color: var(--text-secondary);">Manual Transaction ID Input</h4>
+              <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">If the transaction ID was not automatically detected, you can enter it manually:</p>
+              <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                  <label for="manual-tx-id-step2" style="font-size: 0.9rem;">Transaction ID:</label>
+                  <input type="text" id="manual-tx-id-step2" class="form-control" placeholder="Enter transaction ID (e.g., 1, 2, 3...)" style="font-size: 0.9rem;">
+                </div>
+                <div class="form-group" style="display: flex; align-items: end;">
+                  <button id="set-manual-tx-id-step2" class="btn btn-info" style="font-size: 0.9rem;">Set Transaction ID</button>
+                </div>
+              </div>
+              <div class="form-row" style="margin-top: 1rem;">
+                <div class="form-group" style="text-align: right;">
+                  <button id="continue-to-step3" class="btn btn-success" style="font-size: 0.9rem;">Continue to Step 3</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -296,6 +321,22 @@
             <div class="form-group">
               <button id="refresh-tx-button" class="btn btn-secondary" data-i18n="project_payout.step_3_content.refresh_status">Refresh Transaction Status</button>
               <button id="confirm-button" class="btn btn-primary" data-i18n="project_payout.step_3_content.confirm_transaction">Confirm Transaction</button>
+              <button id="skip-to-next" class="btn btn-warning" style="margin-left: 0.5rem;">Skip to Next Step</button>
+            </div>
+            
+            <!-- Manual Transaction ID Input Form -->
+            <div class="form-group" style="margin-top: 1rem; padding: 1rem; border: 1px solid var(--border-color); border-radius: 0.375rem; background: var(--bg-secondary);">
+              <h4 style="margin-bottom: 0.5rem; color: var(--text-secondary);">Manual Transaction ID Input</h4>
+              <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">If the transaction ID was not automatically detected, you can enter it manually:</p>
+              <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                  <label for="manual-tx-id" style="font-size: 0.9rem;">Transaction ID:</label>
+                  <input type="text" id="manual-tx-id" class="form-control" placeholder="Enter transaction ID (e.g., 1, 2, 3...)" style="font-size: 0.9rem;">
+                </div>
+                <div class="form-group" style="display: flex; align-items: end;">
+                  <button id="set-manual-tx-id" class="btn btn-info" style="font-size: 0.9rem;">Set Transaction ID</button>
+                </div>
+              </div>
             </div>
             
             <div class="form-row">
@@ -332,6 +373,7 @@
             <div class="form-group">
               <button id="refresh-exec-tx-button" class="btn btn-secondary" data-i18n="project_payout.step_4_content.refresh_status">Refresh Transaction Status</button>
               <button id="execute-button" class="btn btn-warning" data-i18n="project_payout.step_4_content.execute_transaction">Execute Transaction</button>
+              <button id="skip-to-next-step4" class="btn btn-info" style="margin-left: 0.5rem;">Skip to Next Step</button>
             </div>
             
             <div class="form-row">
@@ -368,6 +410,7 @@
             <div class="form-group">
               <button id="refresh-project-status" class="btn btn-secondary" data-i18n="project_payout.step_5_content.refresh_status">Refresh Project Status</button>
               <button id="complete-project-button" class="btn btn-success" data-i18n="project_payout.step_5_content.mark_paid">Mark Project as Paid</button>
+              <button id="skip-to-next-step5" class="btn btn-info" style="margin-left: 0.5rem;">Skip to Next Step</button>
             </div>
             
             <div class="form-row">

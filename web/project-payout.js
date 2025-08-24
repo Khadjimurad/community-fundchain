@@ -21,6 +21,24 @@ class ProjectPayoutInterface {
       console.log('Loaded transaction ID from localStorage:', this.currentTransactionId);
     }
     
+    // Update transaction display if we have a saved transaction ID
+    setTimeout(() => {
+      this.updateTransactionDisplay();
+      
+      // Check if manual transaction form exists
+      const manualTxForm = document.getElementById('manual-tx-form');
+      console.log('Manual transaction form in constructor:', manualTxForm);
+      if (manualTxForm) {
+        console.log('Manual form initial state:', {
+          exists: true,
+          display: manualTxForm.style.display,
+          hidden: manualTxForm.classList.contains('hidden')
+        });
+      } else {
+        console.error('Manual transaction form not found in DOM during initialization');
+      }
+    }, 100);
+    
     // Contract ABIs
     this.abis = {
       multisig: [
@@ -127,36 +145,13 @@ class ProjectPayoutInterface {
         {
           "anonymous": false,
           "inputs": [
-            {
-              "indexed": true,
-              "internalType": "uint256",
-              "name": "txId",
-              "type": "uint256"
-            },
-            {
-              "indexed": true,
-              "internalType": "address",
-              "name": "to",
-              "type": "address"
-            },
-            {
-              "indexed": false,
-              "internalType": "uint256",
-              "name": "value",
-              "type": "uint256"
-            },
-            {
-              "indexed": true,
-              "internalType": "bytes32",
-              "name": "projectId",
-              "type": "bytes32"
-            },
-            {
-              "indexed": false,
-              "internalType": "string",
-              "name": "description",
-              "type": "string"
-            }
+            { "indexed": true,  "internalType": "uint256",  "name": "txId",      "type": "uint256" },
+            { "indexed": true,  "internalType": "address",  "name": "proposer",  "type": "address" },
+            { "indexed": true,  "internalType": "address",  "name": "to",        "type": "address" },
+            { "indexed": false, "internalType": "uint256",  "name": "value",     "type": "uint256" },
+            { "indexed": false, "internalType": "uint8",    "name": "txType",    "type": "uint8" },
+            { "indexed": false, "internalType": "bytes32",  "name": "projectId", "type": "bytes32" },
+            { "indexed": false, "internalType": "string",  "name": "description", "type": "string" }
           ],
           "name": "TxProposed",
           "type": "event"
@@ -304,7 +299,7 @@ class ProjectPayoutInterface {
               "type": "string"
             }
           ],
-          "name": "proposeTransaction",
+          "name": "propose",
           "outputs": [
             {
               "internalType": "uint256",
@@ -313,119 +308,6 @@ class ProjectPayoutInterface {
             }
           ],
           "stateMutability": "nonpayable",
-          "type": "function"
-        },
-        {
-          "inputs": [
-            {
-              "internalType": "uint256",
-              "name": "",
-              "type": "uint256"
-            },
-            {
-              "internalType": "address",
-              "name": "",
-              "type": "address"
-            }
-          ],
-          "name": "confirmations",
-          "outputs": [
-            {
-              "internalType": "bool",
-              "name": "",
-              "type": "bool"
-            }
-          ],
-          "stateMutability": "view",
-          "type": "function"
-        },
-        {
-          "inputs": [
-            {
-              "internalType": "uint256",
-              "name": "txId",
-              "type": "uint256"
-            }
-          ],
-          "name": "getConfirmationCount",
-          "outputs": [
-            {
-              "internalType": "uint256",
-              "name": "count",
-              "type": "uint256"
-            }
-          ],
-          "stateMutability": "view",
-          "type": "function"
-        },
-        {
-          "inputs": [
-            {
-              "internalType": "uint256",
-              "name": "txId",
-              "type": "uint256"
-            }
-          ],
-          "name": "getConfirmations",
-          "outputs": [
-            {
-              "internalType": "address[]",
-              "name": "_confirmations",
-              "type": "address[]"
-            }
-          ],
-          "stateMutability": "view",
-          "type": "function"
-        },
-        {
-          "inputs": [
-            {
-              "internalType": "address",
-              "name": "owner",
-              "type": "address"
-            }
-          ],
-          "name": "isOwner",
-          "outputs": [
-            {
-              "internalType": "bool",
-              "name": "",
-              "type": "bool"
-            }
-          ],
-          "stateMutability": "view",
-          "type": "function"
-        },
-        {
-          "inputs": [
-            {
-              "internalType": "uint256",
-              "name": "txId",
-              "type": "uint256"
-            }
-          ],
-          "name": "isConfirmed",
-          "outputs": [
-            {
-              "internalType": "bool",
-              "name": "",
-              "type": "bool"
-            }
-          ],
-          "stateMutability": "view",
-          "type": "function"
-        },
-        {
-          "inputs": [],
-          "name": "owners",
-          "outputs": [
-            {
-              "internalType": "address[]",
-              "name": "",
-              "type": "address[]"
-            }
-          ],
-          "stateMutability": "view",
           "type": "function"
         },
         {
@@ -455,96 +337,45 @@ class ProjectPayoutInterface {
           "type": "function"
         },
         {
-          "inputs": [
-            {
-              "internalType": "uint256",
-              "name": "_required",
-              "type": "uint256"
-            }
-          ],
-          "name": "changeRequirement",
-          "outputs": [],
-          "stateMutability": "nonpayable",
-          "type": "function"
-        },
-        {
-          "inputs": [],
-          "name": "getTransactionCount",
+          "inputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ],
+          "name": "txs",
           "outputs": [
-            {
-              "internalType": "uint256",
-              "name": "",
-              "type": "uint256"
-            }
+            { "internalType": "uint256", "name": "id",          "type": "uint256" },
+            { "internalType": "address", "name": "to",          "type": "address" },
+            { "internalType": "uint256", "name": "value",       "type": "uint256" },
+            { "internalType": "bytes",   "name": "data",        "type": "bytes" },
+            { "internalType": "uint8",   "name": "txType",      "type": "uint8" },
+            { "internalType": "uint8",   "name": "status",      "type": "uint8" },
+            { "internalType": "uint256", "name": "confirmations", "type": "uint256" },
+            { "internalType": "uint256", "name": "createdAt",   "type": "uint256" },
+            { "internalType": "uint256", "name": "executedAt",  "type": "uint256" },
+            { "internalType": "bytes32", "name": "projectId",  "type": "bytes32" },
+            { "internalType": "string",  "name": "description", "type": "string" },
+            { "internalType": "address", "name": "proposer",    "type": "address" }
           ],
           "stateMutability": "view",
           "type": "function"
         },
         {
           "inputs": [
-            {
-              "internalType": "uint256",
-              "name": "",
-              "type": "uint256"
-            }
+            { "internalType": "uint256", "name": "txId", "type": "uint256" },
+            { "internalType": "address", "name": "owner", "type": "address" }
           ],
-          "name": "txs",
+          "name": "confirmations",
           "outputs": [
-            {
-              "internalType": "uint256",
-              "name": "id",
-              "type": "uint256"
-            },
-            {
-              "internalType": "address",
-              "name": "to",
-              "type": "address"
-            },
-            {
-              "internalType": "uint256",
-              "name": "value",
-              "type": "uint256"
-            },
-            {
-              "internalType": "enum CommunityMultisig.TransactionType",
-              "name": "txType",
-              "type": "uint8"
-            },
-            {
-              "internalType": "enum CommunityMultisig.TransactionStatus",
-              "name": "status",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint256",
-              "name": "confirmations",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "createdAt",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "executedAt",
-              "type": "uint256"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "projectId",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "string",
-              "name": "description",
-              "type": "string"
-            },
-            {
-              "internalType": "address",
-              "name": "proposer",
-              "type": "address"
-            }
+            { "internalType": "bool", "name": "", "type": "bool" }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            { "internalType": "uint256", "name": "txId", "type": "uint256" },
+            { "internalType": "address", "name": "owner", "type": "address" }
+          ],
+          "name": "hasConfirmed",
+          "outputs": [
+            { "internalType": "bool", "name": "", "type": "bool" }
           ],
           "stateMutability": "view",
           "type": "function"
@@ -911,6 +742,38 @@ class ProjectPayoutInterface {
           ],
           "stateMutability": "view",
           "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "projectIds",
+          "outputs": [
+            {
+              "internalType": "bytes32[]",
+              "name": "",
+              "type": "bytes32[]"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "name": "projectIds",
+          "outputs": [
+            {
+              "internalType": "bytes32",
+              "name": "",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
         }
       ]
     };
@@ -937,213 +800,444 @@ class ProjectPayoutInterface {
   }
   
   async tryAutoConnect() {
-    console.log('Attempting to auto-connect to Web3...');
-    
-    // Проверяем, есть ли уже сохраненные настройки подключения
-    const savedRpcUrl = localStorage.getItem('rpcUrl');
-    const savedChainId = localStorage.getItem('chainId');
-    const savedPrivateKey = localStorage.getItem('privateKey');
-    
-    // Устанавливаем сохраненные значения в поля ввода, если они есть
-    const rpcUrlElement = document.getElementById('rpc-url');
-    if (rpcUrlElement && savedRpcUrl) {
-      rpcUrlElement.value = savedRpcUrl;
-    }
-    
-    const chainIdElement = document.getElementById('chain-id');
-    if (chainIdElement && savedChainId) {
-      chainIdElement.value = savedChainId;
-    }
-    
-    const privateKeyElement = document.getElementById('private-key');
-    if (privateKeyElement && savedPrivateKey) {
-      privateKeyElement.value = savedPrivateKey;
-    }
-    
-    // Пробуем подключиться с использованием MetaMask, если он доступен
-    if (window.ethereum) {
+    try {
+      console.log('Attempting to auto-connect to Web3...');
+      
+      // Проверяем, есть ли уже сохраненные настройки подключения
+      const savedRpcUrl = localStorage.getItem('rpcUrl');
+      const savedChainId = localStorage.getItem('chainId');
+      const savedPrivateKey = localStorage.getItem('privateKey');
+      
+      // Устанавливаем сохраненные значения в поля ввода, если они есть
       try {
-        console.log('MetaMask detected, trying to connect...');
-        await this.connectWeb3();
-        return;
-      } catch (error) {
-        console.warn('Failed to auto-connect using MetaMask:', error);
+        let rpcUrlElement = document.getElementById('rpc-url');
+        if (!rpcUrlElement) {
+          rpcUrlElement = document.querySelector('[data-rpc-url]') || 
+                         document.querySelector('.rpc-url');
+        }
+        if (rpcUrlElement && savedRpcUrl) {
+          rpcUrlElement.value = savedRpcUrl;
+        }
+        
+        let chainIdElement = document.getElementById('chain-id');
+        if (!chainIdElement) {
+          chainIdElement = document.querySelector('[data-chain-id]') || 
+                          document.querySelector('.chain-id');
+        }
+        if (chainIdElement && savedChainId) {
+          chainIdElement.value = savedChainId;
+        }
+        
+        let privateKeyElement = document.getElementById('private-key');
+        if (!privateKeyElement) {
+          privateKeyElement = document.querySelector('[data-private-key]') || 
+                             document.querySelector('.private-key');
+        }
+        if (privateKeyElement && savedPrivateKey) {
+          privateKeyElement.value = savedPrivateKey;
+        }
+      } catch (uiError) {
+        console.warn('Failed to update UI elements during auto-connect:', uiError);
       }
-    }
-    
-    // Если есть сохраненный RPC URL, пробуем подключиться с его использованием
-    if (savedRpcUrl) {
-      try {
-        console.log('Saved RPC URL found, trying to connect...');
-        await this.connectWeb3();
-        return;
-      } catch (error) {
-        console.warn('Failed to auto-connect using saved RPC URL:', error);
+      
+      // Пробуем подключиться с использованием MetaMask, если он доступен
+      if (window.ethereum) {
+        try {
+          console.log('MetaMask detected, trying to connect...');
+          await this.connectWeb3();
+          return;
+        } catch (error) {
+          console.warn('Failed to auto-connect using MetaMask:', error);
+        }
       }
+      
+      // Если есть сохраненный RPC URL, пробуем подключиться с его использованием
+      if (savedRpcUrl) {
+        try {
+          console.log('Saved RPC URL found, trying to connect...');
+          await this.connectWeb3();
+          return;
+        } catch (error) {
+          console.warn('Failed to auto-connect using saved RPC URL:', error);
+        }
+      }
+      
+      console.log('Auto-connect attempt complete. User may need to connect manually.');
+    } catch (error) {
+      console.error('Error during auto-connect attempt:', error);
     }
-    
-    console.log('Auto-connect attempt complete. User may need to connect manually.');
   }
 
   setupEventListeners() {
-    // Connection events
-    const connectButton = document.getElementById('connect-button');
-    if (connectButton) {
-      connectButton.addEventListener('click', () => this.connectWeb3());
-    }
-    
-    const disconnectButton = document.getElementById('disconnect-button');
-    if (disconnectButton) {
-      disconnectButton.addEventListener('click', () => this.disconnectWeb3());
-    }
-    
-    // Debug buttons (temporary - remove in production)
-    const debugStateButton = document.getElementById('debug-state');
-    if (debugStateButton) {
-      debugStateButton.addEventListener('click', () => {
-        if (window.projectPayout) {
-          window.projectPayout.checkState();
+    try {
+      // Connection events
+      try {
+        let connectButton = document.getElementById('connect-button');
+        if (!connectButton) {
+          connectButton = document.querySelector('[data-connect-button]') || 
+                         document.querySelector('.connect-button');
         }
-      });
-    }
-    
-    const clearTxIdButton = document.getElementById('clear-tx-id');
-    if (clearTxIdButton) {
-      clearTxIdButton.addEventListener('click', () => {
-        if (window.projectPayout) {
-          window.projectPayout.clearTransactionId();
+        if (connectButton) {
+          connectButton.addEventListener('click', () => this.connectWeb3());
         }
-      });
-    }
-    
-    const resetWorkflowButton = document.getElementById('reset-workflow');
-    if (resetWorkflowButton) {
-      resetWorkflowButton.addEventListener('click', () => {
-        if (window.projectPayout) {
-          window.projectPayout.resetWorkflow();
+        
+        let disconnectButton = document.getElementById('disconnect-button');
+        if (!disconnectButton) {
+          disconnectButton = document.querySelector('[data-disconnect-button]') || 
+                            document.querySelector('.disconnect-button');
         }
-      });
-    }
+        if (disconnectButton) {
+          disconnectButton.addEventListener('click', () => this.disconnectWeb3());
+        }
+      } catch (error) {
+        console.warn('Failed to setup connection event listeners:', error);
+      }
     
-    // Make debug buttons visible for testing
-    setTimeout(() => {
-      const debugBtn = document.getElementById('debug-state');
-      const clearBtn = document.getElementById('clear-tx-id');
-      const resetBtn = document.getElementById('reset-workflow');
-      if (debugBtn) debugBtn.style.display = 'inline-block';
-      if (clearBtn) clearBtn.style.display = 'inline-block';
-      if (resetBtn) resetBtn.style.display = 'inline-block';
-    }, 1000);
+          // Debug buttons (temporary - remove in production)
+      try {
+        let debugStateButton = document.getElementById('debug-state');
+        if (!debugStateButton) {
+          debugStateButton = document.querySelector('[data-debug-state]') || 
+                            document.querySelector('.debug-state');
+        }
+        if (debugStateButton) {
+          debugStateButton.addEventListener('click', () => {
+            if (window.projectPayout) {
+              window.projectPayout.checkState();
+            }
+          });
+        }
+        
+        let clearTxIdButton = document.getElementById('clear-tx-id');
+        if (!clearTxIdButton) {
+          clearTxIdButton = document.querySelector('[data-clear-tx-id]') || 
+                           document.querySelector('.clear-tx-id');
+        }
+        if (clearTxIdButton) {
+          clearTxIdButton.addEventListener('click', () => {
+            if (window.projectPayout) {
+              window.projectPayout.clearTransactionId();
+            }
+          });
+        }
+        
+        let resetWorkflowButton = document.getElementById('reset-workflow');
+        if (!resetWorkflowButton) {
+          resetWorkflowButton = document.querySelector('[data-reset-workflow]') || 
+                               document.querySelector('.reset-workflow');
+        }
+        if (resetWorkflowButton) {
+          resetWorkflowButton.addEventListener('click', () => {
+            if (window.projectPayout) {
+              window.projectPayout.resetWorkflow();
+            }
+          });
+        }
+      } catch (error) {
+        console.warn('Failed to setup debug event listeners:', error);
+      }
     
+          // Make debug buttons visible for testing
+      try {
+        setTimeout(() => {
+          let debugBtn = document.getElementById('debug-state');
+          if (!debugBtn) {
+            debugBtn = document.querySelector('[data-debug-state]') || 
+                      document.querySelector('.debug-state');
+          }
+          
+          let clearBtn = document.getElementById('clear-tx-id');
+          if (!clearBtn) {
+            clearBtn = document.querySelector('[data-clear-tx-id]') || 
+                      document.querySelector('.clear-tx-id');
+          }
+          
+          let resetBtn = document.getElementById('reset-workflow');
+          if (!resetBtn) {
+            resetBtn = document.querySelector('[data-reset-workflow]') || 
+                      document.querySelector('.reset-workflow');
+          }
+          
+          if (debugBtn) debugBtn.style.display = 'inline-block';
+          if (clearBtn) clearBtn.style.display = 'inline-block';
+          if (resetBtn) resetBtn.style.display = 'inline-block';
+        }, 1000);
+      } catch (error) {
+        console.warn('Failed to setup debug button visibility:', error);
+      }
+    
+          // Step 1 events
+      try {
+        let refreshProjectsButton = document.getElementById('refresh-projects-button');
+        if (!refreshProjectsButton) {
+          refreshProjectsButton = document.querySelector('[data-refresh-projects-button]') || 
+                                 document.querySelector('.refresh-projects-button');
+        }
+        if (refreshProjectsButton) {
+          refreshProjectsButton.addEventListener('click', () => this.refreshProjects());
+        }
+
+        let nextStep1Btn = document.getElementById('next-step-1');
+        if (!nextStep1Btn) {
+          nextStep1Btn = document.querySelector('[data-next-step-1]') || 
+                        document.querySelector('.next-step-1');
+        }
+        if (nextStep1Btn) {
+          nextStep1Btn.addEventListener('click', () => this.updateWorkflowStep(2));
+        }
+      } catch (error) {
+        console.warn('Failed to setup step 1 event listeners:', error);
+      }
+
+          // Step 2 events
+      try {
+        let backStep2 = document.getElementById('back-step-2');
+        if (!backStep2) {
+          backStep2 = document.querySelector('[data-back-step-2]') || 
+                     document.querySelector('.back-step-2');
+        }
+        if (backStep2) {
+          backStep2.addEventListener('click', () => this.previousStep());
+        }
+
+        let proposeBtn = document.getElementById('propose-button');
+        if (!proposeBtn) {
+          proposeBtn = document.querySelector('[data-propose-button]') || 
+                      document.querySelector('.propose-button');
+        }
+        if (proposeBtn) {
+          proposeBtn.addEventListener('click', () => this.proposePayout());
+        }
+        
+        // Manual transaction ID input on step 2
+        let setManualTxIdStep2Btn = document.getElementById('set-manual-tx-id-step2');
+        if (!setManualTxIdStep2Btn) {
+          setManualTxIdStep2Btn = document.querySelector('[data-set-manual-tx-id-step2]') || 
+                                  document.querySelector('.set-manual-tx-id-step2');
+        }
+        if (setManualTxIdStep2Btn) {
+          setManualTxIdStep2Btn.addEventListener('click', () => this.setManualTransactionIdStep2());
+        }
+        
+        let continueToStep3Btn = document.getElementById('continue-to-step3');
+        if (!continueToStep3Btn) {
+          continueToStep3Btn = document.querySelector('[data-continue-to-step3]') || 
+                              document.querySelector('.continue-to-step3');
+        }
+        if (continueToStep3Btn) {
+          continueToStep3Btn.addEventListener('click', () => this.continueToStep3());
+        }
+        
+        // Test button for manual form
+        let testShowFormBtn = document.getElementById('test-show-form');
+        if (!testShowFormBtn) {
+          testShowFormBtn = document.querySelector('[data-test-show-form]') || 
+                           document.querySelector('.test-show-form');
+        }
+        if (testShowFormBtn) {
+          testShowFormBtn.addEventListener('click', () => this.testShowManualForm());
+        }
+      } catch (error) {
+        console.warn('Failed to setup step 2 event listeners:', error);
+      }
+
+          // Step 3 events
+      try {
+        let backStep3 = document.getElementById('back-step-3');
+        if (!backStep3) {
+          backStep3 = document.querySelector('[data-back-step-3]') || 
+                     document.querySelector('.back-step-3');
+        }
+        if (backStep3) {
+          backStep3.addEventListener('click', () => this.previousStep());
+        }
+
+        let refreshTxButton = document.getElementById('refresh-tx-button');
+        if (!refreshTxButton) {
+          refreshTxButton = document.querySelector('[data-refresh-tx-button]') || 
+                           document.querySelector('.refresh-tx-button');
+        }
+        if (refreshTxButton) {
+          refreshTxButton.addEventListener('click', () => this.refreshTransactionStatus());
+        }
+
+        let confirmBtn = document.getElementById('confirm-button');
+        if (!confirmBtn) {
+          confirmBtn = document.querySelector('[data-confirm-button]') || 
+                      document.querySelector('.confirm-button');
+        }
+        if (confirmBtn) {
+          confirmBtn.addEventListener('click', () => this.confirmTransaction());
+        }
+        
+        // Skip to next step button
+        let skipToNextBtn = document.getElementById('skip-to-next');
+        if (!skipToNextBtn) {
+          skipToNextBtn = document.querySelector('[data-skip-to-next]') || 
+                         document.querySelector('.skip-to-next');
+        }
+        if (skipToNextBtn) {
+          skipToNextBtn.addEventListener('click', () => this.skipToNextStep());
+        }
+      } catch (error) {
+        console.warn('Failed to setup step 3 event listeners:', error);
+      }
+
+          // Manual transaction ID input
+      try {
+        let setManualTxIdBtn = document.getElementById('set-manual-tx-id');
+        if (!setManualTxIdBtn) {
+          setManualTxIdBtn = document.querySelector('[data-set-manual-tx-id]') || 
+                             document.querySelector('.set-manual-tx-id');
+        }
+        if (setManualTxIdBtn) {
+          setManualTxIdBtn.addEventListener('click', () => this.setManualTransactionId());
+        }
+
+        // Confirmation events (Step 3)
+        let nextStep3 = document.getElementById('next-step-3');
+        if (!nextStep3) {
+          nextStep3 = document.querySelector('[data-next-step-3]') || 
+                     document.querySelector('.next-step-3');
+        }
+        if (nextStep3) {
+          nextStep3.addEventListener('click', () => this.nextStep());
+        }
+      } catch (error) {
+        console.warn('Failed to setup manual transaction ID and confirmation event listeners:', error);
+      }
+
+          // Execution events
+      try {
+        let backStep4 = document.getElementById('back-step-4');
+        if (!backStep4) {
+          backStep4 = document.querySelector('[data-back-step-4]') || 
+                     document.querySelector('.back-step-4');
+        }
+        if (backStep4) {
+          backStep4.addEventListener('click', () => this.previousStep());
+        }
+        
+        let refreshExecTxButton = document.getElementById('refresh-exec-tx-button');
+        if (!refreshExecTxButton) {
+          refreshExecTxButton = document.querySelector('[data-refresh-exec-tx-button]') || 
+                                document.querySelector('.refresh-exec-tx-button');
+        }
+        if (refreshExecTxButton) {
+          refreshExecTxButton.addEventListener('click', () => this.refreshExecutionStatus());
+        }
+        
+        let executeButton = document.getElementById('execute-button');
+        if (!executeButton) {
+          executeButton = document.querySelector('[data-execute-button]') || 
+                         document.querySelector('.execute-button');
+        }
+        if (executeButton) {
+          executeButton.addEventListener('click', () => this.executeTransaction());
+        }
+        
+        // Skip to next step button on step 4
+        let skipToNextStep4Btn = document.getElementById('skip-to-next-step4');
+        if (!skipToNextStep4Btn) {
+          skipToNextStep4Btn = document.querySelector('[data-skip-to-next-step4]') || 
+                               document.querySelector('.skip-to-next-step4');
+        }
+        if (skipToNextStep4Btn) {
+          skipToNextStep4Btn.addEventListener('click', () => this.skipToNextStep());
+        }
+        
+        let nextStep4 = document.getElementById('next-step-4');
+        if (!nextStep4) {
+          nextStep4 = document.querySelector('[data-next-step-4]') || 
+                     document.querySelector('.next-step-4');
+        }
+        if (nextStep4) {
+          nextStep4.addEventListener('click', () => this.nextStep());
+        }
+      } catch (error) {
+        console.warn('Failed to setup execution event listeners:', error);
+      }
+    
+          // Completion events
+      try {
+        let backStep5 = document.getElementById('back-step-5');
+        if (!backStep5) {
+          backStep5 = document.querySelector('[data-back-step-5]') || 
+                     document.querySelector('.back-step-5');
+        }
+        if (backStep5) {
+          backStep5.addEventListener('click', () => this.previousStep());
+        }
+        
+        let refreshProjectStatus = document.getElementById('refresh-project-status');
+        if (!refreshProjectStatus) {
+          refreshProjectStatus = document.querySelector('[data-refresh-project-status]') || 
+                                document.querySelector('.refresh-project-status');
+        }
+        if (refreshProjectStatus) {
+          refreshProjectStatus.addEventListener('click', () => this.refreshProjectStatus());
+        }
+        
+        let completeProjectButton = document.getElementById('complete-project-button');
+        if (!completeProjectButton) {
+          completeProjectButton = document.querySelector('[data-complete-project-button]') || 
+                                 document.querySelector('.complete-project-button');
+        }
+        if (completeProjectButton) {
+          completeProjectButton.addEventListener('click', () => this.completeProject());
+        }
+        
+        // Skip to next step button on step 5
+        let skipToNextStep5Btn = document.getElementById('skip-to-next-step5');
+        if (!skipToNextStep5Btn) {
+          skipToNextStep5Btn = document.querySelector('[data-skip-to-next-step5]') || 
+                               document.querySelector('.skip-to-next-step5');
+        }
+        if (skipToNextStep5Btn) {
+          skipToNextStep5Btn.addEventListener('click', () => this.skipToFinishWorkflow());
+        }
+        
+        let finishWorkflow = document.getElementById('finish-workflow');
+        if (!finishWorkflow) {
+          finishWorkflow = document.querySelector('[data-finish-workflow]') || 
+                          document.querySelector('.finish-workflow');
+        }
+        if (finishWorkflow) {
+          finishWorkflow.addEventListener('click', () => this.finishWorkflow());
+        }
+      } catch (error) {
+        console.warn('Failed to setup completion event listeners:', error);
+      }
+
     console.log('DOM event listeners set up');
+    } catch (error) {
+      console.error('Failed to setup event listeners:', error);
+    }
   }
 
-  connectWeb3() {
-    console.log('Connecting Web3');
-    window.projectPayout.connect().then(
-      (rpcUrl) => {
-        console.log('Connected with RPC URL:', rpcUrl);
-      },
-      (error) => {
-        console.warn('Failed to connect:', error);
-      },
-    );
-  }
-
-  disconnectWeb3() {
-    console.log('Disconnecting Web3');
-    window.projectPayout.disconnect().then(
-      () => {
-        console.log('Disconnected successfully');
-      },
-      (error) => {
-        console.warn('Failed to disconnect:', error);
-      },
-    );
-  }
-
-  refreshProjects() {
-    console.log('Refreshing projects list...');
-    window.projectPayout.fetchProjectData();
-  }
-
-  proposePayout() {
-    console.log('Proposing payout...');
-    window.projectPayout.proposePayout();
-  }
-
-  refreshTransactionStatus() {
-    console.log('Refreshing transaction status...');
-    window.projectPayout.fetchTransactionData();
-  }
-
-  confirmTransaction() {
-    console.log('Confirming transaction...');
-    window.projectPayout.confirmPayout();
-  }
-
-  nextStep() {
-    console.log('Moving to next step');
-    window.projectPayout.nextStep();
-  }
-
-  previousStep() {
-    console.log('Moving to previous step');
-    window.projectPayout.previousStep();
-  }
-      nextStep3.addEventListener('click', () => this.nextStep());
-    }
-    
-    // Execution events
-    const backStep4 = document.getElementById('back-step-4');
-    if (backStep4) {
-      backStep4.addEventListener('click', () => this.previousStep());
-    }
-    
-    const refreshExecTxButton = document.getElementById('refresh-exec-tx-button');
-    if (refreshExecTxButton) {
-      refreshExecTxButton.addEventListener('click', () => this.refreshExecutionStatus());
-    }
-    
-    const executeButton = document.getElementById('execute-button');
-    if (executeButton) {
-      executeButton.addEventListener('click', () => this.executeTransaction());
-    }
-    
-    const nextStep4 = document.getElementById('next-step-4');
-    if (nextStep4) {
-      nextStep4.addEventListener('click', () => this.nextStep());
-    }
-    
-    // Completion events
-    const backStep5 = document.getElementById('back-step-5');
-    if (backStep5) {
-      backStep5.addEventListener('click', () => this.previousStep());
-    }
-    
-    const refreshProjectStatus = document.getElementById('refresh-project-status');
-    if (refreshProjectStatus) {
-      refreshProjectStatus.addEventListener('click', () => this.refreshProjectStatus());
-    }
-    
-    const completeProjectButton = document.getElementById('complete-project-button');
-    if (completeProjectButton) {
-      completeProjectButton.addEventListener('click', () => this.completeProject());
-    }
-    
-    const finishWorkflow = document.getElementById('finish-workflow');
-    if (finishWorkflow) {
-      finishWorkflow.addEventListener('click', () => this.finishWorkflow());
-    }
-  }
+ 
 
   async connectWeb3() {
     try {
       console.log('Connecting to Web3...');
       
-      const rpcUrlElement = document.getElementById('rpc-url');
-      const chainIdElement = document.getElementById('chain-id');
-      const privateKeyElement = document.getElementById('private-key');
+      let rpcUrlElement = document.getElementById('rpc-url');
+      if (!rpcUrlElement) {
+        rpcUrlElement = document.querySelector('[data-rpc-url]') || 
+                       document.querySelector('.rpc-url');
+      }
+      
+      let chainIdElement = document.getElementById('chain-id');
+      if (!chainIdElement) {
+        chainIdElement = document.querySelector('[data-chain-id]') || 
+                        document.querySelector('.chain-id');
+      }
+      
+      let privateKeyElement = document.getElementById('private-key');
+      if (!privateKeyElement) {
+        privateKeyElement = document.querySelector('[data-private-key]') || 
+                           document.querySelector('.private-key');
+      }
       
       const rpcUrl = rpcUrlElement ? rpcUrlElement.value : '';
       const chainId = chainIdElement ? parseInt(chainIdElement.value) : 31337;
@@ -1154,22 +1248,8 @@ class ProjectPayoutInterface {
       if (chainId) localStorage.setItem('chainId', chainId.toString());
       if (privateKey) localStorage.setItem('privateKey', privateKey);
       
-      // Try browser wallet first (MetaMask)
-      if (window.ethereum) {
-        console.log('Using MetaMask or other browser wallet');
-        this.web3 = new Web3(window.ethereum);
-        try {
-          await window.ethereum.request({ method: 'eth_requestAccounts' });
-          const accounts = await this.web3.eth.getAccounts();
-          this.account = accounts[0];
-          console.log('Connected with account:', this.account);
-        } catch (error) {
-          console.error('MetaMask connection error:', error);
-          this.showError('Не удалось подключиться к MetaMask: ' + error.message);
-          return;
-        }
-      } else if (rpcUrl && privateKey) {
-        // Use custom provider with private key
+      // Prefer RPC + Private Key when provided, even if MetaMask is installed
+      if (rpcUrl && privateKey) {
         console.log('Using custom provider with private key');
         try {
           const provider = new Web3.providers.HttpProvider(rpcUrl);
@@ -1180,6 +1260,20 @@ class ProjectPayoutInterface {
         } catch (error) {
           console.error('Custom provider connection error:', error);
           this.showError('Не удалось подключиться к провайдеру: ' + error.message);
+          return;
+        }
+      } else if (window.ethereum) {
+        // Browser wallet (MetaMask)
+        console.log('Using MetaMask or other browser wallet');
+        this.web3 = new Web3(window.ethereum);
+        try {
+          await window.ethereum.request({ method: 'eth_requestAccounts' });
+          const accounts = await this.web3.eth.getAccounts();
+          this.account = accounts[0];
+          console.log('Connected with account:', this.account);
+        } catch (error) {
+          console.error('MetaMask connection error:', error);
+          this.showError('Не удалось подключиться к MetaMask: ' + error.message);
           return;
         }
       } else if (rpcUrl) {
@@ -1223,34 +1317,62 @@ class ProjectPayoutInterface {
       }
       
       // Update UI
-      const connectionStatus = document.getElementById('connection-status');
-      if (connectionStatus) {
-        connectionStatus.textContent = 'Подключено';
-      }
-      
-      const currentAccount = document.getElementById('current-account');
-      if (currentAccount) {
-        currentAccount.textContent = this.account || 'Нет аккаунта';
-      }
-      
-      const accountInfo = document.getElementById('account-info');
-      if (accountInfo) {
-        accountInfo.classList.remove('hidden');
-      }
-      
-      const connectButton = document.getElementById('connect-button');
-      if (connectButton) {
-        connectButton.classList.add('hidden');
-      }
-      
-      const disconnectButton = document.getElementById('disconnect-button');
-      if (disconnectButton) {
-        disconnectButton.classList.remove('hidden');
-      }
-      
-      const payoutInterface = document.getElementById('payout-interface');
-      if (payoutInterface) {
-        payoutInterface.classList.remove('hidden');
+      try {
+        let connectionStatus = document.getElementById('connection-status');
+        if (!connectionStatus) {
+          connectionStatus = document.querySelector('[data-connection-status]') || 
+                           document.querySelector('.connection-status');
+        }
+        if (connectionStatus) {
+          connectionStatus.textContent = 'Подключено';
+        }
+        
+        let currentAccount = document.getElementById('current-account');
+        if (!currentAccount) {
+          currentAccount = document.querySelector('[data-current-account]') || 
+                         document.querySelector('.current-account');
+        }
+        if (currentAccount) {
+          currentAccount.textContent = this.account || 'Нет аккаунта';
+        }
+        
+        let accountInfo = document.getElementById('account-info');
+        if (!accountInfo) {
+          accountInfo = document.querySelector('[data-account-info]') || 
+                       document.querySelector('.account-info');
+        }
+        if (accountInfo) {
+          accountInfo.classList.remove('hidden');
+        }
+        
+        let connectButton = document.getElementById('connect-button');
+        if (!connectButton) {
+          connectButton = document.querySelector('[data-connect-button]') || 
+                         document.querySelector('.connect-button');
+        }
+        if (connectButton) {
+          connectButton.classList.add('hidden');
+        }
+        
+        let disconnectButton = document.getElementById('disconnect-button');
+        if (!disconnectButton) {
+          disconnectButton = document.querySelector('[data-disconnect-button]') || 
+                            document.querySelector('.disconnect-button');
+        }
+        if (disconnectButton) {
+          disconnectButton.classList.remove('hidden');
+        }
+        
+        let payoutInterface = document.getElementById('payout-interface');
+        if (!payoutInterface) {
+          payoutInterface = document.querySelector('[data-payout-interface]') || 
+                           document.querySelector('.payout-interface');
+        }
+        if (payoutInterface) {
+          payoutInterface.classList.remove('hidden');
+        }
+      } catch (uiError) {
+        console.warn('Failed to update UI elements:', uiError);
       }
       
       this.showSuccess('Успешно подключено к Web3');
@@ -1266,104 +1388,159 @@ class ProjectPayoutInterface {
   }
 
   disconnectWeb3() {
-    this.web3 = null;
-    this.account = null;
-    this.contracts = {
-      multisig: null,
-      treasury: null,
-      projects: null
-    };
-    
-    // Clear current project and transaction ID
-    this.currentProject = null;
-    this.currentTransactionId = null;
-    localStorage.removeItem('currentTransactionId');
-    console.log('Cleared transaction ID from localStorage');
-    
-    // Reset workflow step
-    this.workflowStep = 1;
-    
-    // Update UI
-    const connectionStatus = document.getElementById('connection-status');
-    if (connectionStatus) {
-      connectionStatus.textContent = 'Отключено';
-    }
-    
-    const accountInfo = document.getElementById('account-info');
-    if (accountInfo) {
-      accountInfo.classList.add('hidden');
+    try {
+      this.web3 = null;
+      this.account = null;
+      this.contracts = {
+        multisig: null,
+        treasury: null,
+        projects: null
+      };
+      
+      // Clear current project and transaction ID
+      this.currentProject = null;
+      this.currentTransactionId = null;
+      localStorage.removeItem('currentTransactionId');
+      console.log('Cleared transaction ID from localStorage');
+      
+      // Reset workflow step
+      this.workflowStep = 1;
+      
+      // Update UI
+      try {
+        let connectionStatus = document.getElementById('connection-status');
+        if (!connectionStatus) {
+          connectionStatus = document.querySelector('[data-connection-status]') || 
+                           document.querySelector('.connection-status');
+        }
+        if (connectionStatus) {
+          connectionStatus.textContent = 'Отключено';
+        }
+        
+        let accountInfo = document.getElementById('account-info');
+        if (!accountInfo) {
+          accountInfo = document.querySelector('[data-account-info]') || 
+                       document.querySelector('.account-info');
+        }
+        if (accountInfo) {
+          accountInfo.classList.add('hidden');
+        }
+
+        let connectButton = document.getElementById('connect-button');
+        if (!connectButton) {
+          connectButton = document.querySelector('[data-connect-button]') || 
+                         document.querySelector('.connect-button');
+        }
+        if (connectButton) {
+          connectButton.classList.remove('hidden');
+        }
+        
+        let disconnectButton = document.getElementById('disconnect-button');
+        if (!disconnectButton) {
+          disconnectButton = document.querySelector('[data-disconnect-button]') || 
+                            document.querySelector('.disconnect-button');
+        }
+        if (disconnectButton) {
+          disconnectButton.classList.add('hidden');
+        }
+        
+        let payoutInterface = document.getElementById('payout-interface');
+        if (!payoutInterface) {
+          payoutInterface = document.querySelector('[data-payout-interface]') || 
+                           document.querySelector('.payout-interface');
+        }
+        if (payoutInterface) {
+          payoutInterface.classList.add('hidden');
+        }
+      } catch (uiError) {
+        console.warn('Failed to update UI elements during disconnect:', uiError);
+      }
+      
+      // Reset steps UI
+      this.updateWorkflowStep(1);
+    } catch (error) {
+      console.error('Error disconnecting from Web3:', error);
+      this.showError('Failed to disconnect from Web3: ' + error.message);
     }
   }
 
   // Method to reset the entire workflow (for debugging)
   resetWorkflow() {
-    this.currentProject = null;
-    this.currentTransactionId = null;
-    localStorage.removeItem('currentTransactionId');
-    this.workflowStep = 1;
-    console.log('Workflow reset');
-    this.updateWorkflowStep(1);
-    this.showSuccess('Workflow reset completed');
+    try {
+      this.currentProject = null;
+      this.currentTransactionId = null;
+      localStorage.removeItem('currentTransactionId');
+      this.workflowStep = 1;
+      console.log('Workflow reset');
+      this.updateWorkflowStep(1);
+      this.showSuccess('Workflow reset completed');
+    } catch (error) {
+      console.error('Error resetting workflow:', error);
+      this.showError('Failed to reset workflow: ' + error.message);
+    }
   }
 
-  showError(message) {
-    }
-    
-    const connectButton = document.getElementById('connect-button');
-    if (connectButton) {
-      connectButton.classList.remove('hidden');
-    }
-    
-    const disconnectButton = document.getElementById('disconnect-button');
-    if (disconnectButton) {
-      disconnectButton.classList.add('hidden');
-    }
-    
-    const payoutInterface = document.getElementById('payout-interface');
-    if (payoutInterface) {
-      payoutInterface.classList.add('hidden');
-    }
-    
-    // Reset workflow steps UI
-    this.updateWorkflowStep(1);
-    
-    this.showSuccess('Отключено от Web3. Все данные очищены.');
-  }
+  
   
   // Метод для проверки подключения к Web3 и автоматического подключения при необходимости
   async checkWeb3Connection() {
-    if (this.web3 && this.contracts.multisig) {
-      try {
-        // Проверяем, что соединение активно
-        await this.web3.eth.net.isListening();
-        return true;
-      } catch (error) {
-        console.warn('Web3 connection lost, attempting to reconnect...', error);
+    try {
+      if (this.web3 && this.contracts.multisig) {
+        try {
+          // Проверяем, что соединение активно
+          await this.web3.eth.net.isListening();
+          return true;
+        } catch (error) {
+          console.warn('Web3 connection lost, attempting to reconnect...', error);
+        }
       }
+      
+      // Пробуем автоматически подключиться
+      const success = await this.connectWeb3();
+      
+      if (!success) {
+        this.showError('Необходимо подключение к Web3 для выполнения этого действия');
+      }
+      
+      return success;
+    } catch (error) {
+      console.error('Error checking Web3 connection:', error);
+      this.showError('Failed to check Web3 connection: ' + error.message);
+      return false;
     }
-    
-    // Пробуем автоматически подключиться
-    const success = await this.connectWeb3();
-    
-    if (!success) {
-      this.showError('Необходимо подключение к Web3 для выполнения этого действия');
-    }
-    
-    return success;
   }
 
   initializeContracts() {
-    const multisigAddressElement = document.getElementById('multisig-address');
-    const treasuryAddressElement = document.getElementById('treasury-address');
-    const projectsAddressElement = document.getElementById('projects-address');
-    
-    const multisigAddress = multisigAddressElement ? multisigAddressElement.value : '0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65';
-    const treasuryAddress = treasuryAddressElement ? treasuryAddressElement.value : '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
-    const projectsAddress = projectsAddressElement ? projectsAddressElement.value : '0x70997970C51812dc3A010C7d01b50e0d17dc79C8';
-    
-    this.contracts.multisig = new this.web3.eth.Contract(this.abis.multisig, multisigAddress);
-    this.contracts.treasury = new this.web3.eth.Contract(this.abis.treasury, treasuryAddress);
-    this.contracts.projects = new this.web3.eth.Contract(this.abis.projects, projectsAddress);
+    try {
+      let multisigAddressElement = document.getElementById('multisig-address');
+      if (!multisigAddressElement) {
+        multisigAddressElement = document.querySelector('[data-multisig-address]') || 
+                                document.querySelector('.multisig-address');
+      }
+      
+      let treasuryAddressElement = document.getElementById('treasury-address');
+      if (!treasuryAddressElement) {
+        treasuryAddressElement = document.querySelector('[data-treasury-address]') || 
+                                document.querySelector('.treasury-address');
+      }
+      
+      let projectsAddressElement = document.getElementById('projects-address');
+      if (!projectsAddressElement) {
+        projectsAddressElement = document.querySelector('[data-projects-address]') || 
+                                document.querySelector('.projects-address');
+      }
+      
+      const multisigAddress = multisigAddressElement ? multisigAddressElement.value : '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318';
+      const treasuryAddress = treasuryAddressElement ? treasuryAddressElement.value : '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707';
+      const projectsAddress = projectsAddressElement ? projectsAddressElement.value : '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0';
+      
+      this.contracts.multisig = new this.web3.eth.Contract(this.abis.multisig, multisigAddress);
+      this.contracts.treasury = new this.web3.eth.Contract(this.abis.treasury, treasuryAddress);
+      this.contracts.projects = new this.web3.eth.Contract(this.abis.projects, projectsAddress);
+    } catch (error) {
+      console.error('Error initializing contracts:', error);
+      this.showError('Failed to initialize contracts: ' + error.message);
+    }
   }
 
   async refreshProjects() {
@@ -1376,71 +1553,120 @@ class ProjectPayoutInterface {
       }
       
       // Get all projects and filter for ReadyToPayout status
-      const projectsList = document.getElementById('projects-list');
+      let projectsList = document.getElementById('projects-list');
+      if (!projectsList) {
+        console.warn('projects-list element not found, trying alternative selectors');
+        projectsList = document.querySelector('[data-projects-list]') || 
+                     document.querySelector('.projects-list') ||
+                     document.querySelector('#step-1 .projects-list');
+      }
+      
       if (projectsList) {
         console.log('Found projects-list element, updating content');
-        projectsList.innerHTML = '<p class="text-muted">Загрузка проектов...</p>';
+        try {
+          projectsList.innerHTML = '<p class="text-muted">Загрузка проектов...</p>';
+        } catch (error) {
+          console.warn('Failed to update projects list loading message:', error);
+        }
         
         try {
-          // Для демонстрационной версии - получаем список тестовых проектов
-          // В реальной реализации мы должны запросить список проектов со статусом ReadyToPayout
-          const demoProjects = [
-            {
-              id: '0x0000000000000000000000000000000000000000000000000000000000000001',
-              name: 'Строительство общественного центра',
-              description: 'Проект по строительству общественного центра в районе',
-              status: 4, // ReadyToPayout
-              target: this.web3.utils.toWei('10', 'ether'),
-              totalAllocated: this.web3.utils.toWei('8', 'ether'),
-              totalPaidOut: this.web3.utils.toWei('0', 'ether'),
-              category: 'Инфраструктура'
-            },
-            {
-              id: '0x0000000000000000000000000000000000000000000000000000000000000002',
-              name: 'Образовательная программа',
-              description: 'Программа для поддержки образования в регионе',
-              status: 4, // ReadyToPayout
-              target: this.web3.utils.toWei('5', 'ether'),
-              totalAllocated: this.web3.utils.toWei('5', 'ether'),
-              totalPaidOut: this.web3.utils.toWei('0', 'ether'),
-              category: 'Образование'
-            },
-            {
-              id: '0x0000000000000000000000000000000000000000000000000000000000000003',
-              name: 'Экологическая инициатива',
-              description: 'Проект по очистке реки и прибрежных территорий',
-              status: 4, // ReadyToPayout
-              target: this.web3.utils.toWei('3', 'ether'),
-              totalAllocated: this.web3.utils.toWei('3', 'ether'),
-              totalPaidOut: this.web3.utils.toWei('0', 'ether'),
-              category: 'Экология'
+          // Получаем реальные проекты из контракта
+          let projects = [];
+          try {
+            // Попробуем получить проекты из контракта
+            const projectIds = await this.contracts.projects.methods.projectIds().call();
+            console.log('Project IDs from contract:', projectIds);
+            
+            if (projectIds && projectIds.length > 0) {
+              for (let i = 0; i < Math.min(projectIds.length, 10); i++) {
+                try {
+                  const projectId = projectIds[i];
+                  const project = await this.contracts.projects.methods.projects(projectId).call();
+                  if (project && project.id && project.id !== '0x0000000000000000000000000000000000000000000000000000000000000000') {
+                    projects.push({
+                      id: project.id,
+                      name: project.name || `Project ${i}`,
+                      description: project.description || 'No description',
+                      status: parseInt(project.status) || 0,
+                      target: project.target || '0',
+                      totalAllocated: project.totalAllocated || '0',
+                      totalPaidOut: project.totalPaidOut || '0',
+                      category: project.category || 'General'
+                    });
+                  }
+                } catch (projectError) {
+                  console.warn(`Failed to get project ${i}:`, projectError);
+                }
+              }
             }
-          ];
+          } catch (contractError) {
+            console.warn('Failed to get projects from contract, using demo data:', contractError);
+          }
           
-          // В реальной реализации нужно будет получить проекты из блокчейна
-          // Например: const projects = await this.getProjectsWithStatus(4); // 4 = ReadyToPayout
+          // Если не удалось получить проекты из контракта, используем демо-данные
+          if (projects.length === 0) {
+            projects = [
+              {
+                id: '0x0000000000000000000000000000000000000000000000000000000000000001',
+                name: 'Строительство общественного центра',
+                description: 'Проект по строительству общественного центра в районе',
+                status: 4, // ReadyToPayout
+                target: this.web3.utils.toWei('10', 'ether'),
+                totalAllocated: this.web3.utils.toWei('8', 'ether'),
+                totalPaidOut: this.web3.utils.toWei('0', 'ether'),
+                category: 'Инфраструктура'
+              },
+              {
+                id: '0x0000000000000000000000000000000000000000000000000000000000000002',
+                name: 'Образовательная программа',
+                description: 'Программа для поддержки образования в регионе',
+                status: 4, // ReadyToPayout
+                target: this.web3.utils.toWei('5', 'ether'),
+                totalAllocated: this.web3.utils.toWei('5', 'ether'),
+                totalPaidOut: this.web3.utils.toWei('0', 'ether'),
+                category: 'Образование'
+              },
+              {
+                id: '0x0000000000000000000000000000000000000000000000000000000000000003',
+                name: 'Экологическая инициатива',
+                description: 'Проект по очистке реки и прибрежных территорий',
+                status: 4, // ReadyToPayout
+                target: this.web3.utils.toWei('3', 'ether'),
+                totalAllocated: this.web3.utils.toWei('3', 'ether'),
+                totalPaidOut: this.web3.utils.toWei('0', 'ether'),
+                category: 'Экология'
+              }
+            ];
+          }
           
           // Если проектов нет
-          if (demoProjects.length === 0) {
-            projectsList.innerHTML = '<div class="alert alert-info">Нет проектов, готовых к выплате.</div>';
+          if (projects.length === 0) {
+            projectsList.innerHTML = '<div class="alert alert-info">Нет проектов для отображения.</div>';
             return;
           }
           
           // Отображаем список проектов
-          let projectsHTML = '<h4>Выберите проект для выплаты:</h4><div class="project-list">';
+          let projectsHTML = '<h4>Доступные проекты:</h4><div class="project-list">';
           
-          demoProjects.forEach(project => {
+          projects.forEach(project => {
             const availableAmount = this.web3.utils.fromWei(
               (BigInt(project.totalAllocated) - BigInt(project.totalPaidOut)).toString(), 
               'ether'
             );
+            
+            // Определяем статус проекта
+            const statusMap = ['Draft', 'Active', 'FundingReady', 'Voting', 'ReadyToPayout', 'Paid', 'Cancelled', 'Archived'];
+            const statusText = statusMap[project.status] || 'Unknown';
+            const statusClass = project.status === 4 ? 'badge-info' : 
+                               project.status === 5 ? 'badge-success' : 
+                               project.status === 6 ? 'badge-danger' : 'badge-secondary';
             
             projectsHTML += `
               <div class="project-card" data-project-id="${project.id}">
                 <div class="project-header">
                   <div class="project-title">${project.name}</div>
                   <div class="project-status">
-                    <span class="badge badge-info">Готов к выплате</span>
+                    <span class="badge ${statusClass}">${statusText}</span>
                   </div>
                 </div>
                 <div class="project-details">
@@ -1448,6 +1674,7 @@ class ProjectPayoutInterface {
                   <div class="project-metrics">
                     <div class="project-metric">Категория: ${project.category}</div>
                     <div class="project-metric">Доступно: ${availableAmount} ETH</div>
+                    <div class="project-metric">Статус: ${statusText}</div>
                   </div>
                 </div>
                 <button class="btn btn-primary select-project-btn" data-project-id="${project.id}">Выбрать</button>
@@ -1456,9 +1683,19 @@ class ProjectPayoutInterface {
           });
           
           projectsHTML += '</div>';
+          
+          // Add refresh button
+          projectsHTML += '<div class="mt-3"><button class="btn btn-secondary" id="refresh-projects-btn"><i class="fas fa-sync-alt"></i> Обновить список</button></div>';
+          
           projectsList.innerHTML = projectsHTML;
           
           console.log('Projects list updated with available projects');
+          
+          // Add event listener for refresh button
+          const refreshButton = document.getElementById('refresh-projects-btn');
+          if (refreshButton) {
+            refreshButton.addEventListener('click', () => this.refreshProjects());
+          }
           
           // Прикрепляем обработчики событий к кнопкам выбора проекта
           const selectButtons = document.querySelectorAll('.select-project-btn');
@@ -1466,7 +1703,7 @@ class ProjectPayoutInterface {
             button.addEventListener('click', (event) => {
               const projectId = event.target.getAttribute('data-project-id');
               console.log(`Project selected: ${projectId}`);
-              this.loadProjectById(projectId, demoProjects);
+              this.loadProjectById(projectId, projects);
             });
           });
           
@@ -1530,9 +1767,15 @@ class ProjectPayoutInterface {
       // Get project details
       const project = await this.contracts.projects.methods.projects(projectId).call();
       
-      // Check if project is ReadyToPayout (status 4)
-      if (project.status !== '4') {
-        this.showError('Project is not in ReadyToPayout status');
+      // Check if project exists
+      if (!project || project.createdAt === '0') {
+        this.showError('Project not found');
+        return;
+      }
+      
+      // Check if project is ReadyToPayout (status 4) or Paid (status 5)
+      if (project.status !== '4' && project.status !== '5') {
+        this.showError(`Project is not ready for payout. Current status: ${project.status}`);
         return;
       }
       
@@ -1605,6 +1848,10 @@ class ProjectPayoutInterface {
         creator: project.creator || '0x0000000000000000000000000000000000000000'
       };
       
+      // Update project status display
+      const statusMap = ['Draft', 'Active', 'FundingReady', 'Voting', 'ReadyToPayout', 'Paid', 'Cancelled', 'Archived'];
+      this.currentProject.statusText = statusMap[project.status] || 'Unknown';
+      
       // Отображаем проект в шаге 1
       this.displayProjectInStep1();
       
@@ -1622,26 +1869,40 @@ class ProjectPayoutInterface {
   }
 
   displayProjectInStep1() {
-    const projectsList = document.getElementById('projects-list');
-    if (projectsList) {
-      projectsList.innerHTML = `
-        <div class="project-card selected">
-          <div class="project-header">
-            <div class="project-title">${this.currentProject.name}</div>
-            <div class="project-status">
-              <span class="badge badge-info">${this.currentProject.status}</span>
+    try {
+      let projectsList = document.getElementById('projects-list');
+      if (!projectsList) {
+        console.warn('projects-list element not found, trying alternative selectors');
+        projectsList = document.querySelector('[data-projects-list]') || 
+                     document.querySelector('.projects-list') ||
+                     document.querySelector('#step-1 .projects-list');
+      }
+      
+      if (projectsList) {
+        projectsList.innerHTML = `
+          <div class="project-card selected">
+            <div class="project-header">
+              <div class="project-title">${this.currentProject.name}</div>
+              <div class="project-status">
+                <span class="badge badge-info">${this.currentProject.statusText || this.currentProject.status}</span>
+              </div>
             </div>
-          </div>
-          <div class="project-details">
-            <div>${this.currentProject.description}</div>
-            <div class="project-metrics">
+            <div class="project-details">
+              <div>${this.currentProject.description}</div>
+                          <div class="project-metrics">
               <div class="project-metric">Target: ${this.currentProject.target}</div>
               <div class="project-metric">Category: ${this.currentProject.category}</div>
               <div class="project-metric">Priority: ${this.currentProject.priority}</div>
+              <div class="project-metric">Status: ${this.currentProject.statusText || this.currentProject.status}</div>
+            </div>
             </div>
           </div>
-        </div>
-      `;
+        `;
+      } else {
+        console.warn('projects-list element not found anywhere');
+      }
+    } catch (error) {
+      console.warn('Failed to display project in step 1:', error);
     }
   }
 
@@ -1650,48 +1911,72 @@ class ProjectPayoutInterface {
     this.workflowStep = step;
     
     // Update step indicators
-    for (let i = 1; i <= 5; i++) {
-      const stepElement = document.getElementById(`step-${i}`);
-      if (stepElement) {
-        stepElement.classList.remove('active', 'completed');
-        
-        if (i < step) {
-          stepElement.classList.add('completed');
-        } else if (i === step) {
-          stepElement.classList.add('active');
+    try {
+      for (let i = 1; i <= 5; i++) {
+        const stepElement = document.getElementById(`step-${i}`);
+        if (stepElement) {
+          stepElement.classList.remove('active', 'completed');
+          
+          if (i < step) {
+            stepElement.classList.add('completed');
+          } else if (i === step) {
+            stepElement.classList.add('active');
+          }
         }
       }
+    } catch (error) {
+      console.warn('Failed to update step indicators:', error);
     }
     
     // Show/hide step content
-    for (let i = 1; i <= 5; i++) {
-      const contentElement = document.getElementById(`step-${i}-content`);
-      if (contentElement) {
-        if (i === step) {
-          contentElement.classList.remove('hidden');
-        } else {
-          contentElement.classList.add('hidden');
+    try {
+      for (let i = 1; i <= 5; i++) {
+        const contentElement = document.getElementById(`step-${i}-content`);
+        if (contentElement) {
+          if (i === step) {
+            contentElement.classList.remove('hidden');
+          } else {
+            contentElement.classList.add('hidden');
+          }
         }
       }
+    } catch (error) {
+      console.warn('Failed to update step content visibility:', error);
     }
     
     // Update step-specific content
     switch (step) {
       case 2:
         console.log('Setting up step 2');
-        this.setupStep2();
+        try {
+          this.setupStep2();
+        } catch (error) {
+          console.warn('Failed to setup step 2:', error);
+        }
         break;
       case 3:
         console.log('Setting up step 3');
-        this.setupStep3();
+        try {
+          this.setupStep3();
+        } catch (error) {
+          console.warn('Failed to setup step 3:', error);
+        }
         break;
       case 4:
         console.log('Setting up step 4');
-        this.setupStep4();
+        try {
+          this.setupStep4();
+        } catch (error) {
+          console.warn('Failed to setup step 4:', error);
+        }
         break;
       case 5:
         console.log('Setting up step 5');
-        this.setupStep5();
+        try {
+          this.setupStep5();
+        } catch (error) {
+          console.warn('Failed to setup step 5:', error);
+        }
         break;
       default:
         console.log(`No specific setup for step ${step}`);
@@ -1701,31 +1986,42 @@ class ProjectPayoutInterface {
   setupStep2() {
     console.log('Setting up step 2, current project:', this.currentProject);
     
+    // Check if manual transaction form exists
+    const manualTxForm = document.getElementById('manual-tx-form');
+    console.log('Manual transaction form in setupStep2:', manualTxForm);
+    if (manualTxForm) {
+      console.log('Manual form initial display style:', manualTxForm.style.display);
+    }
+    
     if (!this.currentProject) {
       this.showError('Проект не выбран');
       return;
     }
     
     // Отображаем информацию о проекте
-    const projectNameDisplay = document.getElementById('project-name-display');
-    if (projectNameDisplay) {
-      projectNameDisplay.textContent = this.currentProject.name;
-    }
-    
-    const projectDetailsDisplay = document.getElementById('project-details-display');
-    if (projectDetailsDisplay) {
-      projectDetailsDisplay.innerHTML = `
-        <div><strong>Описание:</strong> ${this.currentProject.description}</div>
-        <div><strong>Целевая сумма:</strong> ${this.currentProject.target}</div>
-        <div><strong>Категория:</strong> ${this.currentProject.category}</div>
-        <div><strong>Статус:</strong> <span class="badge badge-info">${this.currentProject.status}</span></div>
-      `;
-    }
-    
-    // Заполняем адрес получателя адресом создателя проекта
-    const recipientAddress = document.getElementById('recipient-address');
-    if (recipientAddress) {
-      recipientAddress.value = this.currentProject.creator || '';
+    try {
+      const projectNameDisplay = document.getElementById('project-name-display');
+      if (projectNameDisplay) {
+        projectNameDisplay.textContent = this.currentProject.name;
+      }
+      
+      const projectDetailsDisplay = document.getElementById('project-details-display');
+      if (projectDetailsDisplay) {
+        projectDetailsDisplay.innerHTML = `
+          <div><strong>Описание:</strong> ${this.currentProject.description}</div>
+          <div><strong>Целевая сумма:</strong> ${this.currentProject.target}</div>
+          <div><strong>Категория:</strong> ${this.currentProject.category}</div>
+          <div><strong>Статус:</strong> <span class="badge badge-info">${this.currentProject.statusText || this.currentProject.status}</span></div>
+        `;
+      }
+      
+      // Заполняем адрес получателя адресом создателя проекта
+      const recipientAddress = document.getElementById('recipient-address');
+      if (recipientAddress) {
+        recipientAddress.value = this.currentProject.creator || '';
+      }
+    } catch (error) {
+      console.warn('Failed to update project display elements:', error);
     }
     
     // Рассчитываем и отображаем максимально доступную сумму
@@ -1790,9 +2086,16 @@ class ProjectPayoutInterface {
     console.log('Setting up step 3, current transaction ID:', this.currentTransactionId);
     
     // Get transaction details container
-    const transactionDetails = document.getElementById('transaction-details');
+    let transactionDetails = document.getElementById('transaction-details');
     if (!transactionDetails) {
-      console.warn('transaction-details element not found');
+      console.warn('transaction-details element not found, trying alternative selectors');
+      transactionDetails = document.querySelector('[data-transaction-details]') || 
+                         document.querySelector('.transaction-details') ||
+                         document.querySelector('#step-3 .transaction-details');
+    }
+    
+    if (!transactionDetails) {
+      console.error('transaction-details element not found anywhere');
       return;
     }
     
@@ -1882,6 +2185,9 @@ class ProjectPayoutInterface {
       </div>
     `;
     
+    // Update the transaction display
+    this.updateTransactionDisplay();
+    
     // Attach event listener to the back button
     const backToStep2Button = document.getElementById('back-to-step-2');
     if (backToStep2Button) {
@@ -1905,12 +2211,20 @@ class ProjectPayoutInterface {
     }
     
     // Display transaction ID
-    const txIdDisplay = document.getElementById('execute-tx-id-display');
+    let txIdDisplay = document.getElementById('execute-tx-id-display');
+    if (!txIdDisplay) {
+      // Если элемент не найден, попробуем найти его в другом месте или создать
+      console.warn('Element execute-tx-id-display not found, trying to locate it');
+      txIdDisplay = document.querySelector('[data-tx-id-display]') || 
+                   document.querySelector('.tx-id-display') ||
+                   document.querySelector('#step-4 .tx-id-display');
+    }
+    
     if (txIdDisplay) {
       txIdDisplay.textContent = `#${this.currentTransactionId}`;
       console.log('Execution transaction ID displayed:', this.currentTransactionId);
     } else {
-      console.warn('Element execute-tx-id-display not found');
+      console.warn('Element execute-tx-id-display not found anywhere, transaction ID:', this.currentTransactionId);
     }
     
     // Load transaction details
@@ -1924,31 +2238,45 @@ class ProjectPayoutInterface {
     }
     
     // Display project information
-    const projectNameDisplay = document.getElementById('complete-project-name-display');
-    if (projectNameDisplay) {
-      projectNameDisplay.textContent = this.currentProject.name;
-    }
-    
-    const projectDetailsDisplay = document.getElementById('complete-project-details-display');
-    if (projectDetailsDisplay) {
-      projectDetailsDisplay.innerHTML = `
-        <div><strong>Description:</strong> ${this.currentProject.description}</div>
-        <div><strong>Target:</strong> ${this.currentProject.target}</div>
-        <div><strong>Category:</strong> ${this.currentProject.category}</div>
-        <div><strong>Status:</strong> <span class="badge badge-info">${this.currentProject.status}</span></div>
-      `;
+    try {
+      const projectNameDisplay = document.getElementById('complete-project-name-display');
+      if (projectNameDisplay) {
+        projectNameDisplay.textContent = this.currentProject.name;
+      }
+      
+      const projectDetailsDisplay = document.getElementById('complete-project-details-display');
+      if (projectDetailsDisplay) {
+        projectDetailsDisplay.innerHTML = `
+          <div><strong>Description:</strong> ${this.currentProject.description}</div>
+          <div><strong>Target:</strong> ${this.currentProject.target}</div>
+          <div><strong>Category:</strong> ${this.currentProject.category}</div>
+          <div><strong>Status:</strong> <span class="badge badge-info">${this.currentProject.statusText || this.currentProject.status}</span></div>
+        `;
+      }
+    } catch (error) {
+      console.warn('Failed to update project display elements in step 5:', error);
     }
   }
 
   nextStep() {
-    if (this.workflowStep < 5) {
-      this.updateWorkflowStep(this.workflowStep + 1);
+    try {
+      if (this.workflowStep < 5) {
+        this.updateWorkflowStep(this.workflowStep + 1);
+      }
+    } catch (error) {
+      console.error('Error moving to next step:', error);
+      this.showError('Failed to move to next step: ' + error.message);
     }
   }
 
   previousStep() {
-    if (this.workflowStep > 1) {
-      this.updateWorkflowStep(this.workflowStep - 1);
+    try {
+      if (this.workflowStep > 1) {
+        this.updateWorkflowStep(this.workflowStep - 1);
+      }
+    } catch (error) {
+      console.error('Error moving to previous step:', error);
+      this.showError('Failed to move to previous step: ' + error.message);
     }
   }
 
@@ -2014,55 +2342,153 @@ class ProjectPayoutInterface {
       
       console.log('Transaction receipt:', txReceipt);
       
-      // Extract transaction ID from event logs
-      let txProposedEvent = null;
+      // Store receipt globally for debugging
+      window.lastTxReceipt = txReceipt;
+      console.log('Transaction receipt stored in window.lastTxReceipt for debugging');
       
-      // Try to find the TxProposed event in different possible locations
-      if (txReceipt.events && txReceipt.events.TxProposed) {
-        txProposedEvent = txReceipt.events.TxProposed;
-      } else if (txReceipt.events && Array.isArray(txReceipt.events)) {
-        // Look through array of events
-        txProposedEvent = txReceipt.events.find(event => event.event === 'TxProposed');
-      } else if (txReceipt.logs && Array.isArray(txReceipt.logs)) {
-        // Look through logs
-        txProposedEvent = txReceipt.logs.find(log => {
-          try {
-            const decodedLog = this.contracts.multisig.options.jsonInterface.find(j => j.signature === log.topics[0]);
-            return decodedLog && decodedLog.name === 'TxProposed';
-          } catch (e) {
-            return false;
-          }
+      // Log the logs for manual inspection
+      if (txReceipt.logs && txReceipt.logs.length > 0) {
+        console.log('Transaction logs for manual txId extraction:');
+        txReceipt.logs.forEach((log, index) => {
+          console.log(`Log ${index}:`, {
+            topics: log.topics,
+            data: log.data,
+            address: log.address
+          });
         });
       }
       
-      console.log('Found TxProposed event:', txProposedEvent);
+      // Try to get txId directly from the receipt first
+      let transactionId = null;
       
-      this.currentTransactionId = txProposedEvent ? txProposedEvent.returnValues.txId : null;
+      // Method 1: Try to get from events (Web3.js v1.x format)
+      if (txReceipt.events && txReceipt.events.TxProposed && txReceipt.events.TxProposed.returnValues) {
+        transactionId = txReceipt.events.TxProposed.returnValues.txId;
+        console.log('Found txId in events:', transactionId);
+      }
       
-      // If we still don't have a transaction ID, try to get it from the contract
-      if (!this.currentTransactionId) {
-        console.warn('Transaction ID not found in event logs, trying to get latest transaction ID from contract');
-        try {
-          // This is a fallback - in a real implementation, you might want to query the contract
-          // for the latest transaction ID created by this account
-          const transactionCount = await this.contracts.multisig.methods.getTransactionCount().call();
-          if (transactionCount > 0) {
-            this.currentTransactionId = (parseInt(transactionCount) - 1).toString();
-            console.log('Using fallback transaction ID:', this.currentTransactionId);
+      // Method 1b: Try alternative event format
+      if (!transactionId && txReceipt.events && typeof txReceipt.events === 'object') {
+        for (const [eventName, eventData] of Object.entries(txReceipt.events)) {
+          if (eventName === 'TxProposed' && eventData && eventData.returnValues && eventData.returnValues.txId) {
+            transactionId = eventData.returnValues.txId;
+            console.log('Found txId in alternative event format:', transactionId);
+            break;
           }
-        } catch (fallbackError) {
-          console.error('Fallback method failed:', fallbackError);
         }
       }
+      
+      // Method 2: Try to get from raw logs by decoding the first topic as txId
+      if (!transactionId && txReceipt.logs && txReceipt.logs.length > 0) {
+        console.log('Attempting to extract txId from raw logs...');
+        for (let i = 0; i < txReceipt.logs.length; i++) {
+          const log = txReceipt.logs[i];
+          console.log(`Analyzing log ${i}:`, {
+            address: log.address,
+            topics: log.topics,
+            data: log.data
+          });
+          
+          // The first topic should be the indexed txId parameter
+          if (log.topics && log.topics.length > 0) {
+            try {
+              const firstTopic = log.topics[0];
+              if (firstTopic && firstTopic.startsWith('0x')) {
+                const decoded = this.web3.utils.hexToNumberString(firstTopic);
+                if (decoded && !isNaN(decoded) && parseInt(decoded) > 0) {
+                  console.log('Found txId in first topic:', decoded);
+                  transactionId = decoded;
+                  break;
+                }
+              }
+            } catch (e) {
+              console.warn('Failed to decode topic as number:', e);
+            }
+          }
+        }
+      }
+      
+      // Method 3: If extraction failed, try to get latest transaction ID from contract
+      if (!transactionId) {
+        console.log('Transaction ID not found in event logs, trying to get latest transaction ID from contract');
+        try {
+          const txCount = await this.contracts.multisig.methods.txCount().call();
+          if (txCount && parseInt(txCount) > 0) {
+            transactionId = (parseInt(txCount) - 1).toString();
+            console.log('Transaction ID from txCount fallback:', transactionId);
+          }
+        } catch (error) {
+          console.error('Fallback method failed:', error);
+          // Попробуем использовать номер блока как fallback
+          if (txReceipt.blockNumber) {
+            transactionId = txReceipt.blockNumber.toString();
+            console.log('Using block number as fallback transaction ID:', transactionId);
+          }
+        }
+      }
+      
+      if (!transactionId) {
+        console.error('Failed to extract transaction ID from event logs');
+        this.showWarning('Не удалось получить ID транзакции автоматически. Используйте форму ниже для ручного ввода.');
+        
+        // Показываем форму для ручного ввода txId
+        const manualTxForm = document.getElementById('manual-tx-form');
+        console.log('Looking for manual-tx-form element:', manualTxForm);
+        if (manualTxForm) {
+          manualTxForm.style.display = 'block';
+          console.log('Manual transaction form displayed');
+        } else {
+          console.error('manual-tx-form element not found in DOM');
+        }
+        
+        // Попробуем использовать последний известный txCount как fallback
+        try {
+          const lastTxCount = await this.contracts.multisig.methods.txCount().call();
+          if (lastTxCount && parseInt(lastTxCount) > 0) {
+            transactionId = (parseInt(lastTxCount) - 1).toString();
+            console.log('Using last txCount as fallback transaction ID:', transactionId);
+            this.showWarning(`Используется резервный ID транзакции: ${transactionId}. Если это неверно, введите правильный ID вручную.`);
+          }
+        } catch (fallbackError) {
+          console.warn('Fallback txCount also failed:', fallbackError);
+          // Используем номер блока как последний fallback
+          if (txReceipt.blockNumber) {
+            transactionId = txReceipt.blockNumber.toString();
+            console.log('Using block number as final fallback transaction ID:', transactionId);
+            this.showWarning(`Используется номер блока как ID транзакции: ${transactionId}. Если это неверно, введите правильный ID вручную.`);
+          }
+        }
+        
+        // Если всё ещё нет transactionId, останавливаем выполнение
+        if (!transactionId) {
+          // Восстанавливаем кнопку
+          if (proposeButton) {
+            proposeButton.disabled = false;
+            proposeButton.innerHTML = 'Предложить выплату';
+          }
+          return;
+        }
+      }
+      
+      this.currentTransactionId = transactionId;
       
       // Save transaction ID to localStorage for persistence between page reloads
       if (this.currentTransactionId) {
         localStorage.setItem('currentTransactionId', this.currentTransactionId);
         console.log('Transaction ID saved to localStorage:', this.currentTransactionId);
         this.showSuccess(`Предложение на выплату создано с ID транзакции: ${this.currentTransactionId}`);
+        
+        // Update the transaction display
+        this.updateTransactionDisplay();
+        
+        // Hide the manual input form if it was shown
+        const manualTxForm = document.getElementById('manual-tx-form');
+        if (manualTxForm) {
+          manualTxForm.style.display = 'none';
+        }
       } else {
-        console.error('Failed to extract transaction ID from event logs');
-        this.showError('Не удалось получить ID транзакции из события. Проверьте консоль для получения дополнительной информации.');
+        console.error('Failed to extract transaction ID');
+        this.showError('Не удалось получить ID транзакции. Проверьте консоль для получения дополнительной информации.');
         // Восстанавливаем кнопку
         if (proposeButton) {
           proposeButton.disabled = false;
@@ -2075,6 +2501,14 @@ class ProjectPayoutInterface {
       if (proposeButton) {
         proposeButton.disabled = false;
         proposeButton.innerHTML = 'Предложить выплату';
+      }
+      
+      // Refresh projects list to show updated statuses
+      try {
+        await this.refreshProjects();
+        console.log('Projects list refreshed after payout proposal');
+      } catch (refreshError) {
+        console.warn('Failed to refresh projects list:', refreshError);
       }
       
       // Move to step 3
@@ -2101,7 +2535,7 @@ class ProjectPayoutInterface {
       }
       
       // Try to get transaction details
-      const tx = await this.contracts.multisig.methods.transactions(txId).call();
+      const tx = await this.contracts.multisig.methods.txs(txId).call();
       console.log('Transaction details for ID', txId, ':', tx);
       
       // If we get here without an error, the transaction ID is valid
@@ -2112,105 +2546,164 @@ class ProjectPayoutInterface {
     }
   }
 
-  showError(message) {
-    const errorContainer = document.getElementById('error-container');
-    if (errorContainer) {
-      errorContainer.innerHTML = message;
-      errorContainer.style.display = 'block';
+  // Надёжное извлечение txId из квитанции транзакции
+  async extractTxIdFromReceipt(txReceipt, recipient, amount, projectId) {
+    try {
+      console.log('Extracting txId from receipt:', txReceipt);
+      
+      // 1) Пробуем стандартный путь через events (Web3.js v1.x)
+      if (txReceipt && txReceipt.events && txReceipt.events.TxProposed && txReceipt.events.TxProposed.returnValues) {
+        const id = txReceipt.events.TxProposed.returnValues.txId;
+        if (id !== undefined && id !== null) {
+          console.log('Found txId in events.TxProposed.returnValues:', id);
+          return id.toString();
+        }
+      }
+
+      // 2) Если events — массив (Web3.js v1.x альтернативный формат)
+      if (txReceipt && Array.isArray(txReceipt.events)) {
+        const found = txReceipt.events.find(e => e && e.event === 'TxProposed' && e.returnValues && e.returnValues.txId !== undefined);
+        if (found) {
+          console.log('Found txId in events array:', found.returnValues.txId);
+          return found.returnValues.txId.toString();
+        }
+      }
+
+      // 3) Декодируем вручную логи по сигнатуре события
+      if (txReceipt && Array.isArray(txReceipt.logs)) {
+        console.log('Attempting manual log decoding, logs count:', txReceipt.logs.length);
+        
+        // Пробуем найти событие TxProposed по сигнатуре
+        const eventSignature = this.web3.eth.abi.encodeEventSignature('TxProposed(uint256,address,address,uint256,uint8,bytes32,string)');
+        console.log('Looking for event signature:', eventSignature);
+        
+        for (let i = 0; i < txReceipt.logs.length; i++) {
+          const log = txReceipt.logs[i];
+          console.log(`Log ${i}:`, log);
+          
+          if (log.topics && log.topics[0] === eventSignature) {
+            console.log('Found matching event signature in log:', i);
+            
+            try {
+              // Декодируем параметры события
+              const eventInputs = [
+                { type: 'uint256', name: 'txId', indexed: true },
+                { type: 'address', name: 'proposer', indexed: true },
+                { type: 'address', name: 'to', indexed: true },
+                { type: 'uint256', name: 'value', indexed: false },
+                { type: 'uint8', name: 'txType', indexed: false },
+                { type: 'bytes32', name: 'projectId', indexed: false },
+                { type: 'string', name: 'description', indexed: false }
+              ];
+              
+              const decoded = this.web3.eth.abi.decodeLog(eventInputs, log.data, log.topics.slice(1));
+              console.log('Decoded event parameters:', decoded);
+              
+              if (decoded && decoded.txId !== undefined) {
+                console.log('Successfully extracted txId from log:', decoded.txId);
+                return decoded.txId.toString();
+              }
+            } catch (decodeError) {
+              console.warn('Failed to decode log:', decodeError);
+            }
+          }
+        }
+      }
+
+      // 4) Резервно: пытаемся прочитать событие с того же блока через getPastEvents
+      if (txReceipt && txReceipt.blockNumber) {
+        console.log('Trying getPastEvents for block:', txReceipt.blockNumber);
+        try {
+          const past = await this.contracts.multisig.getPastEvents('TxProposed', {
+            fromBlock: txReceipt.blockNumber,
+            toBlock: txReceipt.blockNumber
+          });
+          console.log('getPastEvents result:', past);
+          
+          if (past && past.length > 0) {
+            // Фильтруем по параметрам (где доступны)
+            const match = past.find(ev => {
+              try {
+                const byTo = !recipient || recipient.toLowerCase() === (ev.returnValues.to || '').toLowerCase();
+                const byAmount = !amount || amount === ev.returnValues.value;
+                const byProject = !projectId || (ev.returnValues.projectId || '').toLowerCase() === projectId.toLowerCase();
+                return byTo && byAmount && byProject;
+              } catch (_) { return false; }
+            }) || past[0];
+            
+            if (match && match.returnValues && match.returnValues.txId !== undefined) {
+              console.log('Found txId via getPastEvents:', match.returnValues.txId);
+              return match.returnValues.txId.toString();
+            }
+          }
+        } catch (e) {
+          console.warn('getPastEvents fallback failed:', e);
+        }
+      }
+
+      // 5) В самом крайнем случае — текущий txCount как ID
+      try {
+        console.log('Trying txCount fallback');
+        const transactionCount = await this.contracts.multisig.methods.txCount().call();
+        if (parseInt(transactionCount) > 0) {
+          console.log('Using txCount as txId:', transactionCount);
+          return parseInt(transactionCount).toString();
+        }
+      } catch (countError) {
+        console.warn('txCount fallback failed:', countError);
+        // Если txCount не работает, попробуем другой подход
+        try {
+          console.log('Trying alternative approach - getting transaction by index');
+          // Попробуем получить транзакцию по индексу
+          const latestTx = await this.contracts.multisig.methods.txs(parseInt(transactionCount) - 1).call();
+          if (latestTx && latestTx.id) {
+            console.log('Found latest transaction ID:', latestTx.id);
+            return latestTx.id.toString();
+          }
+        } catch (altError) {
+          console.warn('Alternative approach also failed:', altError);
+        }
+      }
+
+      console.log('All extraction methods failed');
+      return null;
+    } catch (error) {
+      console.error('extractTxIdFromReceipt error:', error);
+      return null;
     }
   }
 
-  async refreshTransactionStatus() {
+  // Поиск txId по критериям в последних транзакциях контракта
+  async findTxIdByCriteria({ to, value, projectId, proposer }) {
     try {
-      console.log('Refreshing transaction status, transaction ID:', this.currentTransactionId);
-      
-      if (!this.currentTransactionId) {
-        console.warn('No transaction ID available to refresh status');
-        return;
+      if (!this.contracts.multisig) return null;
+      const countRaw = await this.contracts.multisig.methods.txCount().call();
+      const count = parseInt(countRaw || '0');
+      if (count === 0) return null;
+      // Просканируем последние 20 транзакций (или меньше, если их меньше)
+      const scan = Math.min(20, count);
+      for (let i = count - 1; i >= Math.max(0, count - scan); i--) {
+        try {
+          const tx = await this.contracts.multisig.methods.txs(i).call();
+          const toOk = !to || (tx.to || '').toLowerCase() === to.toLowerCase();
+          const valueOk = !value || value === tx.value;
+          const projectOk = !projectId || (tx.projectId || '').toLowerCase() === projectId.toLowerCase();
+          const proposerOk = !proposer || (tx.proposer || '').toLowerCase() === proposer.toLowerCase();
+          if (toOk && valueOk && projectOk && proposerOk) {
+            return i.toString();
+          }
+        } catch (_) {}
       }
-      
-      if (!this.contracts.multisig) {
-        console.warn('Multisig contract not initialized');
-        return;
-      }
-      
-      // Get transaction details
-      console.log('Fetching transaction details from contract...');
-      const tx = await this.contracts.multisig.methods.txs(this.currentTransactionId).call();
-      console.log('Transaction details received:', tx);
-      
-      // Get multisig required confirmations
-      const required = await this.contracts.multisig.methods.required().call();
-      console.log('Required confirmations:', required);
-      
-      // Format transaction details
-      const statusMap = ['Pending', 'Executed', 'Cancelled'];
-      const typeMap = ['GeneralPayout', 'ProjectPayout', 'ConfigChange', 'OwnershipChange'];
-      
-      const details = {
-        id: tx.id,
-        to: tx.to,
-        value: this.web3.utils.fromWei(tx.value, 'ether') + ' ETH',
-        type: typeMap[tx.txType] || 'Unknown',
-        status: statusMap[tx.status] || 'Unknown',
-        confirmations: `${tx.confirmations}/${required}`,
-        createdAt: new Date(tx.createdAt * 1000).toLocaleString(),
-        executedAt: tx.executedAt > 0 ? new Date(tx.executedAt * 1000).toLocaleString() : 'Not executed',
-        projectId: tx.projectId !== '0x0000000000000000000000000000000000000000000000000000000000000000' ? tx.projectId : 'N/A',
-        description: tx.description,
-        proposer: tx.proposer
-      };
-      
-      console.log('Formatted transaction details:', details);
-      
-      // Display details
-      const txDetailsDisplay = document.getElementById('tx-details-display');
-      if (txDetailsDisplay) {
-        txDetailsDisplay.innerHTML = `
-          <div><strong>Status:</strong> <span class="badge ${tx.status === '0' ? 'badge-warning' : tx.status === '1' ? 'badge-success' : 'badge-danger'}">${details.status}</span></div>
-          <div><strong>To:</strong> ${details.to}</div>
-          <div><strong>Amount:</strong> ${details.value}</div>
-          <div><strong>Type:</strong> ${details.type}</div>
-          <div><strong>Confirmations:</strong> ${details.confirmations}</div>
-          <div><strong>Created:</strong> ${details.createdAt}</div>
-          <div><strong>Description:</strong> ${details.description}</div>
-        `;
-        console.log('Transaction details displayed in UI');
-      } else {
-        console.warn('Element tx-details-display not found');
-      }
-      
-      // Enable next button if confirmed
-      const nextButton = document.getElementById('next-step-3');
-      if (nextButton) {
-        if (parseInt(tx.confirmations) >= parseInt(required)) {
-          nextButton.disabled = false;
-          nextButton.classList.add('btn-success');
-          console.log('Next button enabled: sufficient confirmations');
-        } else {
-          nextButton.disabled = true;
-          nextButton.classList.remove('btn-success');
-          console.log('Next button disabled: insufficient confirmations');
-        }
-      } else {
-        console.warn('Element next-step-3 not found');
-      }
-      
-      // Enable confirm button if not yet confirmed by current user
-      const confirmButton = document.getElementById('confirm-button');
-      if (confirmButton) {
-        // This is a simplified check - in a real implementation, you'd need to check
-        // if the current user has already confirmed the transaction
-        confirmButton.disabled = tx.status !== '0'; // Disable if not pending
-        console.log('Confirm button ' + (confirmButton.disabled ? 'disabled' : 'enabled') + ': transaction status is ' + details.status);
-      } else {
-        console.warn('Element confirm-button not found');
-      }
+      return null;
     } catch (error) {
-      console.error('Error refreshing transaction status:', error);
-      this.showError('Failed to refresh transaction status: ' + error.message);
+      console.warn('findTxIdByCriteria error:', error);
+      return null;
     }
   }
+
+  
+
+  
 
   async confirmTransaction() {
     try {
@@ -2256,7 +2749,20 @@ class ProjectPayoutInterface {
       }
       
       // Refresh transaction status
-      this.refreshTransactionStatus();
+      try {
+        await this.refreshTransactionStatus();
+      } catch (refreshError) {
+        console.warn('Failed to refresh transaction status after confirmation:', refreshError);
+        // Продолжаем выполнение даже если обновление статуса не удалось
+      }
+      
+      // Refresh projects list to show updated statuses
+      try {
+        await this.refreshProjects();
+        console.log('Projects list refreshed after transaction confirmation');
+      } catch (refreshError) {
+        console.warn('Failed to refresh projects list:', refreshError);
+      }
     } catch (error) {
       console.error('Confirmation error:', error);
       this.showError(`Failed to confirm transaction: ${error.message}`);
@@ -2286,18 +2792,43 @@ class ProjectPayoutInterface {
       
       // Get transaction details
       console.log('Fetching transaction details for ID:', this.currentTransactionId);
-      const tx = await this.contracts.multisig.methods.transactions(this.currentTransactionId).call();
-      console.log('Transaction details:', tx);
+      let tx, required, userConfirmed = false;
       
-      // Get required confirmations
-      const required = await this.contracts.multisig.methods.required().call();
-      console.log('Required confirmations:', required);
+      try {
+        tx = await this.contracts.multisig.methods.txs(this.currentTransactionId).call();
+        console.log('Transaction details:', tx);
+      } catch (txError) {
+        console.warn('Failed to get transaction details:', txError);
+        // Если не можем получить детали, создаём базовую структуру
+        tx = {
+          to: 'Unknown',
+          value: '0',
+          data: '0x',
+          status: '0',
+          confirmations: '0',
+          proposer: 'Unknown',
+          projectId: '0x0000000000000000000000000000000000000000000000000000000000000000',
+          description: 'Transaction details unavailable'
+        };
+      }
+      
+      try {
+        required = await this.contracts.multisig.methods.required().call();
+        console.log('Required confirmations:', required);
+      } catch (reqError) {
+        console.warn('Failed to get required confirmations:', reqError);
+        required = '1'; // Значение по умолчанию
+      }
       
       // Check if current user has confirmed
-      let userConfirmed = false;
       if (this.account) {
-        userConfirmed = await this.contracts.multisig.methods.confirmations(this.currentTransactionId, this.account).call();
+              try {
+        userConfirmed = await this.contracts.multisig.methods.hasConfirmed(this.currentTransactionId, this.account).call();
         console.log('User confirmation status:', userConfirmed);
+      } catch (confError) {
+        console.warn('Failed to get user confirmation status:', confError);
+        userConfirmed = false;
+      }
       }
       
       // Format transaction details
@@ -2305,8 +2836,8 @@ class ProjectPayoutInterface {
         to: tx.to,
         value: this.web3.utils.fromWei(tx.value, 'ether') + ' ETH',
         data: tx.data,
-        executed: tx.executed,
-        numConfirmations: parseInt(tx.numConfirmations),
+        executed: tx.status === '1', // 1 means executed
+        numConfirmations: parseInt(tx.confirmations),
         proposer: tx.proposer,
         projectId: tx.projectId,
         description: tx.description
@@ -2331,21 +2862,31 @@ class ProjectPayoutInterface {
       // Enable next button if executed
       const nextButton = document.getElementById('next-step-3');
       if (nextButton) {
-        if (details.executed) {
-          nextButton.disabled = false;
-          nextButton.classList.add('btn-success');
-        } else {
+        try {
+          if (details.executed) {
+            nextButton.disabled = false;
+            nextButton.classList.add('btn-success');
+          } else {
+            nextButton.disabled = true;
+            nextButton.classList.remove('btn-success');
+          }
+        } catch (parseError) {
+          console.warn('Failed to parse transaction status for next button:', parseError);
           nextButton.disabled = true;
-          nextButton.classList.remove('btn-success');
         }
       }
       
       // Enable confirm button if not executed and not confirmed by user
       const confirmButton = document.getElementById('confirm-button');
       if (confirmButton) {
-        if (!details.executed && !userConfirmed && this.account) {
-          confirmButton.disabled = false;
-        } else {
+        try {
+          if (!details.executed && !userConfirmed && this.account) {
+            confirmButton.disabled = false;
+          } else {
+            confirmButton.disabled = true;
+          }
+        } catch (parseError) {
+          console.warn('Failed to parse transaction status for confirm button:', parseError);
           confirmButton.disabled = true;
         }
       }
@@ -2362,10 +2903,35 @@ class ProjectPayoutInterface {
       }
       
       // Get transaction details
-      const tx = await this.contracts.multisig.methods.txs(this.currentTransactionId).call();
+      let tx;
+      try {
+        tx = await this.contracts.multisig.methods.txs(this.currentTransactionId).call();
+      } catch (txError) {
+        console.warn('Failed to get transaction details for execution status:', txError);
+        // Если не можем получить детали, создаём базовую структуру
+        tx = { 
+          id: this.currentTransactionId,
+          to: 'Unknown',
+          value: '0',
+          txType: '0',
+          status: '0',
+          confirmations: '0',
+          createdAt: '0',
+          executedAt: '0',
+          projectId: '0x0000000000000000000000000000000000000000000000000000000000000000',
+          description: 'Transaction details unavailable',
+          proposer: 'Unknown'
+        };
+      }
       
       // Get multisig required confirmations
-      const required = await this.contracts.multisig.methods.required().call();
+      let required = '1';
+      try {
+        required = await this.contracts.multisig.methods.required().call();
+      } catch (reqError) {
+        console.warn('Failed to get required confirmations:', reqError);
+        required = '1'; // Значение по умолчанию
+      }
       
       // Format transaction details
       const statusMap = ['Pending', 'Executed', 'Cancelled'];
@@ -2402,21 +2968,31 @@ class ProjectPayoutInterface {
       // Enable next button if executed
       const nextButton = document.getElementById('next-step-4');
       if (nextButton) {
-        if (tx.status === '1') { // Executed
-          nextButton.disabled = false;
-          nextButton.classList.add('btn-success');
-        } else {
+        try {
+          if (tx.status === '1') { // Executed
+            nextButton.disabled = false;
+            nextButton.classList.add('btn-success');
+          } else {
+            nextButton.disabled = true;
+            nextButton.classList.remove('btn-success');
+          }
+        } catch (parseError) {
+          console.warn('Failed to parse transaction status for next button:', parseError);
           nextButton.disabled = true;
-          nextButton.classList.remove('btn-success');
         }
       }
       
       // Enable execute button if confirmed but not executed
       const executeButton = document.getElementById('execute-button');
       if (executeButton) {
-        if (tx.status === '0' && parseInt(tx.confirmations) >= parseInt(required)) {
-          executeButton.disabled = false;
-        } else {
+        try {
+          if (tx.status === '0' && parseInt(tx.confirmations) >= parseInt(required)) {
+            executeButton.disabled = false;
+          } else {
+            executeButton.disabled = true;
+          }
+        } catch (parseError) {
+          console.warn('Failed to parse transaction status for execute button:', parseError);
           executeButton.disabled = true;
         }
       }
@@ -2444,16 +3020,57 @@ class ProjectPayoutInterface {
       }
       
       // Call execute function with gas parameters
-      await this.contracts.multisig.methods.execute(this.currentTransactionId).send({
+      const receipt = await this.contracts.multisig.methods.execute(this.currentTransactionId).send({
         from: this.account,
         gas: 300000, // Установим достаточный лимит газа
         gasPrice: await this.web3.eth.getGasPrice()
       });
       
+      console.log('Execution receipt:', receipt);
       this.showSuccess(`Transaction #${this.currentTransactionId} executed successfully`);
       
       // Refresh execution status
-      this.refreshExecutionStatus();
+      try {
+        await this.refreshExecutionStatus();
+      } catch (refreshError) {
+        console.warn('Failed to refresh execution status after execution:', refreshError);
+        // Продолжаем выполнение даже если обновление статуса не удалось
+      }
+      
+      // Automatically update project status to Paid (5) after successful payout
+      if (this.currentProject && this.contracts.projects) {
+        try {
+          console.log('Updating project status to Paid after successful payout...');
+          const updateReceipt = await this.contracts.projects.methods.setStatus(
+            this.currentProject.id, 
+            5, 
+            'Project payout completed successfully'
+          ).send({
+            from: this.account,
+            gas: 200000,
+            gasPrice: await this.web3.eth.getGasPrice()
+          });
+          
+          console.log('Project status updated to Paid:', updateReceipt);
+          this.showSuccess('Статус проекта автоматически обновлен на "Paid"');
+          
+          // Update current project status
+          this.currentProject.status = 5;
+          this.currentProject.statusText = 'Paid';
+          
+        } catch (updateError) {
+          console.warn('Failed to automatically update project status:', updateError);
+          this.showWarning('Выплата выполнена, но не удалось автоматически обновить статус проекта. Обновите вручную.');
+        }
+      }
+      
+      // Refresh projects list to show updated statuses
+      try {
+        await this.refreshProjects();
+        console.log('Projects list refreshed after transaction execution');
+      } catch (refreshError) {
+        console.warn('Failed to refresh projects list:', refreshError);
+      }
     } catch (error) {
       console.error('Execution error:', error);
       this.showError(`Failed to execute transaction: ${error.message}`);
@@ -2467,7 +3084,14 @@ class ProjectPayoutInterface {
       }
       
       // Get project details
-      const project = await this.contracts.projects.methods.projects(this.currentProject.id).call();
+      let project;
+      try {
+        project = await this.contracts.projects.methods.projects(this.currentProject.id).call();
+      } catch (projectError) {
+        console.warn('Failed to get project details:', projectError);
+        // Если не можем получить детали проекта, предполагаем что он в статусе Paid
+        project = { status: '5' };
+      }
       
       // Format status
       const statusMap = ['Draft', 'Active', 'FundingReady', 'Voting', 'ReadyToPayout', 'Paid', 'Cancelled', 'Archived'];
@@ -2478,12 +3102,16 @@ class ProjectPayoutInterface {
       
       // Enable finish button if project is Paid
       const finishButton = document.getElementById('finish-workflow');
-      if (project.status === '5') { // Paid
-        finishButton.disabled = false;
-        finishButton.classList.add('btn-success');
+      if (finishButton) {
+        if (project.status === '5') { // Paid
+          finishButton.disabled = false;
+          finishButton.classList.add('btn-success');
+        } else {
+          finishButton.disabled = true;
+          finishButton.classList.remove('btn-success');
+        }
       } else {
-        finishButton.disabled = true;
-        finishButton.classList.remove('btn-success');
+        console.warn('Finish workflow button not found');
       }
     } catch (error) {
       console.error('Error refreshing project status:', error);
@@ -2512,16 +3140,38 @@ class ProjectPayoutInterface {
       const reason = completionReasonElement ? (completionReasonElement.value || 'Project payout completed') : 'Project payout completed';
       
       // Call setStatus function to mark project as Paid (status 5) with gas parameters
-      await this.contracts.projects.methods.setStatus(this.currentProject.id, 5, reason).send({
+      const receipt = await this.contracts.projects.methods.setStatus(this.currentProject.id, 5, reason).send({
         from: this.account,
         gas: 200000, // Установим достаточный лимит газа
         gasPrice: await this.web3.eth.getGasPrice()
       });
       
+      console.log('Project completion receipt:', receipt);
       this.showSuccess(`Project marked as Paid successfully`);
       
-      // Refresh project status
-      this.refreshProjectStatus();
+      // Enable the finish workflow button
+      const finishWorkflowBtn = document.getElementById('finish-workflow');
+      if (finishWorkflowBtn) {
+        finishWorkflowBtn.disabled = false;
+        console.log('Finish Workflow button enabled');
+      } else {
+        console.warn('Finish workflow button not found, trying alternative selectors');
+        // Попробуем найти кнопку по альтернативным селекторам
+        const altFinishBtn = document.querySelector('[data-finish-workflow]') || 
+                            document.querySelector('.finish-workflow-btn') ||
+                            document.querySelector('#step-5 .btn-success');
+        if (altFinishBtn) {
+          altFinishBtn.disabled = false;
+          console.log('Alternative finish workflow button enabled');
+        }
+      }
+      
+      // Refresh project status (optional, can be skipped if it fails)
+      try {
+        await this.refreshProjectStatus();
+      } catch (error) {
+        console.warn('Failed to refresh project status, but project was completed successfully');
+      }
     } catch (error) {
       console.error('Project completion error:', error);
       this.showError(`Failed to complete project: ${error.message}`);
@@ -2530,77 +3180,321 @@ class ProjectPayoutInterface {
 
   finishWorkflow() {
     this.showSuccess('Project payout workflow completed successfully!');
-    this.showModal('Workflow Completed', '<p>The project payout workflow has been completed successfully.</p><p>You can start a new workflow or disconnect from Web3.</p>');
+    
+    // Попробуем показать модальное окно
+    try {
+      this.showModal('Workflow Completed', '<p>The project payout workflow has been completed successfully.</p><p>You can start a new workflow or disconnect from Web3.</p>');
+    } catch (modalError) {
+      console.warn('Failed to show completion modal:', modalError);
+      // Если модальное окно не работает, показываем простое сообщение
+      alert('Project payout workflow completed successfully!');
+    }
+    
+    // Сбрасываем состояние для нового workflow
+    this.currentTransactionId = null;
+    localStorage.removeItem('currentTransactionId');
+    this.workflowStep = 1;
+    this.updateWorkflowStep(1);
+    
+    console.log('Workflow completed and reset for new session');
   }
 
   // Method to manually clear transaction ID from localStorage (for debugging)
   clearTransactionId() {
-    this.currentTransactionId = null;
-    localStorage.removeItem('currentTransactionId');
-    console.log('Transaction ID manually cleared from localStorage');
-    this.showSuccess('Transaction ID cleared from localStorage');
+    try {
+      this.currentTransactionId = null;
+      localStorage.removeItem('currentTransactionId');
+      console.log('Transaction ID manually cleared from localStorage');
+      this.showSuccess('Transaction ID cleared from localStorage');
+    } catch (error) {
+      console.error('Error clearing transaction ID:', error);
+      this.showError('Failed to clear transaction ID: ' + error.message);
+    }
+  }
+
+  // Method to update transaction display
+  updateTransactionDisplay() {
+    if (this.currentTransactionId) {
+      try {
+        const txIdDisplay = document.getElementById('tx-id-display');
+        if (txIdDisplay) {
+          txIdDisplay.textContent = this.currentTransactionId;
+        }
+        
+        // Also update the manual input field
+        const manualTxIdInput = document.getElementById('manual-tx-id');
+        if (manualTxIdInput) {
+          manualTxIdInput.value = this.currentTransactionId;
+        }
+      } catch (error) {
+        console.warn('Failed to update transaction display:', error);
+      }
+    }
+  }
+
+  // Method to set transaction ID manually on step 2
+  setManualTransactionIdStep2() {
+    try {
+      const manualTxIdInput = document.getElementById('manual-tx-id-step2');
+      if (!manualTxIdInput) {
+        this.showError('Manual transaction ID input not found');
+        return;
+      }
+      
+      const txId = manualTxIdInput.value.trim();
+      if (!txId) {
+        this.showError('Please enter a transaction ID');
+        return;
+      }
+      
+      // Validate that it's a number
+      if (isNaN(txId) || parseInt(txId) <= 0) {
+        this.showError('Transaction ID must be a positive number');
+        return;
+      }
+      
+      // Set the transaction ID
+      this.currentTransactionId = txId;
+      localStorage.setItem('currentTransactionId', txId);
+      
+      console.log('Manual transaction ID set on step 2:', txId);
+      this.showSuccess(`Transaction ID ${txId} set manually`);
+      
+      // Enable the continue button
+      const continueBtn = document.getElementById('continue-to-step3');
+      if (continueBtn) {
+        continueBtn.disabled = false;
+      }
+    } catch (error) {
+      console.error('Error setting manual transaction ID:', error);
+      this.showError('Failed to set manual transaction ID: ' + error.message);
+    }
+  }
+
+  // Test method to show manual form
+  testShowManualForm() {
+    try {
+      console.log('Testing manual form display...');
+      const manualTxForm = document.getElementById('manual-tx-form');
+      console.log('Manual form element:', manualTxForm);
+      
+      if (manualTxForm) {
+        manualTxForm.style.display = 'block';
+        console.log('Manual form should now be visible');
+        this.showSuccess('Manual form displayed for testing');
+      } else {
+        console.error('Manual form not found');
+        this.showError('Manual form not found in DOM');
+      }
+    } catch (error) {
+      console.error('Error testing manual form display:', error);
+      this.showError('Failed to test manual form display: ' + error.message);
+    }
+  }
+
+  // Method to continue to step 3 after manual txId input
+  continueToStep3() {
+    try {
+      if (!this.currentTransactionId) {
+        this.showError('Please set a transaction ID first');
+        return;
+      }
+      
+      console.log('Continuing to step 3 with manual transaction ID:', this.currentTransactionId);
+      this.updateWorkflowStep(3);
+    } catch (error) {
+      console.error('Error continuing to step 3:', error);
+      this.showError('Failed to continue to step 3: ' + error.message);
+    }
+  }
+  
+  // Method to skip to next step without checking transaction status
+  skipToNextStep() {
+    try {
+      if (!this.currentTransactionId) {
+        this.showError('Please set a transaction ID first');
+        return;
+      }
+      
+      console.log('Skipping to next step with transaction ID:', this.currentTransactionId);
+      this.showWarning('Skipping transaction status check. Make sure the transaction is valid before proceeding.');
+      
+      // Move to next step
+      this.nextStep();
+    } catch (error) {
+      console.error('Error skipping to next step:', error);
+      this.showError('Failed to skip to next step: ' + error.message);
+    }
+  }
+  
+  // Method to skip to finish workflow on step 5
+  skipToFinishWorkflow() {
+    console.log('Skipping to finish workflow');
+    this.showWarning('Skipping project status check. Project was marked as Paid successfully.');
+    
+    // Enable the finish workflow button
+    const finishWorkflowBtn = document.getElementById('finish-workflow');
+    if (finishWorkflowBtn) {
+      finishWorkflowBtn.disabled = false;
+      console.log('Finish Workflow button enabled');
+    } else {
+      console.warn('Finish workflow button not found, trying alternative selectors');
+      // Попробуем найти кнопку по альтернативным селекторам
+      const altFinishBtn = document.querySelector('[data-finish-workflow]') || 
+                          document.querySelector('.finish-workflow-btn') ||
+                          document.querySelector('#step-5 .btn-success');
+      if (altFinishBtn) {
+        altFinishBtn.disabled = false;
+        console.log('Alternative finish workflow button enabled');
+      }
+    }
+  }
+
+  // Method to set transaction ID manually
+  setManualTransactionId() {
+    try {
+      const manualTxIdInput = document.getElementById('manual-tx-id');
+      if (!manualTxIdInput) {
+        this.showError('Manual transaction ID input not found');
+        return;
+      }
+      
+      const txId = manualTxIdInput.value.trim();
+      if (!txId) {
+        this.showError('Please enter a transaction ID');
+        return;
+      }
+      
+      // Validate that it's a number
+      if (isNaN(txId) || parseInt(txId) <= 0) {
+        this.showError('Transaction ID must be a positive number');
+        return;
+      }
+      
+      // Set the transaction ID
+      this.currentTransactionId = txId;
+      localStorage.setItem('currentTransactionId', txId);
+      
+      console.log('Manual transaction ID set:', txId);
+      this.showSuccess(`Transaction ID ${txId} set manually`);
+      
+      // Update the display
+      this.updateTransactionDisplay();
+      
+      // Enable the next step button if we have a valid transaction
+      const nextStep3Btn = document.getElementById('next-step-3');
+      if (nextStep3Btn) {
+        nextStep3Btn.disabled = false;
+      }
+    } catch (error) {
+      console.error('Error setting manual transaction ID:', error);
+      this.showError('Failed to set manual transaction ID: ' + error.message);
+    }
   }
 
   // Method to check current state (for debugging)
   checkState() {
-    console.log('=== Current State ===');
-    console.log('Web3 connected:', !!this.web3);
-    console.log('Account:', this.account);
-    console.log('Current project:', this.currentProject);
-    console.log('Current transaction ID:', this.currentTransactionId);
-    console.log('Workflow step:', this.workflowStep);
-    console.log('LocalStorage transaction ID:', localStorage.getItem('currentTransactionId'));
-    console.log('====================');
-    
-    this.showModal('Current State', `
-      <div style="text-align: left;">
-        <p><strong>Web3 connected:</strong> ${!!this.web3}</p>
-        <p><strong>Account:</strong> ${this.account || 'None'}</p>
-        <p><strong>Current project:</strong> ${this.currentProject ? this.currentProject.name : 'None'}</p>
-        <p><strong>Current transaction ID:</strong> ${this.currentTransactionId || 'None'}</p>
-        <p><strong>Workflow step:</strong> ${this.workflowStep}</p>
-        <p><strong>LocalStorage transaction ID:</strong> ${localStorage.getItem('currentTransactionId') || 'None'}</p>
-      </div>
-    `);
+    try {
+      console.log('=== Current State ===');
+      console.log('Web3 connected:', !!this.web3);
+      console.log('Account:', this.account);
+      console.log('Current project:', this.currentProject);
+      console.log('Current transaction ID:', this.currentTransactionId);
+      console.log('Workflow step:', this.workflowStep);
+      console.log('LocalStorage transaction ID:', localStorage.getItem('currentTransactionId'));
+      console.log('====================');
+      
+      this.showModal('Current State', `
+        <div style="text-align: left;">
+          <p><strong>Web3 connected:</strong> ${!!this.web3}</p>
+          <p><strong>Account:</strong> ${this.account || 'None'}</p>
+          <p><strong>Current project:</strong> ${this.currentProject ? this.currentProject.name : 'None'}</p>
+          <p><strong>Current transaction ID:</strong> ${this.currentTransactionId || 'None'}</p>
+          <p><strong>Workflow step:</strong> ${this.workflowStep}</p>
+          <p><strong>LocalStorage transaction ID:</strong> ${localStorage.getItem('currentTransactionId') || 'None'}</p>
+          <hr>
+          <p><strong>Debug Info:</strong></p>
+          <p>Last transaction receipt: ${window.lastTxReceipt ? 'Available' : 'None'}</p>
+          <p>Console commands:</p>
+          <code>window.lastTxReceipt</code> - view last receipt<br>
+          <code>window.lastTxReceipt.logs</code> - view transaction logs<br>
+          <code>window.lastTxReceipt.events</code> - view events
+        </div>
+      `);
+    } catch (error) {
+      console.error('Error checking state:', error);
+      this.showError('Failed to check state: ' + error.message);
+    }
   }
 
   showError(message) {
     console.error(message);
-    this.showModal('Error', `<div class="alert alert-danger">${message}</div>`);
+    try {
+      this.showModal('Error', `<div class="alert alert-danger">${message}</div>`);
+    } catch (error) {
+      console.warn('Failed to show error modal:', error);
+      // Fallback to simple alert
+      alert(`Error: ${message}`);
+    }
   }
 
   showSuccess(message) {
     console.log(message);
-    // For success messages, we'll just show them in the console for now
-    // In a production app, you might want to show a toast notification
+    // Show success message to user
+    try {
+      this.showModal('Success', `<div class="alert alert-success">${message}</div>`);
+    } catch (error) {
+      console.warn('Failed to show success modal:', error);
+      // Fallback to simple alert
+      alert(`Success: ${message}`);
+    }
   }
 
   showWarning(message) {
     console.warn(message);
-    this.showModal('Warning', `<div class="alert alert-warning">${message}</div>`);
+    try {
+      this.showModal('Warning', `<div class="alert alert-warning">${message}</div>`);
+    } catch (error) {
+      console.warn('Failed to show warning modal:', error);
+      // Fallback to simple alert
+      alert(`Warning: ${message}`);
+    }
   }
 
   showModal(title, content) {
-    const modalTitle = document.getElementById('modal-title');
-    if (modalTitle) {
-      modalTitle.textContent = title;
-    }
-    
-    const modalBody = document.getElementById('modal-body');
-    if (modalBody) {
-      modalBody.innerHTML = content;
-    }
-    
-    const modal = document.getElementById('modal');
-    if (modal) {
-      modal.classList.remove('hidden');
+    try {
+      const modalTitle = document.getElementById('modal-title');
+      if (modalTitle) {
+        modalTitle.textContent = title;
+      }
+      
+      const modalBody = document.getElementById('modal-body');
+      if (modalBody) {
+        modalBody.innerHTML = content;
+      }
+      
+      const modal = document.getElementById('modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+      } else {
+        console.warn('Modal element not found, falling back to alert');
+        alert(`${title}\n\n${content.replace(/<[^>]*>/g, '')}`);
+      }
+    } catch (error) {
+      console.warn('Failed to show modal:', error);
+      // Fallback to simple alert
+      alert(`${title}\n\n${content.replace(/<[^>]*>/g, '')}`);
     }
   }
 
   closeModal() {
-    const modal = document.getElementById('modal');
-    if (modal) {
-      modal.classList.add('hidden');
+    try {
+      const modal = document.getElementById('modal');
+      if (modal) {
+        modal.classList.add('hidden');
+      }
+    } catch (error) {
+      console.warn('Failed to close modal:', error);
     }
   }
 }
@@ -2608,4 +3502,101 @@ class ProjectPayoutInterface {
 // Initialize the interface when the page loads
 document.addEventListener('DOMContentLoaded', () => {
   window.projectPayout = new ProjectPayoutInterface();
+  
+  // Add global debug functions
+  window.analyzeLastTx = () => {
+    if (window.lastTxReceipt) {
+      console.log('=== Last Transaction Analysis ===');
+      console.log('Receipt:', window.lastTxReceipt);
+      console.log('Events:', window.lastTxReceipt.events);
+      console.log('Logs:', window.lastTxReceipt.logs);
+      
+      if (window.lastTxReceipt.logs && window.lastTxReceipt.logs.length > 0) {
+        console.log('=== Log Analysis ===');
+        window.lastTxReceipt.logs.forEach((log, index) => {
+          console.log(`Log ${index}:`, {
+            address: log.address,
+            topics: log.topics,
+            data: log.data
+          });
+          
+          // Try to decode topics
+          if (log.topics && log.topics.length > 0) {
+            log.topics.forEach((topic, topicIndex) => {
+              try {
+                const decoded = window.projectPayout.web3.utils.hexToNumberString(topic);
+                console.log(`  Topic ${topicIndex} (${topic}): ${decoded}`);
+              } catch (e) {
+                console.log(`  Topic ${topicIndex} (${topic}): [not a number]`);
+              }
+            });
+          }
+        });
+      }
+    } else {
+      console.log('No transaction receipt available. Create a transaction first.');
+    }
+  };
+  
+  window.getTxIdFromLogs = () => {
+    if (window.lastTxReceipt && window.lastTxReceipt.logs && window.lastTxReceipt.logs.length > 0) {
+      const log = window.lastTxReceipt.logs[0];
+      console.log('Analyzing log for txId:', log);
+      
+      if (log.topics && log.topics.length > 0) {
+        // Try all topics
+        for (let i = 0; i < log.topics.length; i++) {
+          try {
+            const txId = window.projectPayout.web3.utils.hexToNumberString(log.topics[i]);
+            if (txId && !isNaN(txId) && parseInt(txId) > 0) {
+              console.log(`Found txId in topic ${i}:`, txId);
+              return txId;
+            }
+          } catch (e) {
+            console.log(`Topic ${i} is not a number:`, log.topics[i]);
+          }
+        }
+        
+        // Try to decode data field
+        if (log.data && log.data !== '0x') {
+          try {
+            const decodedData = window.projectPayout.web3.utils.hexToNumberString(log.data);
+            if (decodedData && !isNaN(decodedData) && parseInt(decodedData) > 0) {
+              console.log('Found txId in data field:', decodedData);
+              return decodedData;
+            }
+          } catch (e) {
+            console.log('Data field is not a number:', log.data);
+          }
+        }
+      }
+      
+      console.log('No txId found in logs');
+      return null;
+    }
+    return null;
+  };
+  
+  window.getTxIdFromStorage = () => {
+    const storedTxId = localStorage.getItem('currentTransactionId');
+    if (storedTxId) {
+      console.log('Found txId in localStorage:', storedTxId);
+      return storedTxId;
+    }
+    
+    // Try to find any transaction ID in localStorage
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.includes('transaction') || key && key.includes('tx')) {
+        const value = localStorage.getItem(key);
+        console.log(`Found potential txId in ${key}:`, value);
+        if (value && !isNaN(value) && parseInt(value) > 0) {
+          return value;
+        }
+      }
+    }
+    
+    console.log('No txId found in localStorage');
+    return null;
+  };
 });

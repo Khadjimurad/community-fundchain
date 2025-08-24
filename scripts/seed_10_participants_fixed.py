@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Seed Demo Data for 10 Participants Testing
-Создание тестовых данных для проверки системы с 10 участниками
+Fixed Seed Demo Data for 10 Participants Testing
+Исправленная версия для создания тестовых данных, совместимых с реальными смарт-контрактами
 """
 
 import asyncio
@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 import random
 import logging
+import hashlib
 
 # Add the app directory to the path for imports
 sys.path.append('/app')
@@ -23,8 +24,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 
-class TenParticipantSeeder:
-    """Seeder specifically designed for 10-participant testing scenarios."""
+class FixedTenParticipantSeeder:
+    """Fixed seeder compatible with real smart contracts and addresses."""
     
     def __init__(self):
         self.db_manager = None
@@ -32,6 +33,27 @@ class TenParticipantSeeder:
         self.projects = []
         self.total_donated = Decimal('0')
         self.total_allocated = Decimal('0')
+        
+        # Real addresses from your deployment
+        self.real_addresses = [
+            "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",  # Owner 1
+            "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",  # Owner 2
+            "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",  # Owner 3
+            "0x90F79bf6EB2c4f870365E785982E1f101E93b906",  # Additional test account
+            "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",  # Additional test account
+            "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc",  # Additional test account
+            "0x976EA74026E726554dB657fA54763abd0C3a0aa9",  # Additional test account
+            "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955",  # Additional test account
+            "0x23618e81E3f5cdF7f52C2A15876d1C888dEACa53",  # Additional test account
+            "0xa0Ee7A142d267C1f36754E8d5D0F2A8945bD5F8d"   # Additional test account
+        ]
+        
+        # Real project IDs from your smart contracts (demo projects)
+        self.real_project_ids = [
+            "0xb34e1d43700c753c79fa98a98c434b921d9d3467e3f07f78ada83890ab8162bc",  # Community Well
+            "0x9ca41a8f3901d241ffae2121cf52d35f33a8ccc8786c9d2d619ca9c329185957",  # Medical Supplies
+            "0x13c16e789225abe8d69886ac0db24a4f5887bcddb3b8c0e545eed1893f405f77"   # School Equipment
+        ]
         
     async def initialize(self):
         """Initialize database connection."""
@@ -43,9 +65,19 @@ class TenParticipantSeeder:
         
         logger.info("✅ База данных инициализирована")
     
+    def generate_realistic_tx_hash(self, prefix="", suffix=""):
+        """Generate realistic transaction hash."""
+        random_data = f"{prefix}{random.randint(1000000, 9999999)}{suffix}{random.randint(1000000, 9999999)}"
+        hash_input = f"0x{random_data}{datetime.now().timestamp()}"
+        return hashlib.sha256(hash_input.encode()).hexdigest()[:64]
+    
+    def generate_realistic_block_number(self, base=1000000):
+        """Generate realistic block number."""
+        return base + random.randint(0, 10000)
+    
     async def create_participants(self):
-        """Создание 10 участников с различными профилями."""
-        logger.info("👥 Создание 10 участников...")
+        """Создание 10 участников с реальными адресами."""
+        logger.info("👥 Создание 10 участников с реальными адресами...")
         
         # Профили участников с реалистичными характеристиками
         participant_profiles = [
@@ -123,8 +155,8 @@ class TenParticipantSeeder:
         
         async with self.db_manager.get_session() as session:
             for i, profile in enumerate(participant_profiles):
-                # Генерация уникального адреса
-                address = f"0x{i+1:02d}{'a' * 36}{i+1:02d}"
+                # Используем реальные адреса
+                address = self.real_addresses[i]
                 
                 participant = {
                     'id': f'participant_{i+1:02d}',
@@ -148,72 +180,46 @@ class TenParticipantSeeder:
                 self.participants.append(participant)
             
             await session.commit()
-            logger.info(f"✅ Создано {len(self.participants)} участников")
+            logger.info(f"✅ Создано {len(self.participants)} участников с реальными адресами")
     
-    async def create_diverse_projects(self):
-        """Создание разнообразных проектов для тестирования."""
-        logger.info("📋 Создание тестовых проектов...")
+    async def create_real_projects(self):
+        """Создание проектов с реальными ID из смарт-контрактов."""
+        logger.info("📋 Создание проектов с реальными ID...")
         
         project_templates = [
             {
-                'name': 'Центр здоровья сообщества',
-                'description': 'Современный медицинский центр с качественным оборудованием и опытным персоналом для обслуживания местного сообщества.',
-                'category': 'Здравоохранение',
-                'target': 25.0,
-                'soft_cap': 15.0,
-                'hard_cap': 35.0,
+                'name': 'Community Well',
+                'description': 'Clean water access for the community',
+                'category': 'infrastructure',
+                'target': 10.0,
+                'soft_cap': 7.0,
+                'hard_cap': 15.0,
                 'priority': 1
             },
             {
-                'name': 'Цифровая библиотека',
-                'description': 'Образовательное пространство с современными компьютерами, высокоскоростным интернетом и цифровыми обучающими платформами.',
-                'category': 'Образование',
-                'target': 18.0,
-                'soft_cap': 12.0,
-                'hard_cap': 25.0,
+                'name': 'Medical Supplies',
+                'description': 'Emergency medical supplies for local clinic',
+                'category': 'healthcare',
+                'target': 5.0,
+                'soft_cap': 3.0,
+                'hard_cap': 8.0,
                 'priority': 2
             },
             {
-                'name': 'Экологическая инициатива',
-                'description': 'Установка солнечных панелей и системы накопления энергии для обеспечения чистой, устойчивой энергии.',
-                'category': 'Экология',
-                'target': 30.0,
-                'soft_cap': 20.0,
-                'hard_cap': 40.0,
-                'priority': 3
-            },
-            {
-                'name': 'Приют для бездомных',
-                'description': 'Комплексное убежище с социальными услугами, профессиональным обучением и программами реабилитации.',
-                'category': 'Социальные',
-                'target': 22.0,
-                'soft_cap': 15.0,
-                'hard_cap': 30.0,
-                'priority': 4
-            },
-            {
-                'name': 'Молодежный центр искусств',
-                'description': 'Творческое пространство для молодежи с профессиональным обучением и возможностями для выступлений.',
-                'category': 'Культура',
-                'target': 16.0,
+                'name': 'School Equipment',
+                'description': 'Computers and learning materials for local school',
+                'category': 'education',
+                'target': 15.0,
                 'soft_cap': 10.0,
-                'hard_cap': 22.0,
-                'priority': 5
-            },
-            {
-                'name': 'Система экстренного реагирования',
-                'description': 'Современная сеть экстренной связи и реагирования для обеспечения безопасности сообщества.',
-                'category': 'Инфраструктура',
-                'target': 28.0,
-                'soft_cap': 18.0,
-                'hard_cap': 35.0,
-                'priority': 6
+                'hard_cap': 20.0,
+                'priority': 3
             }
         ]
         
         async with self.db_manager.get_session() as session:
             for i, template in enumerate(project_templates):
-                project_id = f"tp_{i+1:02d}"
+                # Используем реальные project ID из смарт-контрактов
+                project_id = self.real_project_ids[i]
                 
                 project = Project(
                     id=project_id,
@@ -234,7 +240,7 @@ class TenParticipantSeeder:
                 self.projects.append(project)
             
             await session.commit()
-            logger.info(f"✅ Создано {len(self.projects)} проектов")
+            logger.info(f"✅ Создано {len(self.projects)} проектов с реальными ID")
     
     async def create_realistic_donations(self):
         """Создание реалистичных пожертвований от 10 участников."""
@@ -247,13 +253,10 @@ class TenParticipantSeeder:
                 # Количество пожертвований зависит от уровня активности
                 if participant['activity_level'] == 'high':
                     num_donations = random.randint(3, 5)
-                    activity_label = 'Высокая'
                 elif participant['activity_level'] == 'medium':
                     num_donations = random.randint(1, 3)
-                    activity_label = 'Средняя'
                 else:  # low
                     num_donations = random.randint(0, 2)
-                    activity_label = 'Низкая'
                 
                 total_participant_donated = Decimal('0')
                 
@@ -262,12 +265,16 @@ class TenParticipantSeeder:
                     max_donation = participant['donation_capacity'] / Decimal(str(max(1, num_donations)))
                     amount = max_donation * Decimal(str(random.uniform(0.3, 1.0)))
                     
+                    # Генерируем реалистичные transaction hash
+                    tx_hash = self.generate_realistic_tx_hash("donation", participant['id'])
+                    block_number = self.generate_realistic_block_number()
+                    
                     donation = Donation(
                         receipt_id=f"receipt_{participant['id']}_{j}_{random.randint(10000, 99999)}",
                         donor_address=participant['address'],
                         amount=float(amount),
-                        tx_hash=f"0xtest_{participant['id']}_{j}_{random.randint(10000, 99999)}",
-                        block_number=1000000 + donation_count,
+                        tx_hash=tx_hash,
+                        block_number=block_number,
                         timestamp=datetime.now() - timedelta(days=random.randint(5, 45))
                     )
                     
@@ -302,11 +309,11 @@ class TenParticipantSeeder:
                 participant = next((p for p in self.participants if p['address'] == donor_address), None)
                 
                 if participant:
-                    if participant['role'] in ['major_donor', 'community_leader']:
+                    if participant['role'] in ['Крупный донор', 'Лидер сообщества']:
                         # Крупные доноры распределяют по 2-3 приоритетным проектам
                         selected_projects = self.projects[:3]
                         weights = [0.5, 0.3, 0.2]
-                    elif participant['role'] in ['active_voter', 'project_creator']:
+                    elif participant['role'] in ['Активный участник', 'Создатель проектов']:
                         # Активные участники поддерживают 2-4 проекта
                         selected_projects = random.sample(self.projects, min(4, len(self.projects)))
                         weights = [random.uniform(0.2, 0.6) for _ in selected_projects]
@@ -322,13 +329,17 @@ class TenParticipantSeeder:
                 for project, weight in zip(selected_projects, weights):
                     allocation_amount = amount * Decimal(str(weight))
                     
+                    # Генерируем реалистичные transaction hash для распределений
+                    tx_hash = self.generate_realistic_tx_hash("allocation", f"{donation_id}_{project.id}")
+                    block_number = self.generate_realistic_block_number()
+                    
                     allocation = Allocation(
                         donation_id=donation_id,
                         project_id=project.id,
                         donor_address=donor_address,
                         amount=float(allocation_amount),
-                        tx_hash=f"0xalloc_{donation_id}_{project.id}_{random.randint(10000, 99999)}",
-                        block_number=1000000 + donation_id,
+                        tx_hash=tx_hash,
+                        block_number=block_number,
                         timestamp=datetime.now() - timedelta(days=random.randint(5, 45))
                     )
                     
@@ -343,7 +354,7 @@ class TenParticipantSeeder:
                 
                 # Обновление статуса проекта
                 if project.total_allocated >= project.target:
-                    project.status = 'funded'
+                    project.status = 'ready_to_payout'  # Используем правильный статус
                 elif project.total_allocated >= project.soft_cap:
                     project.status = 'active'
                 elif project.total_allocated > 0:
@@ -385,23 +396,22 @@ class TenParticipantSeeder:
                 # Вероятность участия в голосовании
                 if participant['activity_level'] == 'high':
                     participation_chance = 0.9
-                    activity_label = 'Высокая'
                 elif participant['activity_level'] == 'medium':
                     participation_chance = 0.7
-                    activity_label = 'Средняя'
                 else:
                     participation_chance = 0.4
-                    activity_label = 'Низкая'
                 
                 if random.random() < participation_chance:
-                    # Создание коммита
+                    # Создание коммита с правильным project_id
+                    selected_project = random.choice(self.projects)
+                    
                     commit_vote = Vote(
                         round_id=1,
                         voter_address=participant['address'],
-                        project_id="0000000000000000000000000000000000000000000000000000000000000000",
+                        project_id=selected_project.id,  # Используем реальный project_id
                         choice="not_participating",
-                        tx_hash=f"0x{random.randint(1000000, 9999999):08x}",
-                        block_number=2000000 + commit_count,
+                        tx_hash=self.generate_realistic_tx_hash("commit", participant['id']),
+                        block_number=self.generate_realistic_block_number(),
                         committed_at=datetime.now() - timedelta(days=random.randint(5, 45))
                     )
                     
@@ -411,7 +421,6 @@ class TenParticipantSeeder:
                     # 85% коммитов раскрываются
                     if random.random() < 0.85:
                         # Создание раскрытия голоса
-                        selected_project = random.choice(self.projects)
                         choice = random.choice(['for', 'against', 'abstain'])
                         
                         reveal_vote = Vote(
@@ -420,8 +429,8 @@ class TenParticipantSeeder:
                             project_id=selected_project.id,
                             choice=choice,
                             weight=participant['weight'],
-                            tx_hash=f"0x{random.randint(1000000, 9999999):08x}",
-                            block_number=2000000 + reveal_count,
+                            tx_hash=self.generate_realistic_tx_hash("reveal", participant['id']),
+                            block_number=self.generate_realistic_block_number(),
                             revealed_at=datetime.now() - timedelta(days=random.randint(5, 45))
                         )
                         
@@ -442,7 +451,7 @@ class TenParticipantSeeder:
             payout_count = 0
             
             for project in self.projects:
-                if project.status == 'funded':
+                if project.status == 'ready_to_payout':
                     # Создание поэтапных выплат
                     num_payouts = random.randint(2, 4)
                     total_amount = project.total_allocated
@@ -454,11 +463,16 @@ class TenParticipantSeeder:
                         else:
                             payout_amount = total_amount * random.uniform(0.2, 0.4)
                         
+                        # Генерируем реалистичные transaction hash для выплат
+                        tx_hash = self.generate_realistic_tx_hash("payout", f"{project.id}_{i}")
+                        
                         payout = Payout(
+                            payout_id=f"payout_{project.id}_{i}_{random.randint(10000, 99999)}",
                             project_id=project.id,
                             amount=payout_amount,
                             recipient_address=f"0xrecipient_{project.id}_{i}",
-                            tx_hash=f"0xpayout_{project.id}_{i}_{random.randint(10000, 99999)}",
+                            tx_hash=tx_hash,
+                            block_number=self.generate_realistic_block_number(),
                             timestamp=datetime.now() - timedelta(days=random.randint(5, 45))
                         )
                         
@@ -473,7 +487,7 @@ class TenParticipantSeeder:
         logger.info("📋 Генерация итогового отчета...")
         
         # Подсчет статистики
-        funded_projects = len([p for p in self.projects if p.status == 'funded'])
+        ready_to_payout_projects = len([p for p in self.projects if p.status == 'ready_to_payout'])
         active_projects = len([p for p in self.projects if p.status == 'active'])
         pending_projects = len([p for p in self.projects if p.status == 'pending'])
         
@@ -484,8 +498,8 @@ class TenParticipantSeeder:
         efficiency_rate = (self.total_allocated / self.total_donated * 100) if self.total_donated > 0 else 0
         
         report = f"""
-🎯 ОТЧЕТ О ТЕСТОВЫХ ДАННЫХ ДЛЯ 10 УЧАСТНИКОВ
-===========================================
+🎯 ОТЧЕТ О ТЕСТОВЫХ ДАННЫХ ДЛЯ 10 УЧАСТНИКОВ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+================================================================
 
 📊 ОБЩАЯ СТАТИСТИКА:
    Участников: {len(self.participants)}
@@ -500,29 +514,15 @@ class TenParticipantSeeder:
    Низкая активность: {low_activity_participants} участников
 
 📋 ПРОЕКТЫ ПО СТАТУСУ:
-   Финансированные: {funded_projects} проектов
+   Готовы к выплате: {ready_to_payout_projects} проектов
    Активные: {active_projects} проектов
-   Ожидающие: {pending_projects} проектов
+   В ожидании: {pending_projects} проектов
 
 💰 ДЕТАЛИ ПО УЧАСТНИКАМ:
 """
         
         for participant in self.participants:
-            role_labels = {
-                'major_donor': 'Крупный донор',
-                'community_leader': 'Лидер сообщества',
-                'active_voter': 'Активный участник',
-                'regular_member': 'Обычный участник',
-                'project_creator': 'Создатель проектов',
-                'frequent_donor': 'Частый донор',
-                'occasional_donor': 'Случайный донор',
-                'new_member': 'Новый участник',
-                'institutional_rep': 'Представитель организации',
-                'volunteer': 'Волонтер'
-            }
-            
-            role_label = role_labels.get(participant['role'], participant['role'])
-            report += f"   {participant['name']} ({role_label}): {participant['weight']} SBT, до {participant['donation_capacity']} ETH\n"
+            report += f"   {participant['name']} ({participant['role']}): {participant['weight']} SBT, до {participant['donation_capacity']} ETH\n"
         
         report += f"""
 📋 ДЕТАЛИ ПО ПРОЕКТАМ:
@@ -531,7 +531,7 @@ class TenParticipantSeeder:
         for project in self.projects:
             funding_percentage = (project.total_allocated / project.target) * 100
             status_labels = {
-                'funded': 'Профинансирован',
+                'ready_to_payout': 'Готов к выплате',
                 'active': 'Активный',
                 'pending': 'В ожидании'
             }
@@ -540,19 +540,20 @@ class TenParticipantSeeder:
         
         report += f"""
 ✅ ГОТОВНОСТЬ К ТЕСТИРОВАНИЮ:
-   ✓ 10 участников с разными профилями
-   ✓ {len(self.projects)} разнообразных проектов
+   ✓ 10 участников с реальными адресами
+   ✓ {len(self.projects)} проектов с реальными ID из смарт-контрактов
    ✓ Реалистичные пожертвования и распределения
    ✓ Сценарий голосования настроен
    ✓ Записи о выплатах созданы
+   ✓ Все данные совместимы с blockchain
    
-🚀 СИСТЕМА ГОТОВА ДЛЯ ТЕСТИРОВАНИЯ!
+🚀 СИСТЕМА ГОТОВА ДЛЯ ПОЛНОГО ЦИКЛА ТЕСТИРОВАНИЯ!
 """
         
         logger.info(report)
         
         # Сохранение отчета в файл
-        report_file = f"test_data_report_10_participants_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        report_file = f"fixed_test_data_report_10_participants_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
         with open(report_file, 'w', encoding='utf-8') as f:
             f.write(report)
         
@@ -560,29 +561,29 @@ class TenParticipantSeeder:
     
     async def seed_all_data(self):
         """Основной метод для создания всех тестовых данных."""
-        logger.info("🌱 Начало создания тестовых данных для 10 участников...")
+        logger.info("🌱 Начало создания исправленных тестовых данных для 10 участников...")
         
         await self.create_participants()
-        await self.create_diverse_projects()
+        await self.create_real_projects()
         await self.create_realistic_donations()
         await self.create_strategic_allocations()
         await self.create_voting_scenario()
         await self.create_payout_records()
         await self.generate_summary_report()
         
-        logger.info("🎉 Все тестовые данные успешно созданы!")
+        logger.info("🎉 Все исправленные тестовые данные успешно созданы!")
 
 
 async def main():
     """Основная функция для запуска создания тестовых данных."""
-    seeder = TenParticipantSeeder()
+    seeder = FixedTenParticipantSeeder()
     
     try:
         await seeder.initialize()
         await seeder.seed_all_data()
         
-        print("\n✅ Тестовые данные для 10 участников созданы успешно!")
-        print("🚀 Система готова для комплексного тестирования!")
+        print("\n✅ Исправленные тестовые данные для 10 участников созданы успешно!")
+        print("🚀 Система готова для полного цикла тестирования без ошибок!")
         
     except KeyboardInterrupt:
         logger.info("🛑 Создание данных прервано пользователем")
