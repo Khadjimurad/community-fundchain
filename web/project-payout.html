@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title data-i18n="project_payout.page_title">FundChain — Project Payout Interface</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    :root { --primary-color: #2563eb; --secondary-color: #f1f5f9; --success-color: #059669; --warning-color: #d97706; --danger-color: #dc2626; --border-color: #e5e7eb; --text-primary: #1f2937; --text-secondary: #6b7280; --bg-primary: #ffffff; --bg-secondary: #f8fafc; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 16px; line-height: 1.7; color: var(--text-primary); background-color: var(--bg-secondary); }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+    .header { background: var(--bg-primary); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .header-top { border-bottom: 1px solid var(--border-color); padding: 0.75rem 0; }
+    .header-top-content { display: flex; justify-content: space-between; align-items: center; }
+    .header-nav { padding: 0.75rem 0; }
+    .controls-container { display: flex; align-items: center; gap: 0.5rem; }
+    .logo { font-size: 1.75rem; font-weight: bold; color: var(--primary-color); }
+    .nav { display: flex; gap: 2rem; }
+    .nav a { text-decoration: none; color: var(--text-secondary); font-weight: 500; font-size: 1.05rem; transition: color 0.2s; }
+    .nav a:hover, .nav a.active { color: var(--primary-color); }
+    .status-bar { background: var(--bg-primary); border-bottom: 1px solid var(--border-color); padding: 0.5rem 0; font-size: 0.95rem; color: var(--text-secondary); }
+    .status-content { display: flex; justify-content: space-between; align-items: center; }
+    .main { padding: 2rem 0; }
+    .card { background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 0.75rem; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .card-title { font-size: 1.4rem; font-weight: 600; margin: 0; }
+    .card-actions { display: flex; gap: 0.5rem; }
+    .btn { display: inline-block; padding: 0.6rem 1.2rem; border: none; border-radius: 0.375rem; font-size: 0.95rem; font-weight: 500; text-decoration: none; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: var(--primary-color); color: white; }
+    .btn-secondary { background: var(--secondary-color); color: var(--text-primary); border: 1px solid var(--border-color); }
+    .btn-warning { background: #f59e0b; color: white; border: 1px solid #f59e0b; }
+    .btn-info { background: #3b82f6; color: white; border: 1px solid #3b82f6; }
+    .btn-success { background: var(--success-color); color: white; border: 1px solid var(--success-color); }
+    .btn-xs { padding: 0.3rem 0.6rem; font-size: 0.8rem; }
+    .badge { display: inline-block; padding: 0.3rem 0.6rem; border-radius: 0.25rem; font-size: 0.8rem; font-weight: 500; }
+    .badge-success { background: #dcfce7; color: var(--success-color); }
+    .badge-warning { background: #fef3c7; color: var(--warning-color); }
+    .badge-danger { background: #fee2e2; color: var(--danger-color); }
+    .badge-info { background: #dbeafe; color: var(--primary-color); }
+    .data-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    .data-table th, .data-table td { padding: 0.8rem; text-align: left; border-bottom: 1px solid var(--border-color); font-size: 0.95rem; }
+    .text-muted { color: var(--text-secondary); }
+    .hidden { display: none; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+    .form-control { width: 100%; padding: 0.6rem 0.8rem; border: 1px solid var(--border-color); border-radius: 0.375rem; font-size: 1rem; transition: border-color 0.2s; }
+    .form-control:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2); }
+    .form-row { display: flex; gap: 1rem; margin-bottom: 1rem; }
+    .form-row .form-group { flex: 1; }
+    .alert { padding: 1rem; border-radius: 0.375rem; margin-bottom: 1rem; }
+    .alert-info { background: #dbeafe; border-left: 4px solid #3b82f6; }
+    .alert-warning { background: #fef3c7; border-left: 4px solid #f59e0b; }
+    .alert-success { background: #dcfce7; border-left: 4px solid var(--success-color); }
+    .alert-danger { background: #fee2e2; border-left: 4px solid var(--danger-color); }
+    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; display: flex; align-items: center; justify-content: center; }
+    .modal.hidden { display: none; }
+    .modal-backdrop { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+    .modal-content { background: white; border-radius: 0.5rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); max-width: 90vw; max-height: 90vh; overflow: auto; position: relative; z-index: 1001; min-width: 400px; }
+    .modal-header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: between; align-items: center; }
+    .modal-title { margin: 0; font-size: 1.35rem; font-weight: 600; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-secondary); margin-left: auto; }
+    .modal-body { padding: 1.5rem; }
+    .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; gap: 1rem; justify-content: flex-end; }
+    .payout-workflow { display: flex; margin-bottom: 2rem; }
+    .workflow-step { flex: 1; padding: 1rem; text-align: center; border: 1px solid var(--border-color); border-radius: 0.5rem; margin: 0 0.5rem; background: var(--bg-primary); position: relative; }
+    .workflow-step.active { border-color: var(--primary-color); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2); }
+    .workflow-step.completed { border-color: var(--success-color); background: #f0fdf4; }
+    .step-number { display: inline-block; width: 2rem; height: 2rem; background: var(--secondary-color); border-radius: 50%; line-height: 2rem; font-weight: bold; margin-bottom: 0.5rem; }
+    .workflow-step.active .step-number { background: var(--primary-color); color: white; }
+    .workflow-step.completed .step-number { background: var(--success-color); color: white; }
+    .step-title { font-weight: 600; margin-bottom: 0.5rem; }
+    .step-description { font-size: 0.9rem; color: var(--text-secondary); }
+    .project-card { border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; cursor: pointer; transition: all 0.2s; }
+    .project-card:hover { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    .project-card.selected { border-color: var(--primary-color); background: #f0f7ff; }
+    .project-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; }
+    .project-title { font-weight: 600; }
+    .project-status { }
+    .project-details { font-size: 0.9rem; }
+    .project-metrics { display: flex; margin-top: 0.5rem; gap: 1rem; }
+    .project-metric { font-size: 0.85rem; color: var(--text-secondary); }
+    .transaction-list { margin: 1rem 0; }
+    .transaction-item { padding: 1rem; border: 1px solid var(--border-color); border-radius: 0.375rem; margin-bottom: 0.5rem; }
+    .transaction-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; }
+    .transaction-id { font-weight: 600; }
+    .transaction-actions { display: flex; gap: 0.5rem; }
+    .transaction-details { font-size: 0.9rem; color: var(--text-secondary); }
+    .step-content { padding: 1.5rem 0; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-top">
+      <div class="container">
+        <div class="header-top-content">
+          <div class="logo">🏛️ FundChain</div>
+          <div class="controls-container">
+            <button id="language-switcher" class="btn btn-secondary" onclick="window.i18n.toggleLanguage()" title="Switch Language" data-i18n="language.switch_to_english" data-i18n-title="language.switch_to_english">🇺🇸 EN</button>
+            <a href="./index.html" class="btn btn-secondary" title="Back to main" data-i18n="buttons.back" data-i18n-title="buttons.back">← Main</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="header-nav">
+      <div class="container">
+        <nav class="nav">
+          <a href="./index.html" data-i18n="navigation.dashboard">Dashboard</a>
+          <a href="./index.html" data-i18n="navigation.projects">Projects</a>
+          <a href="./index.html" data-i18n="navigation.voting">Voting</a>
+          <a href="./index.html" data-i18n="navigation.treasury">Treasury</a>
+          <a href="./index.html" data-i18n="navigation.personal">My Stats</a>
+          <a href="./admin.html" data-i18n="navigation.admin">Admin</a>
+          <a href="./contract-interface.html" data-i18n="navigation.contract_interface">Contract Interface</a>
+          <a href="#" class="active" data-i18n="navigation.project_payout">Project Payout</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <div class="status-bar">
+    <div class="container">
+      <div class="status-content">
+        <div data-i18n="project_payout.status">Status: <span id="connection-status" data-i18n="project_payout.status_disconnected">Disconnected</span></div>
+        <div id="account-info" class="hidden" data-i18n="project_payout.account">Account: <span id="current-account" data-i18n="project_payout.not_connected">Not connected</span></div>
+      </div>
+    </div>
+  </div>
+
+  <main class="main">
+    <div class="container">
+      <h1 data-i18n="project_payout.title">Project Payout & Completion Workflow</h1>
+      <p class="text-muted" data-i18n="project_payout.info_connect_web3">Streamlined interface for project payouts and project completion</p>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title" data-i18n="project_payout.web3_connection">Web3 Connection</h2>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-info">
+            <strong data-i18n="project_payout.info">Info:</strong> <span data-i18n="project_payout.info_connect_web3">Connect to Web3 provider to interact with the smart contracts.</span>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="rpc-url" data-i18n="project_payout.rpc_url">RPC URL</label>
+              <input type="text" id="rpc-url" class="form-control" value="http://localhost:8545">
+            </div>
+            <div class="form-group">
+              <label for="chain-id" data-i18n="project_payout.chain_id">Chain ID</label>
+              <input type="number" id="chain-id" class="form-control" value="31337">
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="multisig-address" data-i18n="project_payout.multisig_address">Multisig Address</label>
+              <input type="text" id="multisig-address" class="form-control" value="0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65">
+            </div>
+            <div class="form-group">
+              <label for="treasury-address" data-i18n="project_payout.treasury_address">Treasury Address</label>
+              <input type="text" id="treasury-address" class="form-control" value="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266">
+            </div>
+            <div class="form-group">
+              <label for="projects-address" data-i18n="project_payout.projects_address">Projects Address</label>
+              <input type="text" id="projects-address" class="form-control" value="0x70997970C51812dc3A010C7d01b50e0d17dc79C8">
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="private-key" data-i18n="project_payout.private_key">Private Key (optional)</label>
+            <input type="password" id="private-key" class="form-control" placeholder="Enter private key for signing transactions" data-i18n-placeholder="project_payout.private_key_placeholder">
+            <small class="text-muted" data-i18n="project_payout.private_key_help">If not provided, will try to use browser wallet (MetaMask)</small>
+          </div>
+          
+          <div class="form-group">
+            <button id="connect-button" class="btn btn-primary" data-i18n="project_payout.connect_web3">Connect to Web3</button>
+            <button id="disconnect-button" class="btn btn-secondary hidden" data-i18n="project_payout.disconnect">Disconnect</button>
+            <!-- Temporary debug button - remove in production -->
+            <button id="debug-state" class="btn btn-info" style="display: none;">Check State</button>
+            <button id="clear-tx-id" class="btn btn-warning" style="display: none;">Clear TX ID</button>
+            <button id="reset-workflow" class="btn btn-danger" style="display: none;">Reset Workflow</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="payout-interface" class="hidden">
+        <div class="payout-workflow">
+          <div class="workflow-step active" id="step-1">
+            <div class="step-number">1</div>
+            <div class="step-title" data-i18n="project_payout.workflow_steps.step_1">Select Project</div>
+            <div class="step-description" data-i18n="project_payout.step_descriptions.step_1_desc">Choose a project ready for payout</div>
+          </div>
+          <div class="workflow-step" id="step-2">
+            <div class="step-number">2</div>
+            <div class="step-title" data-i18n="project_payout.workflow_steps.step_2">Propose Payout</div>
+            <div class="step-description" data-i18n="project_payout.step_descriptions.step_2_desc">Create multisig proposal</div>
+          </div>
+          <div class="workflow-step" id="step-3">
+            <div class="step-number">3</div>
+            <div class="step-title" data-i18n="project_payout.workflow_steps.step_3">Confirm</div>
+            <div class="step-description" data-i18n="project_payout.step_descriptions.step_3_desc">Collect required signatures</div>
+          </div>
+          <div class="workflow-step" id="step-4">
+            <div class="step-number">4</div>
+            <div class="step-title" data-i18n="project_payout.workflow_steps.step_4">Execute</div>
+            <div class="step-description" data-i18n="project_payout.step_descriptions.step_4_desc">Execute payout transaction</div>
+          </div>
+          <div class="workflow-step" id="step-5">
+            <div class="step-number">5</div>
+            <div class="step-title" data-i18n="project_payout.workflow_steps.step_5">Complete</div>
+            <div class="step-description" data-i18n="project_payout.step_descriptions.step_5_desc">Finalize project</div>
+          </div>
+        </div>
+
+        <!-- Step 1: Select Project -->
+        <div class="card" id="step-1-content">
+          <div class="card-header">
+            <h2 class="card-title" data-i18n="project_payout.step_1_content.title">Select Project for Payout</h2>
+            <div class="card-actions">
+              <button id="refresh-projects-button" class="btn btn-secondary" data-i18n="project_payout.step_1_content.refresh_projects">Refresh Projects</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-info">
+              <strong data-i18n="project_payout.workflow_steps.step_1">Step 1:</strong> <span data-i18n="project_payout.step_1_content.info_step_1">Select a project that is ready for payout. Only projects with "ReadyToPayout" status are shown.</span>
+            </div>
+            
+            <div id="projects-list">
+              <p class="text-muted" data-i18n="project_payout.step_1_content.loading_projects">Loading projects...</p>
+            </div>
+            
+            <div class="form-group">
+              <button id="next-step-1" class="btn btn-primary" disabled data-i18n="project_payout.step_1_content.next_step">Next: Propose Payout</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Propose Payout -->
+        <div class="card hidden" id="step-2-content">
+          <div class="card-header">
+            <h2 class="card-title" data-i18n="project_payout.step_2_content.title">Propose Project Payout</h2>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-info">
+              <strong data-i18n="project_payout.workflow_steps.step_2">Step 2:</strong> <span data-i18n="project_payout.step_2_content.info_step_2">Create a multisig proposal for project payout. This will not transfer funds yet, just create a proposal that requires signatures.</span>
+            </div>
+            
+            <div id="selected-project-info">
+              <h3 data-i18n="project_payout.step_2_content.selected_project">Selected Project: <span id="project-name-display"></span></h3>
+              <div class="project-details" id="project-details-display"></div>
+            </div>
+            
+            <div class="form-group">
+              <label for="recipient-address" data-i18n="project_payout.step_2_content.recipient_address">Recipient Address</label>
+              <input type="text" id="recipient-address" class="form-control" placeholder="0x..." data-i18n-placeholder="project_payout.step_2_content.recipient_address_placeholder">
+            </div>
+            
+            <div class="form-group">
+              <label for="payout-amount" data-i18n="project_payout.step_2_content.amount_eth">Amount (ETH)</label>
+              <input type="number" id="payout-amount" class="form-control" step="0.01" min="0.01">
+              <small class="text-muted" data-i18n="project_payout.step_2_content.max_available">Maximum available: <span id="max-available">0</span> ETH</small>
+            </div>
+            
+            <div class="form-group">
+              <label for="payout-description" data-i18n="project_payout.step_2_content.payout_description">Description</label>
+              <textarea id="payout-description" class="form-control" rows="3" placeholder="Describe the purpose of this payout" data-i18n-placeholder="project_payout.step_2_content.payout_description_placeholder"></textarea>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <button id="back-step-2" class="btn btn-secondary" data-i18n="project_payout.step_2_content.back">Back</button>
+              </div>
+              <div class="form-group" style="text-align: right;">
+                <button id="propose-button" class="btn btn-primary" data-i18n="project_payout.step_2_content.propose_payout">Propose Payout</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3: Confirm Transaction -->
+        <div class="card hidden" id="step-3-content">
+          <div class="card-header">
+            <h2 class="card-title" data-i18n="project_payout.step_3_content.title">Confirm Transaction</h2>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-info">
+              <strong data-i18n="project_payout.workflow_steps.step_3">Step 3:</strong> <span data-i18n="project_payout.step_3_content.info_step_3">The transaction needs to be confirmed by multiple signers. Each authorized signer must confirm the transaction.</span>
+            </div>
+            
+            <div id="transaction-details">
+              <h3 data-i18n="project_payout.step_3_content.transaction">Transaction: <span id="tx-id-display"></span></h3>
+              <div class="transaction-details" id="tx-details-display"></div>
+            </div>
+            
+            <div class="form-group">
+              <button id="refresh-tx-button" class="btn btn-secondary" data-i18n="project_payout.step_3_content.refresh_status">Refresh Transaction Status</button>
+              <button id="confirm-button" class="btn btn-primary" data-i18n="project_payout.step_3_content.confirm_transaction">Confirm Transaction</button>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <button id="back-step-3" class="btn btn-secondary" data-i18n="project_payout.step_3_content.back">Back</button>
+              </div>
+              <div class="form-group" style="text-align: right;">
+                <button id="next-step-3" class="btn btn-primary" disabled data-i18n="project_payout.step_3_content.next_step">Next: Execute Transaction</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 4: Execute Transaction -->
+        <div class="card hidden" id="step-4-content">
+          <div class="card-header">
+            <h2 class="card-title" data-i18n="project_payout.step_4_content.title">Execute Transaction</h2>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-info">
+              <strong data-i18n="project_payout.workflow_steps.step_4">Step 4:</strong> <span data-i18n="project_payout.step_4_content.info_step_4">Once the required number of confirmations has been received, the transaction can be executed.</span>
+            </div>
+            
+            <div id="execution-details">
+              <h3 data-i18n="project_payout.step_4_content.transaction">Transaction: <span id="execute-tx-id-display"></span></h3>
+              <div class="transaction-details" id="execute-tx-details-display"></div>
+              <div class="form-group">
+                <div class="alert alert-warning">
+                  <strong data-i18n="project_payout.step_4_content.warning">Warning:</strong> <span data-i18n="project_payout.step_4_content.warning_text">This will transfer funds from the treasury to the specified recipient.</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <button id="refresh-exec-tx-button" class="btn btn-secondary" data-i18n="project_payout.step_4_content.refresh_status">Refresh Transaction Status</button>
+              <button id="execute-button" class="btn btn-warning" data-i18n="project_payout.step_4_content.execute_transaction">Execute Transaction</button>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <button id="back-step-4" class="btn btn-secondary" data-i18n="project_payout.step_4_content.back">Back</button>
+              </div>
+              <div class="form-group" style="text-align: right;">
+                <button id="next-step-4" class="btn btn-primary" disabled data-i18n="project_payout.step_4_content.next_step">Next: Complete Project</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 5: Complete Project -->
+        <div class="card hidden" id="step-5-content">
+          <div class="card-header">
+            <h2 class="card-title" data-i18n="project_payout.step_5_content.title">Complete Project</h2>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-info">
+              <strong data-i18n="project_payout.workflow_steps.step_5">Step 5:</strong> <span data-i18n="project_payout.step_5_content.info_step_5">Mark the project as completed by updating its status to "Paid".</span>
+            </div>
+            
+            <div id="completion-details">
+              <h3 data-i18n="project_payout.step_5_content.project">Project: <span id="complete-project-name-display"></span></h3>
+              <div class="project-details" id="complete-project-details-display"></div>
+            </div>
+            
+            <div class="form-group">
+              <label for="completion-reason" data-i18n="project_payout.step_5_content.completion_notes">Completion Notes</label>
+              <textarea id="completion-reason" class="form-control" rows="3" placeholder="Add notes about project completion" data-i18n-placeholder="project_payout.step_5_content.completion_notes_placeholder"></textarea>
+            </div>
+            
+            <div class="form-group">
+              <button id="refresh-project-status" class="btn btn-secondary" data-i18n="project_payout.step_5_content.refresh_status">Refresh Project Status</button>
+              <button id="complete-project-button" class="btn btn-success" data-i18n="project_payout.step_5_content.mark_paid">Mark Project as Paid</button>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <button id="back-step-5" class="btn btn-secondary" data-i18n="project_payout.step_5_content.back">Back</button>
+              </div>
+              <div class="form-group" style="text-align: right;">
+                <button id="finish-workflow" class="btn btn-primary" disabled data-i18n="project_payout.step_5_content.finish">Finish Workflow</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-backdrop" onclick="projectPayout.closeModal()"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title" data-i18n="modal.title">Modal Title</h3>
+        <button class="modal-close" onclick="projectPayout.closeModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-footer" id="modal-footer">
+        <button class="btn btn-secondary" onclick="projectPayout.closeModal()" data-i18n="buttons.close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
+  <script src="./js/i18n.js"></script>
+  <script src="./project-payout.js"></script>
+</body>
+</html>

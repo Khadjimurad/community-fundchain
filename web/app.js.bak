@@ -229,7 +229,6 @@ class FundChainApp {
     this.updateElement('total-balance', this.formatETH(stats.total_balance));
     this.updateElement('total-donations', this.formatETH(stats.total_donations));
     this.updateElement('total-allocated', this.formatETH(stats.total_allocated));
-    this.updateElement('total-allocated-dashboard', this.formatETH(stats.total_allocated));
     this.updateElement('total-paid-out', this.formatETH(stats.total_paid_out));
     this.updateElement('active-projects', stats.active_projects_count);
   }
@@ -247,16 +246,6 @@ class FundChainApp {
     } else {
       // If no data available, show empty
       this.updateElement('donations-7d', '0.000');
-    }
-    
-    // Add new metrics
-    if (stats.projects) {
-      this.updateElement('pending-projects', stats.projects.pending || 0);
-      this.updateElement('completed-projects', stats.projects.completed || 0);
-    }
-    
-    if (stats.treasury) {
-      this.updateElement('total-donors', stats.treasury.unique_donors || 0);
     }
   }
 
@@ -624,7 +613,7 @@ class FundChainApp {
   // Support project by ID
   async supportProjectById(project_id) {
     try {
-      const result = await this.fetchJSON(`/projects/${project_id}/support`, { method: 'POST' });
+      const result = await this.fetchJSON('/projects/' + project_id + '/support', 'POST');
 
       if (result.success) {
         await this.loadProjectDetail(project_id);
@@ -644,7 +633,7 @@ class FundChainApp {
   // Approve project by ID
   async approveProjectById(project_id) {
     try {
-      const result = await this.fetchJSON(`/projects/${project_id}/approve`, { method: 'POST' });
+      const result = await this.fetchJSON('/projects/' + project_id + '/approve', 'POST');
 
       if (result.success) {
         await this.loadProjectDetail(project_id);
@@ -664,7 +653,7 @@ class FundChainApp {
   // Reject project by ID
   async rejectProjectById(project_id) {
     try {
-      const result = await this.fetchJSON(`/projects/${project_id}/reject`, { method: 'POST' });
+      const result = await this.fetchJSON('/projects/' + project_id + '/reject', 'POST');
 
       if (result.success) {
         await this.loadProjectDetail(project_id);
@@ -676,7 +665,107 @@ class FundChainApp {
     }
   }
 
-  
+  // Utility functions
+  async fetchJSON(url, method = 'GET', data = {}) {
+    const options = {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    };
+
+    if (method !== 'GET') {
+      options.body = JSON.stringify(data);
+    }
+
+    const res = await fetch(url, options);
+
+    if (!res.ok) {
+      throw new Error('Network response was not ok');
+    }
+
+    return await res.json();
+  }
+
+  escapeHtml(unsafe) {
+    return unsafe
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  formatETH(value) {
+    if (value === undefined || value === null) {
+      return '0.000';
+    }
+    return parseFloat(value).toFixed(3);
+  }
+
+  getStatusBadgeClass(status) {
+    return 'success';
+  }
+
+  calculateETA(project) {
+    return 'TBD';
+  }
+
+  updateElement(id, value) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.textContent = value;
+    }
+    
+    projects.forEach(project => {
+      const vote = votesById[project.id] || {
+        for_weight: 0,
+        against_weight: 0,
+        abstained_count: 0,
+        not_participating_count: 0,
+        turnout_percentage: 0
+      };
+      
+      const progressPercent = (project.total_allocated / project.target * 100).toFixed(1);
+      const lacking = Math.max(0, project.target - project.total_allocated);
+      
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>
+          <div><strong><a href="#" onclick="app.viewProject('${project.id}'); return false;" style="text-decoration: none; color: #007bff;">${this.escapeHtml(project.name)}</a></strong></div>
+          <div class="text-muted" style="font-size: 0.875rem;">${this.escapeHtml(project.category)}</div>
+          <span class="badge badge-${this.getStatusBadgeClass(project.status)}">${project.status}</span>
+        </td>
+        <td class="text-center">${project.priority || '-'}</td>
+        <td>
+          <div class="mb-1">${this.formatETH(project.total_allocated)} / ${this.formatETH(project.target)} ETH</div>
+          <div class="progress">
+            <div class="progress-bar" style="width: ${Math.min(100, progressPercent)}%"></div>
+          </div>
+          <div class="text-muted" style="font-size: 0.75rem;">${progressPercent}%</div>
+        </td>
+        <td class="text-right">${this.formatETH(lacking)} ETH</td>
+        <td class="text-center">
+          <div class="vote-results">
+            <span class="badge badge-success" title="For">${vote.for_weight}</span>
+            <span class="badge badge-danger" title="Against">${vote.against_weight}</span>
+            <span class="badge badge-info" title="Abstain">${vote.abstained_count}</span>
+            <span class="badge badge-secondary" title="Not Participating">${vote.not_participating_count}</span>
+          </div>
+          <div class="text-muted" style="font-size: 0.75rem;">Turnout: ${vote.turnout_percentage}%</div>
+        </td>
+        <td class="text-center">
+          ${this.calculateETA(project)}
+        </td>
+        <td>
+          <button class="btn btn-primary btn-sm" onclick="app.supportProject('${project.id}')">${i18n.t('buttons.support')}</button>
+          <button class="btn btn-secondary btn-sm ml-2" onclick="app.viewProject('${project.id}')">${i18n.t('buttons.details')}</button>
+        </td>
+      `;
+      
+      tbody.appendChild(row);
+    });
+  }
 
   // Populate project filter options
   populateProjectFilters() {
@@ -804,23 +893,6 @@ class FundChainApp {
 
     // Update voting controls based on phase
     this.updateVotingControls(roundInfo);
-
-    // Distribution block: всегда отображаем, но блокируем кнопки до финализации
-    const distBlock = document.getElementById('voting-distribution');
-    if (distBlock) {
-      distBlock.classList.remove('hidden');
-      const isFinalized = (roundInfo.phase === 'finalized' || roundInfo.phase === 'ended');
-      const btnSeq = document.querySelector('button[onclick="app.planDistribution(\'sequential\')"]');
-      const btnProp = document.querySelector('button[onclick="app.planDistribution(\'proportional\')"]');
-      const btnApply = document.querySelector('button[onclick="app.applyDistribution(\'sequential\')"]');
-      const btnFinalize = document.querySelector('button[onclick="app.finalizeRound()"]');
-
-      // Планировать можно и до финализации (по желанию), но применять — только после
-      if (btnSeq) btnSeq.disabled = false;
-      if (btnProp) btnProp.disabled = false;
-      if (btnApply) btnApply.disabled = !isFinalized;
-      if (btnFinalize) btnFinalize.disabled = isFinalized; // если уже финализирован — скрывать/блокировать
-    }
     
     // Update project list for voting
     if (roundInfo.projects && roundInfo.projects.length > 0) {
@@ -1331,7 +1403,6 @@ class FundChainApp {
       // Load indexer status
       const indexerStatus = await this.fetchJSON('/admin/indexer/status');
       this.updateIndexerStatus(indexerStatus);
-      // distribution UI moved to Voting tab
       
     } catch (error) {
       console.error('Failed to load admin section:', error);
@@ -1735,7 +1806,7 @@ class FundChainApp {
         }
         .funding-grid, .community-grid, .milestones-grid, .timeline-grid {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: 1fr 1fr;
           gap: 0.75rem;
           margin-top: 0.75rem;
         }
@@ -1778,12 +1849,7 @@ class FundChainApp {
           min-width: 50px;
           text-align: right;
         }
-        @media (max-width: 1200px) {
-          .funding-grid, .community-grid, .milestones-grid, .timeline-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
-        }
-        @media (max-width: 640px) {
+        @media (max-width: 768px) {
           .funding-grid, .community-grid, .milestones-grid, .timeline-grid {
             grid-template-columns: 1fr;
           }
@@ -2427,73 +2493,6 @@ class FundChainApp {
         </div>
       </div>
     `;
-  }
-
-  async planDistribution(method) {
-    try {
-      const params = new URLSearchParams();
-      params.append('method', method);
-      params.append('cap', 'target');
-      const plan = await this.fetchJSON(`/admin/distribution/plan?${params.toString()}`);
-
-      const target = document.getElementById('distribution-plan-result');
-      if (target) {
-        const rows = (plan.projects || []).map(p => `
-          <tr>
-            <td><code>${(p.project_id || '').substring(0, 10)}...</code></td>
-            <td>${this.escapeHtml(p.name || '')}</td>
-            <td class="text-right">${this.formatETH(p.need)} ETH</td>
-            <td class="text-right"><strong>${this.formatETH(p.allocated)} ETH</strong></td>
-          </tr>
-        `).join('');
-        target.innerHTML = `
-          <div class="card">
-            <div class="card-body">
-              <h6 class="card-title">${i18n.t('admin.distribution_plan') || 'План распределения'}</h6>
-              <div class="text-muted mb-2">${i18n.t('admin.method') || 'Метод'}: ${method}, ${i18n.t('admin.budget') || 'Бюджет'}: ${this.formatETH(plan.budget)} ETH</div>
-              <div class="table-responsive">
-                <table class="data-table">
-                  <thead><tr>
-                    <th>ID</th>
-                    <th>${i18n.t('projects.details_title') || 'Проект'}</th>
-                    <th>${i18n.t('needed') || 'Нужно'}</th>
-                    <th>${i18n.t('allocated') || 'Распределено'}</th>
-                  </tr></thead>
-                  <tbody>${rows || `<tr><td colspan="4" class="text-center text-muted">${i18n.t('messages.no_data') || 'Нет данных'}</td></tr>`}</tbody>
-                </table>
-              </div>
-              <div class="mt-2">${i18n.t('admin.total_allocated') || 'Итого распределено'}: <strong>${this.formatETH(plan.total_allocated)} ETH</strong>, ${i18n.t('admin.remaining') || 'Остаток'}: ${this.formatETH(plan.remaining_budget)} ETH</div>
-            </div>
-          </div>
-        `;
-      }
-    } catch (e) {
-      this.showError(i18n.t('admin_modals.messages.failed_to_generate_distribution') || 'Не удалось сформировать план распределения');
-    }
-  }
-
-  async applyDistribution(method) {
-    try {
-      const params = new URLSearchParams();
-      params.append('method', method);
-      params.append('cap', 'target');
-      const result = await this.fetchJSON(`/admin/distribution/apply?${params.toString()}`, { method: 'POST' });
-      this.showSuccess(i18n.t('admin.applied_distribution') || 'План применён');
-      // Обновим дашборд и текущую вкладку
-      await this.loadSectionData(this.currentSection);
-    } catch (e) {
-      this.showError(i18n.t('admin_modals.messages.failed_to_apply_distribution') || 'Не удалось применить план распределения');
-    }
-  }
-
-  async finalizeRound() {
-    try {
-      const res = await this.fetchJSON('/admin/voting/finalize-round', { method: 'POST' });
-      this.showSuccess(i18n.t('voting.round_finalized') || 'Раунд финализирован');
-      await this.loadVotingSection();
-    } catch (e) {
-      this.showError(i18n.t('voting.failed_to_finalize_round') || 'Не удалось финализировать раунд');
-    }
   }
 
   renderPrivacyReport(report) {

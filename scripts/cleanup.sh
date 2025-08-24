@@ -176,22 +176,42 @@ run_cleanup() {
         fi
         
         # Запускаем скрипт в контейнере backend
-        if $COMPOSE_CMD exec -T backend python3 /app/scripts/cleanup_docker.py "${args[@]}"; then
-            log_success "Скрипт очистки выполнен успешно"
-            return 0
+        if [[ ${#args[@]} -eq 0 ]]; then
+            if $COMPOSE_CMD exec -T backend python3 /app/scripts/cleanup_docker.py; then
+                log_success "Скрипт очистки выполнен успешно"
+                return 0
+            else
+                log_error "Ошибка выполнения скрипта очистки в Docker"
+                return 1
+            fi
         else
-            log_error "Ошибка выполнения скрипта очистки в Docker"
-            return 1
+            if $COMPOSE_CMD exec -T backend python3 /app/scripts/cleanup_docker.py "${args[@]}"; then
+                log_success "Скрипт очистки выполнен успешно"
+                return 0
+            else
+                log_error "Ошибка выполнения скрипта очистки в Docker"
+                return 1
+            fi
         fi
     else
         log_info "Запуск локально..."
         # Запускаем Python скрипт локально
-        if python3 "$CLEANUP_SCRIPT" "${args[@]}"; then
-            log_success "Скрипт очистки выполнен успешно"
-            return 0
+        if [[ ${#args[@]} -eq 0 ]]; then
+            if python3 "$CLEANUP_SCRIPT"; then
+                log_success "Скрипт очистки выполнен успешно"
+                return 0
+            else
+                log_error "Ошибка выполнения скрипта очистки"
+                return 1
+            fi
         else
-            log_error "Ошибка выполнения скрипта очистки"
-            return 1
+            if python3 "$CLEANUP_SCRIPT" "${args[@]}"; then
+                log_success "Скрипт очистки выполнен успешно"
+                return 0
+            else
+                log_error "Ошибка выполнения скрипта очистки"
+                return 1
+            fi
         fi
     fi
 }

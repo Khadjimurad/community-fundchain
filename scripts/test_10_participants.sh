@@ -238,7 +238,7 @@ test_voting_system() {
     local voting_round_result=$(curl -s -X POST "$BACKEND_URL/api/v1/votes/rounds" \
         -H "Content-Type: application/json" \
         -d '{
-            "projects": ["test_project_001", "test_project_002", "test_project_003"],
+            "projects": ["tp_01", "tp_02", "tp_03"],
             "commit_duration": 7,
             "reveal_duration": 3
         }' || echo "failed")

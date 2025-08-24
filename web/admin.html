@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title data-i18n="app.title">FundChain — Administration</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    :root { --primary-color: #2563eb; --secondary-color: #f1f5f9; --success-color: #059669; --warning-color: #d97706; --danger-color: #dc2626; --border-color: #e5e7eb; --text-primary: #1f2937; --text-secondary: #6b7280; --bg-primary: #ffffff; --bg-secondary: #f8fafc; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 16px; line-height: 1.7; color: var(--text-primary); background-color: var(--bg-secondary); }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+    .header { background: var(--bg-primary); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .header-top { border-bottom: 1px solid var(--border-color); padding: 0.75rem 0; }
+    .header-top-content { display: flex; justify-content: space-between; align-items: center; }
+    .header-nav { padding: 0.75rem 0; }
+    .controls-container { display: flex; align-items: center; gap: 0.5rem; }
+    .logo { font-size: 1.75rem; font-weight: bold; color: var(--primary-color); }
+    .nav { display: flex; gap: 2rem; }
+    .nav a { text-decoration: none; color: var(--text-secondary); font-weight: 500; font-size: 1.05rem; transition: color 0.2s; }
+    .nav a:hover, .nav a.active { color: var(--primary-color); }
+    .status-bar { background: var(--bg-primary); border-bottom: 1px solid var(--border-color); padding: 0.5rem 0; font-size: 0.95rem; color: var(--text-secondary); }
+    .status-content { display: flex; justify-content: space-between; align-items: center; }
+    .k-anonymity-indicator { display: flex; align-items: center; gap: 0.5rem; }
+    .k-indicator { background: var(--success-color); color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.85rem; }
+    .main { padding: 2rem 0; }
+    .card { background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 0.75rem; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .card-title { font-size: 1.4rem; font-weight: 600; margin: 0; }
+    .card-actions { display: flex; gap: 0.5rem; }
+    .btn { display: inline-block; padding: 0.6rem 1.2rem; border: none; border-radius: 0.375rem; font-size: 0.95rem; font-weight: 500; text-decoration: none; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: var(--primary-color); color: white; }
+    .btn-secondary { background: var(--secondary-color); color: var(--text-primary); border: 1px solid var(--border-color); }
+    .btn-warning { background: #f59e0b; color: white; border: 1px solid #f59e0b; }
+    .btn-info { background: #3b82f6; color: white; border: 1px solid #3b82f6; }
+    .btn-success { background: var(--success-color); color: white; border: 1px solid var(--success-color); }
+    .btn-xs { padding: 0.3rem 0.6rem; font-size: 0.8rem; }
+    .badge { display: inline-block; padding: 0.3rem 0.6rem; border-radius: 0.25rem; font-size: 0.8rem; font-weight: 500; }
+    .badge-success { background: #dcfce7; color: var(--success-color); }
+    .badge-warning { background: #fef3c7; color: var(--warning-color); }
+    .badge-danger { background: #fee2e2; color: var(--danger-color); }
+    .badge-info { background: #dbeafe; color: var(--primary-color); }
+    .admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+    .admin-section { background: white; padding: 1.5rem; border-radius: 0.5rem; border: 1px solid var(--border-color); transition: box-shadow 0.2s ease; }
+    .admin-section:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .admin-section h4 { margin: 0 0 1.5rem 0; font-size: 1.2rem; font-weight: 600; color: var(--text-primary); border-bottom: 2px solid var(--primary-color); padding-bottom: 0.5rem; }
+    .action-buttons { display: flex; flex-direction: column; gap: 0.75rem; }
+    .action-buttons .btn { justify-content: flex-start; text-align: left; padding: 0.75rem 1rem; font-weight: 500; border-radius: 0.375rem; transition: all 0.2s ease; }
+    .action-buttons .btn-lg { padding: 1rem 1.25rem; font-size: 1.05rem; font-weight: 600; margin-bottom: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .status-indicator { background: var(--bg-secondary); padding: 0.75rem; border-radius: 0.375rem; border-left: 4px solid var(--success-color); }
+    .system-status { background: var(--bg-secondary); border-radius: 0.375rem; padding: 1rem; }
+    .status-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    .status-item { display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 1rem; padding: 0.5rem; background: white; border-radius: 0.25rem; border-left: 3px solid var(--primary-color); }
+    .contracts-list { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.25rem; }
+    .contract-tag { background: var(--primary-color); color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.8rem; font-weight: 500; }
+    .system-actions { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+    .data-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    .data-table th, .data-table td { padding: 0.8rem; text-align: left; border-bottom: 1px solid var(--border-color); font-size: 0.95rem; }
+    .text-muted { color: var(--text-secondary); }
+    .hidden { display: none; }
+    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; display: flex; align-items: center; justify-content: center; }
+    .modal.hidden { display: none; }
+    .modal-backdrop { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+    .modal-content { background: white; border-radius: 0.5rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); max-width: 90vw; max-height: 90vh; overflow: auto; position: relative; z-index: 1001; min-width: 400px; }
+    .modal-header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: between; align-items: center; }
+    .modal-title { margin: 0; font-size: 1.35rem; font-weight: 600; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-secondary); margin-left: auto; }
+    .modal-body { padding: 1.5rem; }
+    .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; gap: 1rem; justify-content: flex-end; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-top">
+      <div class="container">
+        <div class="header-top-content">
+          <div class="logo" data-i18n="app.logo">🏛️ FundChain</div>
+          <div class="controls-container">
+            <button id="auto-refresh-toggle" class="btn btn-secondary enabled" onclick="app.toggleAutoRefresh()" title="Toggle Auto Refresh">🔄</button>
+            <button id="language-switcher" class="btn btn-secondary" onclick="window.i18n.toggleLanguage()" title="Switch Language">🇺🇸 EN</button>
+            <a href="./index.html" class="btn btn-secondary" title="Back to main">← Main</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="header-nav">
+      <div class="container">
+        <nav class="nav">
+          <a href="./index.html" data-i18n="navigation.dashboard">Dashboard</a>
+          <a href="./index.html" data-i18n="navigation.projects">Projects</a>
+          <a href="./index.html" data-i18n="navigation.voting">Voting</a>
+          <a href="./index.html" data-i18n="navigation.treasury">Treasury</a>
+          <a href="./index.html" data-i18n="navigation.personal">My Stats</a>
+          <a href="#" class="active nav-link" data-section="admin" data-i18n="navigation.admin">Admin</a>
+          <a href="./contract-interface.html" data-i18n="navigation.contract_interface">Contract Interface</a>
+          <a href="./project-payout.html" data-i18n="navigation.project_payout">Project Payout</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <div class="status-bar">
+    <div class="container">
+      <div class="status-content">
+        <div><span data-i18n="status.last_updated">Last updated</span>: <span id="last-updated">--</span></div>
+        <div class="k-anonymity-indicator">
+          <span class="k-indicator" id="k-indicator" data-i18n="status.k_anonymous">k≥5 anonymous</span>
+          <span data-i18n="status.privacy_protected">Privacy protected</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main class="main">
+    <div class="container">
+      <section id="admin-section" class="section">
+        <h1 data-i18n="admin.title">Administration</h1>
+
+        <div class="admin-grid">
+          <div class="admin-section">
+            <h4 data-i18n="admin.project_management">Управление проектами</h4>
+            <div class="action-buttons">
+              <button class="btn btn-primary btn-lg" onclick="window.app.showProjectForm()" data-i18n="admin.create_project"><i class="fas fa-plus"></i> Создать проект</button>
+              <button class="btn btn-secondary" onclick="window.app.manageCategories()" data-i18n="admin.manage_categories"><i class="fas fa-tags"></i> Управление категориями</button>
+              <button class="btn btn-secondary" onclick="window.app.showProjectsAdmin()" data-i18n="admin.manage_projects"><i class="fas fa-list"></i> Управление проектами</button>
+            </div>
+          </div>
+          <div class="admin-section">
+            <h4 data-i18n="admin.member_management">Управление участниками</h4>
+            <div class="action-buttons">
+              <button class="btn btn-primary btn-lg" onclick="window.app.showMintSBTForm()" data-i18n="admin.mint_sbt"><i class="fas fa-certificate"></i> Создать SBT</button>
+              <button class="btn btn-secondary" onclick="window.app.manageWeights()" data-i18n="admin.manage_weights"><i class="fas fa-weight"></i> Управление весами</button>
+              <button class="btn btn-secondary" onclick="window.app.showMembersAdmin()" data-i18n="admin.view_members"><i class="fas fa-users"></i> Просмотр участников</button>
+            </div>
+          </div>
+          <div class="admin-section">
+            <h4 data-i18n="admin.voting_management">Управление голосованием</h4>
+            <div class="action-buttons">
+              <button class="btn btn-primary btn-lg" onclick="window.app.showStartVotingForm()" data-i18n="admin.start_voting_round"><i class="fas fa-play"></i> Начать раунд голосования</button>
+              <button class="btn btn-secondary" onclick="window.app.showVotingConfig()" data-i18n="admin.configure_settings"><i class="fas fa-cog"></i> Настройка конфигурации</button>
+              <button class="btn btn-secondary" onclick="window.app.showVotingHistory()" data-i18n="admin.view_history"><i class="fas fa-history"></i> Просмотр истории</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="system-management-section">
+          <div class="admin-section">
+            <h4 data-i18n="admin.system_management">Управление системой</h4>
+            <div class="system-status mb-4">
+              <div class="status-row">
+                <div class="status-item">
+                  <i class="fas fa-circle status-icon status-running"></i>
+                  <span class="status-label">Статус индексатора:</span>
+                  <span id="indexer-status" class="status-value">Запущен</span>
+                </div>
+                <div class="status-item">
+                  <i class="fas fa-clock status-icon"></i>
+                  <span class="status-label">Интервал опроса:</span>
+                  <span class="status-value">5s</span>
+                </div>
+              </div>
+              <div class="status-item contracts-status">
+                <i class="fas fa-file-contract status-icon"></i>
+                <span class="status-label">Контракты:</span>
+                <div class="contracts-list">
+                  <span class="contract-tag">Treasury</span>
+                  <span class="contract-tag">Projects</span>
+                  <span class="contract-tag">GovernanceSBT</span>
+                  <span class="contract-tag">BallotCommitReveal</span>
+                  <span class="contract-tag">CommunityMultisig</span>
+                </div>
+              </div>
+            </div>
+            <div class="system-actions">
+              <button class="btn btn-warning btn-lg" onclick="window.app.reindexBlockchain()" data-i18n="admin.force_reindex"><i class="fas fa-sync"></i> Принудительная переиндексация</button>
+              <button class="btn btn-secondary" onclick="window.app.showSystemConfig()" data-i18n="admin.system_config"><i class="fas fa-cogs"></i> Конфигурация системы</button>
+              <button class="btn btn-secondary" onclick="window.app.showLogsAdmin()" data-i18n="admin.view_logs"><i class="fas fa-file-alt"></i> Просмотр логов</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mt-2">
+          <div class="card-header">
+            <h2 class="card-title" data-i18n="admin.data_export_reporting">Экспорт данных и отчеты</h2>
+          </div>
+          <div class="card-body">
+            <div class="admin-grid">
+              <div class="admin-section">
+                <h4 data-i18n="admin.quick_exports">Быстрый экспорт</h4>
+                <div class="action-buttons">
+                  <button class="btn btn-primary btn-lg" onclick="window.app.exportAllDonations()" data-i18n="admin.export_donations"><i class="fas fa-download"></i> Экспорт пожертвований</button>
+                  <button class="btn btn-primary" onclick="window.app.exportAllAllocations()" data-i18n="admin.export_allocations"><i class="fas fa-share-alt"></i> Экспорт распределений</button>
+                  <button class="btn btn-primary" onclick="window.app.exportVotingResults()" data-i18n="admin.export_voting"><i class="fas fa-vote-yea"></i> Экспорт голосования</button>
+                  <button class="btn btn-success" onclick="window.app.exportComprehensiveReport()" data-i18n="admin.full_report"><i class="fas fa-file-export"></i> Полный отчет</button>
+                </div>
+              </div>
+              <div class="admin-section">
+                <h4 data-i18n="admin.analytics_reports">Аналитические отчеты</h4>
+                <div class="action-buttons">
+                  <button class="btn btn-info" onclick="window.app.generateProjectAnalytics()" data-i18n="admin.project_analytics"><i class="fas fa-chart-bar"></i> Аналитика проектов</button>
+                  <button class="btn btn-info" onclick="window.app.generateVotingAnalytics()" data-i18n="admin.voting_analytics"><i class="fas fa-chart-pie"></i> Аналитика голосования</button>
+                  <button class="btn btn-info" onclick="window.app.generateTreasuryAnalytics()" data-i18n="admin.treasury_analytics"><i class="fas fa-chart-line"></i> Аналитика казначейства</button>
+                  <button class="btn btn-warning" onclick="window.app.generatePrivacyReport()" data-i18n="admin.privacy_report"><i class="fas fa-shield-alt"></i> Отчет по конфиденциальности</button>
+                </div>
+              </div>
+              <div class="admin-section">
+                <h4 data-i18n="admin.custom_export">Пользовательский экспорт</h4>
+                <div class="action-buttons">
+                  <button class="btn btn-primary btn-lg" onclick="window.app.showExportOptions()" data-i18n="admin.advanced_export_options"><i class="fas fa-cogs"></i> Расширенные опции экспорта</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mt-2" id="admin-content-area">
+          <div class="card-header">
+            <h2 class="card-title" id="admin-content-title" data-i18n="admin.select_action">Select an action above</h2>
+          </div>
+          <div class="card-body" id="admin-content-body">
+            <p class="text-muted" data-i18n="admin.choose_task">Choose an administration task from the options above to begin.</p>
+          </div>
+        </div>
+      </section>
+
+      <div id="admin-modal" class="modal hidden">
+        <div class="modal-backdrop" onclick="app.closeModal()"></div>
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 id="modal-title" data-i18n="admin.admin_action">Admin Action</h3>
+            <button class="modal-close" onclick="app.closeModal()" data-i18n="buttons.close">&times;</button>
+          </div>
+          <div class="modal-body" id="modal-body"></div>
+          <div class="modal-footer" id="modal-footer">
+            <button class="btn btn-secondary" onclick="app.closeModal()" data-i18n="buttons.cancel">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="./js/i18n.js"></script>
+  <script src="./app.js?v=1.4.24"></script>
+  <script src="./app-admin.js?v=1.0.0"></script>
+</body>
+</html>
+
+

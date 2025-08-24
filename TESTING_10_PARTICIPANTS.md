@@ -32,7 +32,7 @@ make seed-10-participants
 ### 3. Запуск тестов
 ```bash
 # Полное комплексное тестирование
-make test-10-comprehensive
+make test-10-full
 
 # Или быстрое тестирование
 make test-10-quick

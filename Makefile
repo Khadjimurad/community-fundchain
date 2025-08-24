@@ -50,7 +50,7 @@ cleanup-stats:
 # Data seeding commands
 seed-10-participants:
 	@echo "🌱 Creating seed data for 10 participants..."
-	@python3 scripts/seed_10_participants.py
+	@docker-compose exec backend python3 /app/scripts/seed_10_participants_container.py
 
 # Testing with 10 participants
 test-10-setup:

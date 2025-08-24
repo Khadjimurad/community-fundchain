@@ -1,0 +1,1693 @@
+/**
+ * FundChain Contract Interface
+ * Direct interaction with smart contracts through Web3
+ */
+
+class ContractInterface {
+  constructor() {
+    this.web3 = null;
+    this.account = null;
+    this.contracts = {
+      multisig: null,
+      treasury: null,
+      projects: null,
+      governance: null,
+      ballot: null
+    };
+    
+    // Contract ABIs (simplified for brevity)
+    this.abis = {
+      multisig: [
+        {"inputs":[{"internalType":"address[]","name":"_owners","type":"address[]"},{"internalType":"uint256","name":"_required","type":"uint256"}],"stateMutability":"nonpayable","type":"constructor"},
+        {"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"projectId","type":"bytes32"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"txId","type":"uint256"}],"name":"ProjectPayoutCompleted","type":"event"},
+        {"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"txId","type":"uint256"},{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":false,"internalType":"uint256","name":"confirmationTime","type":"uint256"}],"name":"TxConfirmed","type":"event"},
+        {"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"txId","type":"uint256"},{"indexed":true,"internalType":"address","name":"executor","type":"address"}],"name":"TxExecuted","type":"event"},
+        {"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"txId","type":"uint256"},{"indexed":true,"internalType":"address","name":"proposer","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"},{"indexed":false,"internalType":"enum CommunityMultisig.TxType","name":"txType","type":"uint8"},{"indexed":false,"internalType":"bytes32","name":"projectId","type":"bytes32"},{"indexed":false,"internalType":"string","name":"description","type":"string"}],"name":"TxProposed","type":"event"},
+        {"inputs":[{"internalType":"uint256","name":"txId","type":"uint256"}],"name":"confirm","outputs":[],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[{"internalType":"uint256","name":"txId","type":"uint256"}],"name":"execute","outputs":[],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[{"internalType":"address payable","name":"to","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"},{"internalType":"bytes32","name":"projectId","type":"bytes32"},{"internalType":"string","name":"description","type":"string"}],"name":"proposeProjectPayout","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[],"name":"txCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
+      ],
+      treasury: [
+        {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
+        {"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"projectId","type":"bytes32"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"bytes32","name":"payoutId","type":"bytes32"}],"name":"AllocationReleased","type":"event"},
+        {"inputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"name":"totalAllocatedTo","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+        {"inputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"name":"totalPaidOutFrom","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
+      ],
+      projects: [
+        {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
+        {"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"id","type":"bytes32"},{"indexed":false,"internalType":"enum Projects.Status","name":"oldStatus","type":"uint8"},{"indexed":false,"internalType":"enum Projects.Status","name":"newStatus","type":"uint8"},{"indexed":false,"internalType":"string","name":"reason","type":"string"}],"name":"ProjectStatusChanged","type":"event"},
+        {"inputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"name":"projects","outputs":[{"internalType":"bytes32","name":"id","type":"bytes32"},{"internalType":"string","name":"name","type":"string"},{"internalType":"string","name":"description","type":"string"},{"internalType":"uint256","name":"target","type":"uint256"},{"internalType":"uint256","name":"softCap","type":"uint256"},{"internalType":"uint256","name":"hardCap","type":"uint256"},{"internalType":"uint256","name":"createdAt","type":"uint256"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"internalType":"enum Projects.Status","name":"status","type":"uint8"},{"internalType":"string","name":"category","type":"string"},{"internalType":"uint256","name":"priority","type":"uint256"},{"internalType":"bool","name":"softCapEnabled","type":"bool"},{"internalType":"uint256","name":"totalAllocated","type":"uint256"},{"internalType":"uint256","name":"totalPaidOut","type":"uint256"}],"stateMutability":"view","type":"function"},
+        {"inputs":[{"internalType":"bytes32","name":"id","type":"bytes32"},{"internalType":"enum Projects.Status","name":"newStatus","type":"uint8"},{"internalType":"string","name":"reason","type":"string"}],"name":"setStatus","outputs":[],"stateMutability":"nonpayable","type":"function"}
+      ],
+      governance: [
+        {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
+        {"inputs":[{"internalType":"address","name":"who","type":"address"}],"name":"weightOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
+      ],
+      ballot: [
+        {"inputs":[{"internalType":"address","name":"_sbtAddress","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},
+        {"inputs":[],"name":"getCurrentRoundId","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+        {"inputs":[{"internalType":"uint256","name":"roundId","type":"uint256"}],"name":"votingRoundInfo","outputs":[{"internalType":"uint256","name":"startTime","type":"uint256"},{"internalType":"uint256","name":"commitEndTime","type":"uint256"},{"internalType":"uint256","name":"revealEndTime","type":"uint256"},{"internalType":"uint256","name":"totalVoters","type":"uint256"},{"internalType":"uint256","name":"totalRevealed","type":"uint256"},{"internalType":"bytes32[]","name":"projectIds","type":"bytes32[]"}],"stateMutability":"view","type":"function"}
+      ]
+    };
+    
+    this.init();
+  }
+
+  init() {
+    this.setupEventListeners();
+    this.setupTabNavigation();
+  }
+
+  setupEventListeners() {
+    // Connect & disconnect
+    document.getElementById('connect-button').addEventListener('click', () => this.connectWeb3());
+    document.getElementById('disconnect-button').addEventListener('click', () => this.disconnectWeb3());
+    
+    // CommunityMultisig
+    document.getElementById('propose-button').addEventListener('click', () => this.proposePayment());
+    document.getElementById('confirm-button').addEventListener('click', () => this.confirmTransaction());
+    document.getElementById('execute-button').addEventListener('click', () => this.executeTransaction());
+    document.getElementById('view-tx-button').addEventListener('click', () => this.viewTransactionDetails());
+    document.getElementById('refresh-txs-button').addEventListener('click', () => this.refreshTransactions());
+    
+    // Treasury
+    document.getElementById('get-treasury-info').addEventListener('click', () => this.getTreasuryInfo());
+    document.getElementById('get-allocation-info').addEventListener('click', () => this.getAllocationInfo());
+    
+    // Projects
+    document.getElementById('get-project-info').addEventListener('click', () => this.getProjectInfo());
+    document.getElementById('update-status-button').addEventListener('click', () => this.updateProjectStatus());
+    
+    // GovernanceSBT
+    document.getElementById('get-sbt-info').addEventListener('click', () => this.getSBTInfo());
+    
+    // BallotCommitReveal
+    document.getElementById('get-voting-info').addEventListener('click', () => this.getVotingInfo());
+  }
+
+  setupTabNavigation() {
+    // Main tabs
+    document.querySelectorAll('.tab-item').forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        const tabId = e.target.dataset.tab;
+        
+        // Hide all tab content
+        document.querySelectorAll('.tab-pane').forEach(pane => {
+          pane.classList.remove('active');
+        });
+        
+        // Hide all tab headers
+        document.querySelectorAll('.tab-item').forEach(item => {
+          item.classList.remove('active');
+        });
+        
+        // Show selected tab content
+        document.getElementById(`${tabId}-tab`).classList.add('active');
+        
+        // Highlight selected tab
+        e.target.classList.add('active');
+      });
+    });
+    
+    // Subtabs (for multisig contract)
+    document.querySelectorAll('.tab-container .tab-header .tab-item').forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        const parent = e.target.closest('.tab-container');
+        const tabId = e.target.dataset.tab;
+        
+        // Hide all tab content in this container
+        parent.querySelectorAll('.tab-pane').forEach(pane => {
+          pane.classList.remove('active');
+        });
+        
+        // Hide all tab headers in this container
+        parent.querySelectorAll('.tab-header .tab-item').forEach(item => {
+          item.classList.remove('active');
+        });
+        
+        // Show selected tab content
+        parent.querySelector(`#${tabId}-tab`).classList.add('active');
+        
+        // Highlight selected tab
+        e.target.classList.add('active');
+        
+        // Prevent event bubbling
+        e.stopPropagation();
+      });
+    });
+  }
+
+  // Web3 Connection Methods
+  async connectWeb3() {
+    try {
+      const rpcUrl = document.getElementById('rpc-url').value;
+      const chainId = document.getElementById('chain-id').value;
+      const privateKey = document.getElementById('private-key').value;
+      
+      // Initialize Web3
+      this.web3 = new Web3(rpcUrl);
+      
+      // Check connection
+      const isConnected = await this.web3.eth.net.isListening();
+      
+      if (!isConnected) {
+        this.showError('Failed to connect to RPC endpoint');
+        return;
+      }
+      
+      // Set account from private key or use browser wallet
+      if (privateKey) {
+        const account = this.web3.eth.accounts.privateKeyToAccount(privateKey);
+        this.web3.eth.accounts.wallet.add(account);
+        this.account = account.address;
+      } else if (window.ethereum) {
+        // Use MetaMask or other injected wallet
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        this.account = (await window.ethereum.request({ method: 'eth_accounts' }))[0];
+        
+        // Use wallet provider instead of direct RPC
+        this.web3 = new Web3(window.ethereum);
+      } else {
+        this.showError('No private key provided and no browser wallet detected');
+        return;
+      }
+      
+      // Initialize contracts
+      this.initializeContracts();
+      
+      // Update UI
+      document.getElementById('connection-status').textContent = 'Connected';
+      document.getElementById('current-account').textContent = this.account;
+      document.getElementById('account-info').classList.remove('hidden');
+      document.getElementById('connect-button').classList.add('hidden');
+      document.getElementById('disconnect-button').classList.remove('hidden');
+      document.getElementById('contracts-interface').classList.remove('hidden');
+      
+      this.showSuccess('Successfully connected to blockchain');
+    } catch (error) {
+      console.error('Connection error:', error);
+      this.showError(`Failed to connect: ${error.message}`);
+    }
+  }
+
+  disconnectWeb3() {
+    this.web3 = null;
+    this.account = null;
+    this.contracts = {
+      multisig: null,
+      treasury: null,
+      projects: null,
+      governance: null,
+      ballot: null
+    };
+    
+    // Update UI
+    document.getElementById('connection-status').textContent = 'Disconnected';
+    document.getElementById('account-info').classList.add('hidden');
+    document.getElementById('connect-button').classList.remove('hidden');
+    document.getElementById('disconnect-button').classList.add('hidden');
+    document.getElementById('contracts-interface').classList.add('hidden');
+    
+    this.showSuccess('Disconnected from blockchain');
+  }
+
+  initializeContracts() {
+    const multisigAddress = document.getElementById('multisig-address').value;
+    const treasuryAddress = document.getElementById('treasury-address').value;
+    const projectsAddress = document.getElementById('projects-address').value;
+    const governanceAddress = document.getElementById('governance-address').value;
+    const ballotAddress = document.getElementById('ballot-address').value;
+    
+    this.contracts.multisig = new this.web3.eth.Contract(this.abis.multisig, multisigAddress);
+    this.contracts.treasury = new this.web3.eth.Contract(this.abis.treasury, treasuryAddress);
+    this.contracts.projects = new this.web3.eth.Contract(this.abis.projects, projectsAddress);
+    this.contracts.governance = new this.web3.eth.Contract(this.abis.governance, governanceAddress);
+    this.contracts.ballot = new this.web3.eth.Contract(this.abis.ballot, ballotAddress);
+  }
+
+  // CommunityMultisig Methods
+  async proposePayment() {
+    try {
+      const recipient = document.getElementById('recipient-address').value;
+      const projectId = document.getElementById('project-id').value;
+      const amount = this.web3.utils.toWei(document.getElementById('payout-amount').value, 'ether');
+      const description = document.getElementById('payout-description').value;
+      
+      if (!this.web3.utils.isAddress(recipient)) {
+        this.showError('Invalid recipient address');
+        return;
+      }
+      
+      if (!projectId || !this.web3.utils.isHexStrict(projectId)) {
+        this.showError('Invalid project ID (must be hex)');
+        return;
+      }
+      
+      // Call proposeProjectPayout function
+      const txReceipt = await this.contracts.multisig.methods.proposeProjectPayout(
+        recipient,
+        amount,
+        projectId,
+        description
+      ).send({ from: this.account });
+      
+      // Extract transaction ID from event logs
+      const txProposedEvent = txReceipt.events.TxProposed;
+      const txId = txProposedEvent ? txProposedEvent.returnValues.txId : 'Unknown';
+      
+      this.showSuccess(`Payment proposal created with ID: ${txId}`);
+      
+      // Clear form
+      document.getElementById('payout-amount').value = '';
+      document.getElementById('payout-description').value = '';
+      
+      // Update transaction list
+      this.refreshTransactions();
+    } catch (error) {
+      console.error('Proposal error:', error);
+      this.showError(`Failed to propose payment: ${error.message}`);
+    }
+  }
+  
+  async confirmTransaction() {
+    try {
+      const txId = document.getElementById('confirm-tx-id').value;
+      
+      if (!txId || isNaN(parseInt(txId))) {
+        this.showError('Invalid transaction ID');
+        return;
+      }
+      
+      // Call confirm function
+      await this.contracts.multisig.methods.confirm(txId).send({ from: this.account });
+      
+      this.showSuccess(`Transaction ${txId} confirmed successfully`);
+      
+      // Clear form
+      document.getElementById('confirm-tx-id').value = '';
+      
+      // Update transaction list
+      this.refreshTransactions();
+    } catch (error) {
+      console.error('Confirmation error:', error);
+      this.showError(`Failed to confirm transaction: ${error.message}`);
+    }
+  }
+  
+  async executeTransaction() {
+    try {
+      const txId = document.getElementById('execute-tx-id').value;
+      
+      if (!txId || isNaN(parseInt(txId))) {
+        this.showError('Invalid transaction ID');
+        return;
+      }
+      
+      // Call execute function
+      await this.contracts.multisig.methods.execute(txId).send({ from: this.account });
+      
+      this.showSuccess(`Transaction ${txId} executed successfully`);
+      
+      // Clear form
+      document.getElementById('execute-tx-id').value = '';
+      
+      // Update transaction list
+      this.refreshTransactions();
+    } catch (error) {
+      console.error('Execution error:', error);
+      this.showError(`Failed to execute transaction: ${error.message}`);
+    }
+  }
+  
+  async viewTransactionDetails() {
+    try {
+      const txId = document.getElementById('view-tx-id').value;
+      
+      if (!txId || isNaN(parseInt(txId))) {
+        this.showError('Invalid transaction ID');
+        return;
+      }
+      
+      // Get transaction details
+      const tx = await this.contracts.multisig.methods.txs(txId).call();
+      
+      // Format transaction details
+      const statusMap = ['Pending', 'Executed', 'Cancelled'];
+      const typeMap = ['GeneralPayout', 'ProjectPayout', 'ConfigChange', 'OwnershipChange'];
+      
+      const details = {
+        id: tx.id,
+        to: tx.to,
+        value: this.web3.utils.fromWei(tx.value, 'ether') + ' ETH',
+        type: typeMap[tx.txType] || 'Unknown',
+        status: statusMap[tx.status] || 'Unknown',
+        confirmations: tx.confirmations,
+        createdAt: new Date(tx.createdAt * 1000).toLocaleString(),
+        executedAt: tx.executedAt > 0 ? new Date(tx.executedAt * 1000).toLocaleString() : 'Not executed',
+        projectId: tx.projectId !== '0x0000000000000000000000000000000000000000000000000000000000000000' ? tx.projectId : 'N/A',
+        description: tx.description,
+        proposer: tx.proposer
+      };
+      
+      // Display details
+      const detailsElement = document.getElementById('tx-details');
+      detailsElement.textContent = JSON.stringify(details, null, 2);
+      detailsElement.classList.remove('hidden');
+    } catch (error) {
+      console.error('View transaction error:', error);
+      this.showError(`Failed to view transaction: ${error.message}`);
+    }
+  }
+  
+  async refreshTransactions() {
+    try {
+      // Get total transaction count
+      const txCount = await this.contracts.multisig.methods.txCount().call();
+      
+      // Get the most recent 10 transactions
+      const transactions = [];
+      for (let i = txCount; i > Math.max(txCount - 10, 0); i--) {
+        try {
+          const tx = await this.contracts.multisig.methods.txs(i).call();
+          transactions.push(tx);
+        } catch (e) {
+          console.error(`Error fetching transaction ${i}:`, e);
+        }
+      }
+      
+      // Update transaction list
+      const transactionList = document.getElementById('transaction-list');
+      
+      if (transactions.length === 0) {
+        transactionList.innerHTML = '<div class="alert alert-info">No transactions found</div>';
+        return;
+      }
+      
+      const statusMap = ['Pending', 'Executed', 'Cancelled'];
+      const typeMap = ['GeneralPayout', 'ProjectPayout', 'ConfigChange', 'OwnershipChange'];
+      
+      let html = '';
+      
+      transactions.forEach(tx => {
+        html += `
+          <div class="transaction-item">
+            <div class="transaction-header">
+              <div class="transaction-id">TX #${tx.id}</div>
+              <div class="transaction-status">
+                <span class="badge ${tx.status === '0' ? 'badge-warning' : tx.status === '1' ? 'badge-success' : 'badge-danger'}">
+                  ${statusMap[tx.status] || 'Unknown'}
+                </span>
+              </div>
+            </div>
+            <div class="transaction-details">
+              <div>Type: ${typeMap[tx.txType] || 'Unknown'}</div>
+              <div>To: ${tx.to}</div>
+              <div>Value: ${this.web3.utils.fromWei(tx.value, 'ether')} ETH</div>
+              <div>Confirmations: ${tx.confirmations}</div>
+              <div>Created: ${new Date(tx.createdAt * 1000).toLocaleString()}</div>
+              ${tx.projectId !== '0x0000000000000000000000000000000000000000000000000000000000000000' ? `<div>Project ID: ${tx.projectId}</div>` : ''}
+              <div>Description: ${tx.description}</div>
+            </div>
+            ${tx.status === '0' ? `
+              <div class="transaction-actions">
+                <button class="btn btn-primary btn-xs" onclick="contractInterface.confirmTransactionFromList(${tx.id})">Confirm</button>
+                <button class="btn btn-warning btn-xs" onclick="contractInterface.executeTransactionFromList(${tx.id})">Execute</button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      });
+      
+      transactionList.innerHTML = html;
+    } catch (error) {
+      console.error('Refresh transactions error:', error);
+      this.showError(`Failed to refresh transactions: ${error.message}`);
+    }
+  }
+  
+  async confirmTransactionFromList(txId) {
+    try {
+      // Call confirm function
+      await this.contracts.multisig.methods.confirm(txId).send({ from: this.account });
+      
+      this.showSuccess(`Transaction ${txId} confirmed successfully`);
+      
+      // Update transaction list
+      this.refreshTransactions();
+    } catch (error) {
+      console.error('Confirmation error:', error);
+      this.showError(`Failed to confirm transaction: ${error.message}`);
+    }
+  }
+  
+  async executeTransactionFromList(txId) {
+    try {
+      // Call execute function
+      await this.contracts.multisig.methods.execute(txId).send({ from: this.account });
+      
+      this.showSuccess(`Transaction ${txId} executed successfully`);
+      
+      // Update transaction list
+      this.refreshTransactions();
+    } catch (error) {
+      console.error('Execution error:', error);
+      this.showError(`Failed to execute transaction: ${error.message}`);
+    }
+  }
+  
+  // Treasury Methods
+  async getTreasuryInfo() {
+    try {
+      const projectId = document.getElementById('allocation-project-id').value;
+      
+      // Get total allocated to project
+      const totalAllocated = await this.contracts.treasury.methods.totalAllocatedTo(projectId).call();
+      const totalPaidOut = await this.contracts.treasury.methods.totalPaidOutFrom(projectId).call();
+      
+      // Format info
+      const info = {
+        projectId: projectId,
+        totalAllocated: this.web3.utils.fromWei(totalAllocated, 'ether') + ' ETH',
+        totalPaidOut: this.web3.utils.fromWei(totalPaidOut, 'ether') + ' ETH',
+        remainingAllocation: this.web3.utils.fromWei((BigInt(totalAllocated) - BigInt(totalPaidOut)).toString(), 'ether') + ' ETH'
+      };
+      
+      // Display info
+      const infoElement = document.getElementById('treasury-info');
+      infoElement.textContent = JSON.stringify(info, null, 2);
+      infoElement.classList.remove('hidden');
+    } catch (error) {
+      console.error('Treasury info error:', error);
+      this.showError(`Failed to get treasury info: ${error.message}`);
+    }
+  }
+  
+  async getAllocationInfo() {
+    try {
+      const projectId = document.getElementById('allocation-project-id').value;
+      
+      if (!projectId || !this.web3.utils.isHexStrict(projectId)) {
+        this.showError('Invalid project ID (must be hex)');
+        return;
+      }
+      
+      // Get total allocated to project
+      const totalAllocated = await this.contracts.treasury.methods.totalAllocatedTo(projectId).call();
+      const totalPaidOut = await this.contracts.treasury.methods.totalPaidOutFrom(projectId).call();
+      
+      // Format info
+      const info = {
+        projectId: projectId,
+        totalAllocated: this.web3.utils.fromWei(totalAllocated, 'ether') + ' ETH',
+        totalPaidOut: this.web3.utils.fromWei(totalPaidOut, 'ether') + ' ETH',
+        remainingAllocation: this.web3.utils.fromWei((BigInt(totalAllocated) - BigInt(totalPaidOut)).toString(), 'ether') + ' ETH'
+      };
+      
+      // Display info
+      const infoElement = document.getElementById('allocation-info');
+      infoElement.textContent = JSON.stringify(info, null, 2);
+      infoElement.classList.remove('hidden');
+    } catch (error) {
+      console.error('Allocation info error:', error);
+      this.showError(`Failed to get allocation info: ${error.message}`);
+    }
+  }
+
+  // Projects Methods
+  async getProjectInfo() {
+    try {
+      const projectId = document.getElementById('project-status-id').value;
+      
+      if (!projectId || !this.web3.utils.isHexStrict(projectId)) {
+        this.showError('Invalid project ID (must be hex)');
+        return;
+      }
+      
+      // Get project details
+      const project = await this.contracts.projects.methods.projects(projectId).call();
+      
+      // Format status
+      const statusMap = ['Draft', 'Active', 'FundingReady', 'Voting', 'ReadyToPayout', 'Paid', 'Cancelled', 'Archived'];
+      
+      // Format project details
+      const details = {
+        id: project.id,
+        name: project.name,
+        description: project.description,
+        target: this.web3.utils.fromWei(project.target, 'ether') + ' ETH',
+        softCap: this.web3.utils.fromWei(project.softCap, 'ether') + ' ETH',
+        hardCap: this.web3.utils.fromWei(project.hardCap, 'ether') + ' ETH',
+        createdAt: new Date(project.createdAt * 1000).toLocaleString(),
+        deadline: project.deadline > 0 ? new Date(project.deadline * 1000).toLocaleString() : 'No deadline',
+        status: statusMap[project.status] || 'Unknown',
+        category: project.category,
+        priority: project.priority,
+        softCapEnabled: project.softCapEnabled,
+        totalAllocated: this.web3.utils.fromWei(project.totalAllocated, 'ether') + ' ETH',
+        totalPaidOut: this.web3.utils.fromWei(project.totalPaidOut, 'ether') + ' ETH'
+      };
+      
+      // Display details
+      const detailsElement = document.getElementById('project-info');
+      detailsElement.textContent = JSON.stringify(details, null, 2);
+      detailsElement.classList.remove('hidden');
+    } catch (error) {
+      console.error('Project info error:', error);
+      this.showError(`Failed to get project info: ${error.message}`);
+    }
+  }
+  
+  async updateProjectStatus() {
+    try {
+      const projectId = document.getElementById('update-project-id').value;
+      const newStatus = document.getElementById('new-status').value;
+      const reason = document.getElementById('status-reason').value;
+      
+      if (!projectId || !this.web3.utils.isHexStrict(projectId)) {
+        this.showError('Invalid project ID (must be hex)');
+        return;
+      }
+      
+      if (!reason) {
+        this.showError('Please provide a reason for status change');
+        return;
+      }
+      
+      // Call setStatus function
+      await this.contracts.projects.methods.setStatus(projectId, newStatus, reason).send({ from: this.account });
+      
+      this.showSuccess(`Project status updated successfully`);
+      
+      // Clear form
+      document.getElementById('status-reason').value = '';
+      
+      // Refresh project info if the same project
+      if (projectId === document.getElementById('project-status-id').value) {
+        this.getProjectInfo();
+      }
+    } catch (error) {
+      console.error('Status update error:', error);
+      this.showError(`Failed to update project status: ${error.message}`);
+    }
+  }
+
+  // GovernanceSBT Methods
+  async getSBTInfo() {
+    try {
+      const address = document.getElementById('sbt-address').value;
+      
+      if (!address || !this.web3.utils.isAddress(address)) {
+        this.showError('Invalid address');
+        return;
+      }
+      
+      // Get SBT weight
+      const weight = await this.contracts.governance.methods.weightOf(address).call();
+      
+      // Format info
+      const info = {
+        address: address,
+        weight: this.web3.utils.fromWei(weight, 'ether') + ' ETH'
+      };
+      
+      // Display info
+      const infoElement = document.getElementById('sbt-info');
+      infoElement.textContent = JSON.stringify(info, null, 2);
+      infoElement.classList.remove('hidden');
+    } catch (error) {
+      console.error('SBT info error:', error);
+      this.showError(`Failed to get SBT info: ${error.message}`);
+    }
+  }
+
+  // BallotCommitReveal Methods
+  async getVotingInfo() {
+    try {
+      // Get current round ID
+      const roundId = await this.contracts.ballot.methods.getCurrentRoundId().call();
+      
+      if (roundId === '0') {
+        const infoElement = document.getElementById('voting-info');
+        infoElement.textContent = 'No active voting round';
+        infoElement.classList.remove('hidden');
+        return;
+      }
+      
+      // Get round info
+      const roundInfo = await this.contracts.ballot.methods.votingRoundInfo(roundId).call();
+      
+      // Format info
+      const info = {
+        roundId: roundId,
+        startTime: new Date(roundInfo.startTime * 1000).toLocaleString(),
+        commitEndTime: new Date(roundInfo.commitEndTime * 1000).toLocaleString(),
+        revealEndTime: new Date(roundInfo.revealEndTime * 1000).toLocaleString(),
+        totalVoters: roundInfo.totalVoters,
+        totalRevealed: roundInfo.totalRevealed,
+        projectIds: roundInfo.projectIds
+/**
+ * FundChain Contract Interface
+ * Direct interaction with smart contracts through Web3
+ */
+
+class ContractInterface {
+  constructor() {
+    this.web3 = null;
+    this.account = null;
+    this.contracts = {
+      multisig: null,
+      treasury: null,
+      projects: null,
+      governance: null,
+      ballot: null
+    };
+    
+    // Contract ABIs (simplified for brevity)
+    this.abis = {
+      multisig: [
+        {"inputs":[{"internalType":"address[]","name":"_owners","type":"address[]"},{"internalType":"uint256","name":"_required","type":"uint256"}],"stateMutability":"nonpayable","type":"constructor"},
+        {"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"projectId","type":"bytes32"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"txId","type":"uint256"}],"name":"ProjectPayoutCompleted","type":"event"},
+        {"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"txId","type":"uint256"},{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":false,"internalType":"uint256","name":"confirmationTime","type":"uint256"}],"name":"TxConfirmed","type":"event"},
+        {"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"txId","type":"uint256"},{"indexed":true,"internalType":"address","name":"executor","type":"address"}],"name":"TxExecuted","type":"event"},
+        {"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"txId","type":"uint256"},{"indexed":true,"internalType":"address","name":"proposer","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"},{"indexed":false,"internalType":"enum CommunityMultisig.TxType","name":"txType","type":"uint8"},{"indexed":false,"internalType":"bytes32","name":"projectId","type":"bytes32"},{"indexed":false,"internalType":"string","name":"description","type":"string"}],"name":"TxProposed","type":"event"},
+        {"inputs":[{"internalType":"uint256","name":"txId","type":"uint256"}],"name":"confirm","outputs":[],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[{"internalType":"uint256","name":"txId","type":"uint256"}],"name":"execute","outputs":[],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[{"internalType":"address payable","name":"to","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"},{"internalType":"bytes32","name":"projectId","type":"bytes32"},{"internalType":"string","name":"description","type":"string"}],"name":"proposeProjectPayout","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[],"name":"txCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
+      ],
+      treasury: [
+        {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
+        {"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"projectId","type":"bytes32"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"bytes32","name":"payoutId","type":"bytes32"}],"name":"AllocationReleased","type":"event"},
+        {"inputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"name":"totalAllocatedTo","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+        {"inputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"name":"totalPaidOutFrom","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
+      ],
+      projects: [
+        {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
+        {"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"id","type":"bytes32"},{"indexed":false,"internalType":"enum Projects.Status","name":"oldStatus","type":"uint8"},{"indexed":false,"internalType":"enum Projects.Status","name":"newStatus","type":"uint8"},{"indexed":false,"internalType":"string","name":"reason","type":"string"}],"name":"ProjectStatusChanged","type":"event"},
+        {"inputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"name":"projects","outputs":[{"internalType":"bytes32","name":"id","type":"bytes32"},{"internalType":"string","name":"name","type":"string"},{"internalType":"string","name":"description","type":"string"},{"internalType":"uint256","name":"target","type":"uint256"},{"internalType":"uint256","name":"softCap","type":"uint256"},{"internalType":"uint256","name":"hardCap","type":"uint256"},{"internalType":"uint256","name":"createdAt","type":"uint256"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"internalType":"enum Projects.Status","name":"status","type":"uint8"},{"internalType":"string","name":"category","type":"string"},{"internalType":"uint256","name":"priority","type":"uint256"},{"internalType":"bool","name":"softCapEnabled","type":"bool"},{"internalType":"uint256","name":"totalAllocated","type":"uint256"},{"internalType":"uint256","name":"totalPaidOut","type":"uint256"}],"stateMutability":"view","type":"function"},
+        {"inputs":[{"internalType":"bytes32","name":"id","type":"bytes32"},{"internalType":"enum Projects.Status","name":"newStatus","type":"uint8"},{"internalType":"string","name":"reason","type":"string"}],"name":"setStatus","outputs":[],"stateMutability":"nonpayable","type":"function"}
+      ],
+      governance: [
+        {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
+        {"inputs":[{"internalType":"address","name":"who","type":"address"}],"name":"weightOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
+      ],
+      ballot: [
+        {"inputs":[{"internalType":"address","name":"_sbtAddress","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},
+        {"inputs":[],"name":"getCurrentRoundId","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+        {"inputs":[{"internalType":"uint256","name":"roundId","type":"uint256"}],"name":"votingRoundInfo","outputs":[{"internalType":"uint256","name":"startTime","type":"uint256"},{"internalType":"uint256","name":"commitEndTime","type":"uint256"},{"internalType":"uint256","name":"revealEndTime","type":"uint256"},{"internalType":"uint256","name":"totalVoters","type":"uint256"},{"internalType":"uint256","name":"totalRevealed","type":"uint256"},{"internalType":"bytes32[]","name":"projectIds","type":"bytes32[]"}],"stateMutability":"view","type":"function"}
+      ]
+    };
+    
+    this.init();
+  }
+
+  init() {
+    this.setupEventListeners();
+    this.setupTabNavigation();
+  }
+
+  setupEventListeners() {
+    // Connect & disconnect
+    document.getElementById('connect-button').addEventListener('click', () => this.connectWeb3());
+    document.getElementById('disconnect-button').addEventListener('click', () => this.disconnectWeb3());
+    
+    // CommunityMultisig
+    document.getElementById('propose-button').addEventListener('click', () => this.proposePayment());
+    document.getElementById('confirm-button').addEventListener('click', () => this.confirmTransaction());
+    document.getElementById('execute-button').addEventListener('click', () => this.executeTransaction());
+    document.getElementById('view-tx-button').addEventListener('click', () => this.viewTransactionDetails());
+    document.getElementById('refresh-txs-button').addEventListener('click', () => this.refreshTransactions());
+    
+    // Treasury
+    document.getElementById('get-treasury-info').addEventListener('click', () => this.getTreasuryInfo());
+    document.getElementById('get-allocation-info').addEventListener('click', () => this.getAllocationInfo());
+    
+    // Projects
+    document.getElementById('get-project-info').addEventListener('click', () => this.getProjectInfo());
+    document.getElementById('update-status-button').addEventListener('click', () => this.updateProjectStatus());
+    
+    // GovernanceSBT
+    document.getElementById('get-sbt-info').addEventListener('click', () => this.getSBTInfo());
+    
+    // BallotCommitReveal
+    document.getElementById('get-voting-info').addEventListener('click', () => this.getVotingInfo());
+  }
+
+  setupTabNavigation() {
+    // Main tabs
+    document.querySelectorAll('.tab-item').forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        const tabId = e.target.dataset.tab;
+        
+        // Hide all tab content
+        document.querySelectorAll('.tab-pane').forEach(pane => {
+          pane.classList.remove('active');
+        });
+        
+        // Hide all tab headers
+        document.querySelectorAll('.tab-item').forEach(item => {
+          item.classList.remove('active');
+        });
+        
+        // Show selected tab content
+        document.getElementById(`${tabId}-tab`).classList.add('active');
+        
+        // Highlight selected tab
+        e.target.classList.add('active');
+      });
+    });
+    
+    // Subtabs (for multisig contract)
+    document.querySelectorAll('.tab-container .tab-header .tab-item').forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        const parent = e.target.closest('.tab-container');
+        const tabId = e.target.dataset.tab;
+        
+        // Hide all tab content in this container
+        parent.querySelectorAll('.tab-pane').forEach(pane => {
+          pane.classList.remove('active');
+        });
+        
+        // Hide all tab headers in this container
+        parent.querySelectorAll('.tab-header .tab-item').forEach(item => {
+          item.classList.remove('active');
+        });
+        
+        // Show selected tab content
+        parent.querySelector(`#${tabId}-tab`).classList.add('active');
+        
+        // Highlight selected tab
+        e.target.classList.add('active');
+        
+        // Prevent event bubbling
+        e.stopPropagation();
+      });
+    });
+  }
+
+  // Web3 Connection Methods
+  async connectWeb3() {
+    try {
+      const rpcUrl = document.getElementById('rpc-url').value;
+      const chainId = document.getElementById('chain-id').value;
+      const privateKey = document.getElementById('private-key').value;
+      
+      // Initialize Web3
+      this.web3 = new Web3(rpcUrl);
+      
+      // Check connection
+      const isConnected = await this.web3.eth.net.isListening();
+      
+      if (!isConnected) {
+        this.showError('Failed to connect to RPC endpoint');
+        return;
+      }
+      
+      // Set account from private key or use browser wallet
+      if (privateKey) {
+        const account = this.web3.eth.accounts.privateKeyToAccount(privateKey);
+        this.web3.eth.accounts.wallet.add(account);
+        this.account = account.address;
+      } else if (window.ethereum) {
+        // Use MetaMask or other injected wallet
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        this.account = (await window.ethereum.request({ method: 'eth_accounts' }))[0];
+        
+        // Use wallet provider instead of direct RPC
+        this.web3 = new Web3(window.ethereum);
+      } else {
+        this.showError('No private key provided and no browser wallet detected');
+        return;
+      }
+      
+      // Initialize contracts
+      this.initializeContracts();
+      
+      // Update UI
+      document.getElementById('connection-status').textContent = 'Connected';
+      document.getElementById('current-account').textContent = this.account;
+      document.getElementById('account-info').classList.remove('hidden');
+      document.getElementById('connect-button').classList.add('hidden');
+      document.getElementById('disconnect-button').classList.remove('hidden');
+      document.getElementById('contracts-interface').classList.remove('hidden');
+      
+      this.showSuccess('Successfully connected to blockchain');
+    } catch (error) {
+      console.error('Connection error:', error);
+      this.showError(`Failed to connect: ${error.message}`);
+    }
+  }
+
+  disconnectWeb3() {
+    this.web3 = null;
+    this.account = null;
+    this.contracts = {
+      multisig: null,
+      treasury: null,
+      projects: null,
+      governance: null,
+      ballot: null
+    };
+    
+    // Update UI
+    document.getElementById('connection-status').textContent = 'Disconnected';
+    document.getElementById('account-info').classList.add('hidden');
+    document.getElementById('connect-button').classList.remove('hidden');
+    document.getElementById('disconnect-button').classList.add('hidden');
+    document.getElementById('contracts-interface').classList.add('hidden');
+    
+    this.showSuccess('Disconnected from blockchain');
+  }
+
+  initializeContracts() {
+    const multisigAddress = document.getElementById('multisig-address').value;
+    const treasuryAddress = document.getElementById('treasury-address').value;
+    const projectsAddress = document.getElementById('projects-address').value;
+    const governanceAddress = document.getElementById('governance-address').value;
+    const ballotAddress = document.getElementById('ballot-address').value;
+    
+    this.contracts.multisig = new this.web3.eth.Contract(this.abis.multisig, multisigAddress);
+    this.contracts.treasury = new this.web3.eth.Contract(this.abis.treasury, treasuryAddress);
+    this.contracts.projects = new this.web3.eth.Contract(this.abis.projects, projectsAddress);
+    this.contracts.governance = new this.web3.eth.Contract(this.abis.governance, governanceAddress);
+    this.contracts.ballot = new this.web3.eth.Contract(this.abis.ballot, ballotAddress);
+  }
+
+  // CommunityMultisig Methods
+  async proposePayment() {
+    try {
+      const recipient = document.getElementById('recipient-address').value;
+      const projectId = document.getElementById('project-id').value;
+      const amount = this.web3.utils.toWei(document.getElementById('payout-amount').value, 'ether');
+      const description = document.getElementById('payout-description').value;
+      
+      if (!this.web3.utils.isAddress(recipient)) {
+        this.showError('Invalid recipient address');
+        return;
+      }
+      
+      if (!projectId || !this.web3.utils.isHexStrict(projectId)) {
+        this.showError('Invalid project ID (must be hex)');
+        return;
+      }
+      
+      // Call proposeProjectPayout function
+      const txReceipt = await this.contracts.multisig.methods.proposeProjectPayout(
+        recipient,
+        amount,
+        projectId,
+        description
+      ).send({ from: this.account });
+      
+      // Extract transaction ID from event logs
+      const txProposedEvent = txReceipt.events.TxProposed;
+      const txId = txProposedEvent ? txProposedEvent.returnValues.txId : 'Unknown';
+      
+      this.showSuccess(`Payment proposal created with ID: ${txId}`);
+      
+      // Clear form
+      document.getElementById('payout-amount').value = '';
+      document.getElementById('payout-description').value = '';
+      
+      // Update transaction list
+      this.refreshTransactions();
+    } catch (error) {
+      console.error('Proposal error:', error);
+      this.showError(`Failed to propose payment: ${error.message}`);
+    }
+  }
+  
+  async confirmTransaction() {
+    try {
+      const txId = document.getElementById('confirm-tx-id').value;
+      
+      if (!txId || isNaN(parseInt(txId))) {
+        this.showError('Invalid transaction ID');
+        return;
+      }
+      
+      // Call confirm function
+      await this.contracts.multisig.methods.confirm(txId).send({ from: this.account });
+      
+      this.showSuccess(`Transaction ${txId} confirmed successfully`);
+      
+      // Clear form
+      document.getElementById('confirm-tx-id').value = '';
+      
+      // Update transaction list
+      this.refreshTransactions();
+    } catch (error) {
+      console.error('Confirmation error:', error);
+      this.showError(`Failed to confirm transaction: ${error.message}`);
+    }
+  }
+  
+  async executeTransaction() {
+    try {
+      const txId = document.getElementById('execute-tx-id').value;
+      
+      if (!txId || isNaN(parseInt(txId))) {
+        this.showError('Invalid transaction ID');
+        return;
+      }
+      
+      // Call execute function
+      await this.contracts.multisig.methods.execute(txId).send({ from: this.account });
+      
+      this.showSuccess(`Transaction ${txId} executed successfully`);
+      
+      // Clear form
+      document.getElementById('execute-tx-id').value = '';
+      
+      // Update transaction list
+      this.refreshTransactions();
+    } catch (error) {
+      console.error('Execution error:', error);
+      this.showError(`Failed to execute transaction: ${error.message}`);
+    }
+  }
+  
+  async viewTransactionDetails() {
+    try {
+      const txId = document.getElementById('view-tx-id').value;
+      
+      if (!txId || isNaN(parseInt(txId))) {
+        this.showError('Invalid transaction ID');
+        return;
+      }
+      
+      // Get transaction details
+      const tx = await this.contracts.multisig.methods.txs(txId).call();
+      
+      // Format transaction details
+      const statusMap = ['Pending', 'Executed', 'Cancelled'];
+      const typeMap = ['GeneralPayout', 'ProjectPayout', 'ConfigChange', 'OwnershipChange'];
+      
+      const details = {
+        id: tx.id,
+        to: tx.to,
+        value: this.web3.utils.fromWei(tx.value, 'ether') + ' ETH',
+        type: typeMap[tx.txType] || 'Unknown',
+        status: statusMap[tx.status] || 'Unknown',
+        confirmations: tx.confirmations,
+        createdAt: new Date(tx.createdAt * 1000).toLocaleString(),
+        executedAt: tx.executedAt > 0 ? new Date(tx.executedAt * 1000).toLocaleString() : 'Not executed',
+        projectId: tx.projectId !== '0x0000000000000000000000000000000000000000000000000000000000000000' ? tx.projectId : 'N/A',
+        description: tx.description,
+        proposer: tx.proposer
+      };
+      
+      // Display details
+      const detailsElement = document.getElementById('tx-details');
+      detailsElement.textContent = JSON.stringify(details, null, 2);
+      detailsElement.classList.remove('hidden');
+    } catch (error) {
+      console.error('View transaction error:', error);
+      this.showError(`Failed to view transaction: ${error.message}`);
+    }
+  }
+  
+  async refreshTransactions() {
+    try {
+      // Get total transaction count
+      const txCount = await this.contracts.multisig.methods.txCount().call();
+      
+      // Get the most recent 10 transactions
+      const transactions = [];
+      for (let i = txCount; i > Math.max(txCount - 10, 0); i--) {
+        try {
+          const tx = await this.contracts.multisig.methods.txs(i).call();
+          transactions.push(tx);
+        } catch (e) {
+          console.error(`Error fetching transaction ${i}:`, e);
+        }
+      }
+      
+      // Update transaction list
+      const transactionList = document.getElementById('transaction-list');
+      
+      if (transactions.length === 0) {
+        transactionList.innerHTML = '<div class="alert alert-info">No transactions found</div>';
+        return;
+      }
+      
+      const statusMap = ['Pending', 'Executed', 'Cancelled'];
+      const typeMap = ['GeneralPayout', 'ProjectPayout', 'ConfigChange', 'OwnershipChange'];
+      
+      let html = '';
+      
+      transactions.forEach(tx => {
+        html += `
+          <div class="transaction-item">
+            <div class="transaction-header">
+              <div class="transaction-id">TX #${tx.id}</div>
+              <div class="transaction-status">
+                <span class="badge ${tx.status === '0' ? 'badge-warning' : tx.status === '1' ? 'badge-success' : 'badge-danger'}">
+                  ${statusMap[tx.status] || 'Unknown'}
+                </span>
+              </div>
+            </div>
+            <div class="transaction-details">
+              <div>Type: ${typeMap[tx.txType] || 'Unknown'}</div>
+              <div>To: ${tx.to}</div>
+              <div>Value: ${this.web3.utils.fromWei(tx.value, 'ether')} ETH</div>
+              <div>Confirmations: ${tx.confirmations}</div>
+              <div>Created: ${new Date(tx.createdAt * 1000).toLocaleString()}</div>
+              ${tx.projectId !== '0x0000000000000000000000000000000000000000000000000000000000000000' ? `<div>Project ID: ${tx.projectId}</div>` : ''}
+              <div>Description: ${tx.description}</div>
+            </div>
+            ${tx.status === '0' ? `
+              <div class="transaction-actions">
+                <button class="btn btn-primary btn-xs" onclick="contractInterface.confirmTransactionFromList(${tx.id})">Confirm</button>
+                <button class="btn btn-warning btn-xs" onclick="contractInterface.executeTransactionFromList(${tx.id})">Execute</button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      });
+      
+      transactionList.innerHTML = html;
+    } catch (error) {
+      console.error('Refresh transactions error:', error);
+      this.showError(`Failed to refresh transactions: ${error.message}`);
+    }
+  }
+  
+  async confirmTransactionFromList(txId) {
+    try {
+      // Call confirm function
+      await this.contracts.multisig.methods.confirm(txId).send({ from: this.account });
+      
+      this.showSuccess(`Transaction ${txId} confirmed successfully`);
+      
+      // Update transaction list
+      this.refreshTransactions();
+    } catch (error) {
+      console.error('Confirmation error:', error);
+      this.showError(`Failed to confirm transaction: ${error.message}`);
+    }
+  }
+  
+  async executeTransactionFromList(txId) {
+    try {
+      // Call execute function
+      await this.contracts.multisig.methods.execute(txId).send({ from: this.account });
+      
+      this.showSuccess(`Transaction ${txId} executed successfully`);
+      
+      // Update transaction list
+      this.refreshTransactions();
+    } catch (error) {
+      console.error('Execution error:', error);
+      this.showError(`Failed to execute transaction: ${error.message}`);
+    }
+  }
+  
+  // Treasury Methods
+  async getTreasuryInfo() {
+    try {
+      const projectId = document.getElementById('allocation-project-id').value;
+      
+      // Get total allocated to project
+      const totalAllocated = await this.contracts.treasury.methods.totalAllocatedTo(projectId).call();
+      const totalPaidOut = await this.contracts.treasury.methods.totalPaidOutFrom(projectId).call();
+      
+      // Format info
+      const info = {
+        projectId: projectId,
+        totalAllocated: this.web3.utils.fromWei(totalAllocated, 'ether') + ' ETH',
+        totalPaidOut: this.web3.utils.fromWei(totalPaidOut, 'ether') + ' ETH',
+        remainingAllocation: this.web3.utils.fromWei((BigInt(totalAllocated) - BigInt(totalPaidOut)).toString(), 'ether') + ' ETH'
+      };
+      
+      // Display info
+      const infoElement = document.getElementById('treasury-info');
+      infoElement.textContent = JSON.stringify(info, null, 2);
+      infoElement.classList.remove('hidden');
+    } catch (error) {
+      console.error('Treasury info error:', error);
+      this.showError(`Failed to get treasury info: ${error.message}`);
+    }
+  }
+  
+  async getAllocationInfo() {
+    try {
+      const projectId = document.getElementById('allocation-project-id').value;
+      
+      if (!projectId || !this.web3.utils.isHexStrict(projectId)) {
+        this.showError('Invalid project ID (must be hex)');
+        return;
+      }
+      
+      // Get total allocated to project
+      const totalAllocated = await this.contracts.treasury.methods.totalAllocatedTo(projectId).call();
+      const totalPaidOut = await this.contracts.treasury.methods.totalPaidOutFrom(projectId).call();
+      
+      // Format info
+      const info = {
+        projectId: projectId,
+        totalAllocated: this.web3.utils.fromWei(totalAllocated, 'ether') + ' ETH',
+        totalPaidOut: this.web3.utils.fromWei(totalPaidOut, 'ether') + ' ETH',
+        remainingAllocation: this.web3.utils.fromWei((BigInt(totalAllocated) - BigInt(totalPaidOut)).toString(), 'ether') + ' ETH'
+      };
+      
+      // Display info
+      const infoElement = document.getElementById('allocation-info');
+      infoElement.textContent = JSON.stringify(info, null, 2);
+      infoElement.classList.remove('hidden');
+    } catch (error) {
+      console.error('Allocation info error:', error);
+      this.showError(`Failed to get allocation info: ${error.message}`);
+    }
+  }
+
+  // Projects Methods
+  async getProjectInfo() {
+    try {
+      const projectId = document.getElementById('project-status-id').value;
+      
+      if (!projectId || !this.web3.utils.isHexStrict(projectId)) {
+        this.showError('Invalid project ID (must be hex)');
+        return;
+      }
+      
+      // Get project details
+      const project = await this.contracts.projects.methods.projects(projectId).call();
+      
+      // Format status
+      const statusMap = ['Draft', 'Active', 'FundingReady', 'Voting', 'ReadyToPayout', 'Paid', 'Cancelled', 'Archived'];
+      
+      // Format project details
+      const details = {
+        id: project.id,
+        name: project.name,
+        description: project.description,
+        target: this.web3.utils.fromWei(project.target, 'ether') + ' ETH',
+        softCap: this.web3.utils.fromWei(project.softCap, 'ether') + ' ETH',
+        hardCap: this.web3.utils.fromWei(project.hardCap, 'ether') + ' ETH',
+        createdAt: new Date(project.createdAt * 1000).toLocaleString(),
+        deadline: project.deadline > 0 ? new Date(project.deadline * 1000).toLocaleString() : 'No deadline',
+        status: statusMap[project.status] || 'Unknown',
+        category: project.category,
+        priority: project.priority,
+        softCapEnabled: project.softCapEnabled,
+        totalAllocated: this.web3.utils.fromWei(project.totalAllocated, 'ether') + ' ETH',
+        totalPaidOut: this.web3.utils.fromWei(project.totalPaidOut, 'ether') + ' ETH'
+      };
+      
+      // Display details
+      const detailsElement = document.getElementById('project-info');
+      detailsElement.textContent = JSON.stringify(details, null, 2);
+      detailsElement.classList.remove('hidden');
+    } catch (error) {
+      console.error('Project info error:', error);
+      this.showError(`Failed to get project info: ${error.message}`);
+    }
+  }
+  
+  async updateProjectStatus() {
+    try {
+      const projectId = document.getElementById('update-project-id').value;
+      const newStatus = document.getElementById('new-status').value;
+      const reason = document.getElementById('status-reason').value;
+      
+      if (!projectId || !this.web3.utils.isHexStrict(projectId)) {
+        this.showError('Invalid project ID (must be hex)');
+        return;
+      }
+      
+      if (!reason) {
+        this.showError('Please provide a reason for status change');
+        return;
+      }
+      
+      // Call setStatus function
+      await this.contracts.projects.methods.setStatus(projectId, newStatus, reason).send({ from: this.account });
+      
+      this.showSuccess(`Project status updated successfully`);
+      
+      // Clear form
+      document.getElementById('status-reason').value = '';
+      
+      // Refresh project info if the same project
+      if (projectId === document.getElementById('project-status-id').value) {
+        this.getProjectInfo();
+      }
+    } catch (error) {
+      console.error('Status update error:', error);
+      this.showError(`Failed to update project status: ${error.message}`);
+    }
+  }
+
+  // GovernanceSBT Methods
+  async getSBTInfo() {
+    try {
+      const address = document.getElementById('sbt-address').value;
+      
+      if (!address || !this.web3.utils.isAddress(address)) {
+        this.showError('Invalid address');
+        return;
+      }
+      
+      // Get SBT weight
+      const weight = await this.contracts.governance.methods.weightOf(address).call();
+      
+      // Format info
+      const info = {
+        address: address,
+        weight: this.web3.utils.fromWei(weight, 'ether') + ' ETH'
+      };
+      
+      // Display info
+      const infoElement = document.getElementById('sbt-info');
+      infoElement.textContent = JSON.stringify(info, null, 2);
+      infoElement.classList.remove('hidden');
+    } catch (error) {
+      console.error('SBT info error:', error);
+      this.showError(`Failed to get SBT info: ${error.message}`);
+    }
+  }
+
+  // BallotCommitReveal Methods
+  async getVotingInfo() {
+    try {
+      // Get current round ID
+      const roundId = await this.contracts.ballot.methods.getCurrentRoundId().call();
+      
+      if (roundId === '0') {
+        const infoElement = document.getElementById('voting-info');
+        infoElement.textContent = 'No active voting round';
+        infoElement.classList.remove('hidden');
+        return;
+      }
+      
+      // Get round info
+      const roundInfo = await this.contracts.ballot.methods.votingRoundInfo(roundId).call();
+      
+      // Format info
+      const info = {
+        roundId: roundId,
+        startTime: new Date(roundInfo.startTime * 1000).toLocaleString(),
+        commitEndTime: new Date(roundInfo.commitEndTime * 1000).toLocaleString(),
+        revealEndTime: new Date(roundInfo.revealEndTime * 1000).toLocaleString(),
+        totalVoters: roundInfo.totalVoters,
+        totalRevealed: roundInfo.totalRevealed,
+        projectIds: roundInfo.projectIds
+      };
+      
+      // Display info
+      const infoElement = document.getElementById('voting-info');
+/**
+ * FundChain Contract Interface
+ * Direct interaction with smart contracts through Web3
+ */
+
+class ContractInterface {
+  constructor() {
+    this.web3 = null;
+    this.account = null;
+    this.contracts = {
+      multisig: null,
+      treasury: null,
+      projects: null,
+      governance: null,
+      ballot: null
+    };
+    
+    // Contract ABIs (simplified for brevity)
+    this.abis = {
+      multisig: [
+        {"inputs":[{"internalType":"address[]","name":"_owners","type":"address[]"},{"internalType":"uint256","name":"_required","type":"uint256"}],"stateMutability":"nonpayable","type":"constructor"},
+        {"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"projectId","type":"bytes32"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"txId","type":"uint256"}],"name":"ProjectPayoutCompleted","type":"event"},
+        {"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"txId","type":"uint256"},{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":false,"internalType":"uint256","name":"confirmationTime","type":"uint256"}],"name":"TxConfirmed","type":"event"},
+        {"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"txId","type":"uint256"},{"indexed":true,"internalType":"address","name":"executor","type":"address"}],"name":"TxExecuted","type":"event"},
+        {"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"txId","type":"uint256"},{"indexed":true,"internalType":"address","name":"proposer","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"},{"indexed":false,"internalType":"enum CommunityMultisig.TxType","name":"txType","type":"uint8"},{"indexed":false,"internalType":"bytes32","name":"projectId","type":"bytes32"},{"indexed":false,"internalType":"string","name":"description","type":"string"}],"name":"TxProposed","type":"event"},
+        {"inputs":[{"internalType":"uint256","name":"txId","type":"uint256"}],"name":"confirm","outputs":[],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[{"internalType":"uint256","name":"txId","type":"uint256"}],"name":"execute","outputs":[],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[{"internalType":"address payable","name":"to","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"},{"internalType":"bytes32","name":"projectId","type":"bytes32"},{"internalType":"string","name":"description","type":"string"}],"name":"proposeProjectPayout","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[],"name":"txCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
+      ],
+      treasury: [
+        {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
+        {"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"projectId","type":"bytes32"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"bytes32","name":"payoutId","type":"bytes32"}],"name":"AllocationReleased","type":"event"},
+        {"inputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"name":"totalAllocatedTo","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+        {"inputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"name":"totalPaidOutFrom","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
+      ],
+      projects: [
+        {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
+        {"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"id","type":"bytes32"},{"indexed":false,"internalType":"enum Projects.Status","name":"oldStatus","type":"uint8"},{"indexed":false,"internalType":"enum Projects.Status","name":"newStatus","type":"uint8"},{"indexed":false,"internalType":"string","name":"reason","type":"string"}],"name":"ProjectStatusChanged","type":"event"},
+        {"inputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"name":"projects","outputs":[{"internalType":"bytes32","name":"id","type":"bytes32"},{"internalType":"string","name":"name","type":"string"},{"internalType":"string","name":"description","type":"string"},{"internalType":"uint256","name":"target","type":"uint256"},{"internalType":"uint256","name":"softCap","type":"uint256"},{"internalType":"uint256","name":"hardCap","type":"uint256"},{"internalType":"uint256","name":"createdAt","type":"uint256"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"internalType":"enum Projects.Status","name":"status","type":"uint8"},{"internalType":"string","name":"category","type":"string"},{"internalType":"uint256","name":"priority","type":"uint256"},{"internalType":"bool","name":"softCapEnabled","type":"bool"},{"internalType":"uint256","name":"totalAllocated","type":"uint256"},{"internalType":"uint256","name":"totalPaidOut","type":"uint256"}],"stateMutability":"view","type":"function"},
+        {"inputs":[{"internalType":"bytes32","name":"id","type":"bytes32"},{"internalType":"enum Projects.Status","name":"newStatus","type":"uint8"},{"internalType":"string","name":"reason","type":"string"}],"name":"setStatus","outputs":[],"stateMutability":"nonpayable","type":"function"}
+      ],
+      governance: [
+        {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
+        {"inputs":[{"internalType":"address","name":"who","type":"address"}],"name":"weightOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
+      ],
+      ballot: [
+        {"inputs":[{"internalType":"address","name":"_sbtAddress","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},
+        {"inputs":[],"name":"getCurrentRoundId","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+        {"inputs":[{"internalType":"uint256","name":"roundId","type":"uint256"}],"name":"votingRoundInfo","outputs":[{"internalType":"uint256","name":"startTime","type":"uint256"},{"internalType":"uint256","name":"commitEndTime","type":"uint256"},{"internalType":"uint256","name":"revealEndTime","type":"uint256"},{"internalType":"uint256","name":"totalVoters","type":"uint256"},{"internalType":"uint256","name":"totalRevealed","type":"uint256"},{"internalType":"bytes32[]","name":"projectIds","type":"bytes32[]"}],"stateMutability":"view","type":"function"}
+      ]
+    };
+    
+    this.init();
+  }
+
+  init() {
+    this.setupEventListeners();
+    this.setupTabNavigation();
+  }
+
+  setupEventListeners() {
+    // Connect & disconnect
+    document.getElementById('connect-button').addEventListener('click', () => this.connectWeb3());
+    document.getElementById('disconnect-button').addEventListener('click', () => this.disconnectWeb3());
+    
+    // CommunityMultisig
+    document.getElementById('propose-button').addEventListener('click', () => this.proposePayment());
+    document.getElementById('confirm-button').addEventListener('click', () => this.confirmTransaction());
+    document.getElementById('execute-button').addEventListener('click', () => this.executeTransaction());
+    document.getElementById('view-tx-button').addEventListener('click', () => this.viewTransactionDetails());
+    document.getElementById('refresh-txs-button').addEventListener('click', () => this.refreshTransactions());
+    
+    // Treasury
+    document.getElementById('get-treasury-info').addEventListener('click', () => this.getTreasuryInfo());
+    document.getElementById('get-allocation-info').addEventListener('click', () => this.getAllocationInfo());
+    
+    // Projects
+    document.getElementById('get-project-info').addEventListener('click', () => this.getProjectInfo());
+    document.getElementById('update-status-button').addEventListener('click', () => this.updateProjectStatus());
+    
+    // GovernanceSBT
+    document.getElementById('get-sbt-info').addEventListener('click', () => this.getSBTInfo());
+    
+    // BallotCommitReveal
+    document.getElementById('get-voting-info').addEventListener('click', () => this.getVotingInfo());
+  }
+
+  setupTabNavigation() {
+    // Main tabs
+    document.querySelectorAll('.tab-item').forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        const tabId = e.target.dataset.tab;
+        
+        // Hide all tab content
+        document.querySelectorAll('.tab-pane').forEach(pane => {
+          pane.classList.remove('active');
+        });
+        
+        // Hide all tab headers
+        document.querySelectorAll('.tab-item').forEach(item => {
+          item.classList.remove('active');
+        });
+        
+        // Show selected tab content
+        document.getElementById(`${tabId}-tab`).classList.add('active');
+        
+        // Highlight selected tab
+        e.target.classList.add('active');
+      });
+    });
+    
+    // Subtabs (for multisig contract)
+    document.querySelectorAll('.tab-container .tab-header .tab-item').forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        const parent = e.target.closest('.tab-container');
+        const tabId = e.target.dataset.tab;
+        
+        // Hide all tab content in this container
+        parent.querySelectorAll('.tab-pane').forEach(pane => {
+          pane.classList.remove('active');
+        });
+        
+        // Hide all tab headers in this container
+        parent.querySelectorAll('.tab-header .tab-item').forEach(item => {
+          item.classList.remove('active');
+        });
+        
+        // Show selected tab content
+        parent.querySelector(`#${tabId}-tab`).classList.add('active');
+        
+        // Highlight selected tab
+        e.target.classList.add('active');
+        
+        // Prevent event bubbling
+        e.stopPropagation();
+      });
+    });
+  }
+
+  // Web3 Connection Methods
+  async connectWeb3() {
+    try {
+      const rpcUrl = document.getElementById('rpc-url').value;
+      const chainId = document.getElementById('chain-id').value;
+      const privateKey = document.getElementById('private-key').value;
+      
+      // Initialize Web3
+      this.web3 = new Web3(rpcUrl);
+      
+      // Check connection
+      const isConnected = await this.web3.eth.net.isListening();
+      
+      if (!isConnected) {
+        this.showError('Failed to connect to RPC endpoint');
+        return;
+      }
+      
+      // Set account from private key or use browser wallet
+      if (privateKey) {
+        const account = this.web3.eth.accounts.privateKeyToAccount(privateKey);
+        this.web3.eth.accounts.wallet.add(account);
+        this.account = account.address;
+      } else if (window.ethereum) {
+        // Use MetaMask or other injected wallet
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        this.account = (await window.ethereum.request({ method: 'eth_accounts' }))[0];
+        
+        // Use wallet provider instead of direct RPC
+        this.web3 = new Web3(window.ethereum);
+      } else {
+        this.showError('No private key provided and no browser wallet detected');
+        return;
+      }
+      
+      // Initialize contracts
+      this.initializeContracts();
+      
+      // Update UI
+      document.getElementById('connection-status').textContent = 'Connected';
+      document.getElementById('current-account').textContent = this.account;
+      document.getElementById('account-info').classList.remove('hidden');
+      document.getElementById('connect-button').classList.add('hidden');
+      document.getElementById('disconnect-button').classList.remove('hidden');
+      document.getElementById('contracts-interface').classList.remove('hidden');
+      
+      this.showSuccess('Successfully connected to blockchain');
+    } catch (error) {
+      console.error('Connection error:', error);
+      this.showError(`Failed to connect: ${error.message}`);
+    }
+  }
+
+  disconnectWeb3() {
+    this.web3 = null;
+    this.account = null;
+    this.contracts = {
+      multisig: null,
+      treasury: null,
+      projects: null,
+      governance: null,
+      ballot: null
+    };
+    
+    // Update UI
+    document.getElementById('connection-status').textContent = 'Disconnected';
+    document.getElementById('account-info').classList.add('hidden');
+    document.getElementById('connect-button').classList.remove('hidden');
+    document.getElementById('disconnect-button').classList.add('hidden');
+    document.getElementById('contracts-interface').classList.add('hidden');
+    
+    this.showSuccess('Disconnected from blockchain');
+  }
+
+  initializeContracts() {
+    const multisigAddress = document.getElementById('multisig-address').value;
+    const treasuryAddress = document.getElementById('treasury-address').value;
+    const projectsAddress = document.getElementById('projects-address').value;
+    const governanceAddress = document.getElementById('governance-address').value;
+    const ballotAddress = document.getElementById('ballot-address').value;
+    
+    this.contracts.multisig = new this.web3.eth.Contract(this.abis.multisig, multisigAddress);
+    this.contracts.treasury = new this.web3.eth.Contract(this.abis.treasury, treasuryAddress);
+    this.contracts.projects = new this.web3.eth.Contract(this.abis.projects, projectsAddress);
+    this.contracts.governance = new this.web3.eth.Contract(this.abis.governance, governanceAddress);
+    this.contracts.ballot = new this.web3.eth.Contract(this.abis.ballot, ballotAddress);
+  }
+
+  // CommunityMultisig Methods
+  async proposePayment() {
+    try {
+      const recipient = document.getElementById('recipient-address').value;
+      const projectId = document.getElementById('project-id').value;
+      const amount = this.web3.utils.toWei(document.getElementById('payout-amount').value, 'ether');
+      const description = document.getElementById('payout-description').value;
+      
+      if (!this.web3.utils.isAddress(recipient)) {
+        this.showError('Invalid recipient address');
+        return;
+      }
+      
+      if (!projectId || !this.web3.utils.isHexStrict(projectId)) {
+        this.showError('Invalid project ID (must be hex)');
+        return;
+      }
+      
+      // Call proposeProjectPayout function
+      const txReceipt = await this.contracts.multisig.methods.proposeProjectPayout(
+        recipient,
+        amount,
+        projectId,
+        description
+      ).send({ from: this.account });
+      
+      // Extract transaction ID from event logs
+      const txProposedEvent = txReceipt.events.TxProposed;
+      const txId = txProposedEvent ? txProposedEvent.returnValues.txId : 'Unknown';
+      
+      this.showSuccess(`Payment proposal created with ID: ${txId}`);
+      
+      // Clear form
+      document.getElementById('payout-amount').value = '';
+      document.getElementById('payout-description').value = '';
+      
+      // Update transaction list
+      this.refreshTransactions();
+    } catch (error) {
+      console.error('Proposal error:', error);
+      this.showError(`Failed to propose payment: ${error.message}`);
+    }
+  }
+  
+  async confirmTransaction() {
+    try {
+      const txId = document.getElementById('confirm-tx-id').value;
+      
+      if (!txId || isNaN(parseInt(txId))) {
+        this.showError('Invalid transaction ID');
+        return;
+      }
+      
+      // Call confirm function
+      await this.contracts.multisig.methods.confirm(txId).send({ from: this.account });
+      
+      this.showSuccess(`Transaction ${txId} confirmed successfully`);
+      
+      // Clear form
+      document.getElementById('confirm-tx-id').value = '';
+      
+      // Update transaction list
+      this.refreshTransactions();
+    } catch (error) {
+      console.error('Confirmation error:', error);
+      this.showError(`Failed to confirm transaction: ${error.message}`);
+    }
+  }
+  
+  async executeTransaction() {
+    try {
+      const txId = document.getElementById('execute-tx-id').value;
+      
+      if (!txId || isNaN(parseInt(txId))) {
+        this.showError('Invalid transaction ID');
+        return;
+      }
+      
+      // Call execute function
+      await this.contracts.multisig.methods.execute(txId).send({ from: this.account });
+      
+      this.showSuccess(`Transaction ${txId} executed successfully`);
+      
+      // Clear form
+      document.getElementById('execute-tx-id').value = '';
+      
+      // Update transaction list
+      this.refreshTransactions();
+    } catch (error) {
+      console.error('Execution error:', error);
+      this.showError(`Failed to execute transaction: ${error.message}`);
+    }
+  }
+  
+  async viewTransactionDetails() {
+    try {
+      const txId = document.getElementById('view-tx-id').value;
+      
+      if (!txId || isNaN(parseInt(txId))) {
+        this.showError('Invalid transaction ID');
+        return;
+      }
+      
+      // Get transaction details
+      const tx = await this.contracts.multisig.methods.txs(txId).call();
+      
+      // Format transaction details
+      const statusMap = ['Pending', 'Executed', 'Cancelled'];
+      const typeMap = ['GeneralPayout', 'ProjectPayout', 'ConfigChange', 'OwnershipChange'];
+      
+      const details = {
+        id: tx.id,
+        to: tx.to,
+        value: this.web3.utils.fromWei(tx.value, 'ether') + ' ETH',
+        type: typeMap[tx.txType] || 'Unknown',
+        status: statusMap[tx.status] || 'Unknown',
+        confirmations: tx.confirmations,
+        createdAt: new Date(tx.createdAt * 1000).toLocaleString(),
+        executedAt: tx.executedAt > 0 ? new Date(tx.executedAt * 1000).toLocaleString() : 'Not executed',
+        projectId: tx.projectId !== '0x0000000000000000000000000000000000000000000000000000000000000000' ? tx.projectId : 'N/A',
+        description: tx.description,
+        proposer: tx.proposer
+      };
+      
+      // Display details
+      const detailsElement = document.getElementById('tx-details');
+      detailsElement.textContent = JSON.stringify(details, null, 2);
+      detailsElement.classList.remove('hidden');
+    } catch (error) {
+      console.error('View transaction error:', error);
+      this.showError(`Failed to view transaction: ${error.message}`);
+    }
+  }
+  
+  async refreshTransactions() {
+    try {
+      // Get total transaction count
+      const txCount = await this.contracts.multisig.methods.txCount().call();
+      
+      // Get the most recent 10 transactions
+      const transactions = [];
+      for (let i = txCount; i > Math.max(txCount - 10, 0); i--) {
+        try {
+          const tx = await this.contracts.multisig.methods.txs(i).call();
+          transactions.push(tx);
+        } catch (e) {
+          console.error(`Error fetching transaction ${i}:`, e);
+        }
+      }
+      
+      // Update transaction list
+      const transactionList = document.getElementById('transaction-list');
+      
+      if (transactions.length === 0) {
+        transactionList.innerHTML = '<div class="alert alert-info">No transactions found</div>';
+        return;
+      }
+      
+      const statusMap = ['Pending', 'Executed', 'Cancelled'];
+      const typeMap = ['GeneralPayout', 'ProjectPayout', 'ConfigChange', 'OwnershipChange'];
+      
+      let html = '';
+      
+      transactions.forEach(tx => {
+        html +=

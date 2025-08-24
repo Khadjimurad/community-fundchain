@@ -103,7 +103,7 @@ class I18nManager {
    */
   async loadLanguageFile(language) {
     try {
-      const response = await fetch(`./locales/${language}.json`);
+      const response = await fetch(`./locales/${language}.json?v=1.4.25`);
       if (!response.ok) {
         throw new Error(`Failed to load ${language}.json: ${response.statusText}`);
       }
@@ -166,6 +166,7 @@ class I18nManager {
     if (typeof template !== 'string' || Object.keys(params).length === 0) {
       return template;
     }
+    
     
     return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
       return params[key] !== undefined ? params[key] : match;

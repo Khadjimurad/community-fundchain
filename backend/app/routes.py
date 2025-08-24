@@ -16,7 +16,8 @@ from .api import (
     list_projects, get_project, get_project_progress, get_projects_by_category,
     list_donations, get_donation, list_allocations, get_voting_summary,
     get_voting_round_details, list_payouts, get_user_stats, get_treasury_stats,
-    get_current_voting_round_info, get_user_voting_status, get_treasury_transactions
+    get_current_voting_round_info, get_user_voting_status, get_treasury_transactions,
+    compute_distribution_plan, apply_distribution, finalize_latest_round
 )
 from .privacy import privacy_filter
 from .config import get_settings
@@ -371,6 +372,60 @@ async def export_voting_results(
             }
         })
 
+@router.get("/admin/distribution/plan", tags=["⚙️ Admin"])
+async def admin_distribution_plan(
+    method: str = Query("sequential", description="sequential | proportional"),
+    cap: str = Query("target", description="target | soft_cap"),
+    budget: Optional[float] = Query(None, description="Override budget (ETH)"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Compute a distribution plan using current priorities and treasury balance."""
+    # Allow only when round is finalized/ended
+    current = await get_current_voting_round_info(db)
+    if current and current.get("phase") not in ("finalized", "ended", "no_active_round"):
+        raise HTTPException(status_code=400, detail="Distribution allowed only after finalization")
+    if method not in ("sequential", "proportional"):
+        raise HTTPException(status_code=400, detail="Invalid method")
+    if cap not in ("target", "soft_cap"):
+        raise HTTPException(status_code=400, detail="Invalid cap")
+    try:
+        plan = await compute_distribution_plan(method=method, cap=cap, budget=budget, db=db)
+        return plan
+    except Exception as e:
+        logger.error(f"Failed to compute distribution plan: {e}")
+        raise HTTPException(status_code=500, detail="Failed to compute distribution plan")
+
+@router.post("/admin/distribution/apply", tags=["⚙️ Admin"])
+async def admin_distribution_apply(
+    method: str = Query("sequential", description="sequential | proportional"),
+    cap: str = Query("target", description="target | soft_cap"),
+    budget: Optional[float] = Query(None, description="Override budget (ETH)"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Apply distribution plan (MVP: updates total_allocated and statuses)."""
+    current = await get_current_voting_round_info(db)
+    if current and current.get("phase") not in ("finalized", "ended", "no_active_round"):
+        raise HTTPException(status_code=400, detail="Distribution allowed only after finalization")
+    if method not in ("sequential", "proportional"):
+        raise HTTPException(status_code=400, detail="Invalid method")
+    if cap not in ("target", "soft_cap"):
+        raise HTTPException(status_code=400, detail="Invalid cap")
+    try:
+        result = await apply_distribution(method=method, cap=cap, budget=budget, db=db)
+        return result
+    except Exception as e:
+        logger.error(f"Failed to apply distribution: {e}")
+        raise HTTPException(status_code=500, detail="Failed to apply distribution")
+
+@router.post("/admin/voting/finalize-round", tags=["⚙️ Admin"])
+async def admin_finalize_round(db: AsyncSession = Depends(get_db)):
+    """Finalize latest non-finalized round."""
+    try:
+        return await finalize_latest_round(db)
+    except Exception as e:
+        logger.error(f"Failed to finalize round: {e}")
+        raise HTTPException(status_code=500, detail="Failed to finalize round")
+
 @router.get("/export/comprehensive-report", tags=["📊 Export"])
 async def export_comprehensive_report(
     format: str = Query("json", description="Export format (json recommended for comprehensive data)"),
@@ -561,6 +616,7 @@ async def get_overview_stats(db: AsyncSession = Depends(get_db)):
     # Calculate additional metrics
     active_projects = [p for p in projects if p.status in ["active", "funding_ready", "voting"]]
     completed_projects = [p for p in projects if p.status == "paid"]
+    pending_projects = [p for p in projects if p.status == "draft"]
     
     return {
         "treasury": treasury_stats.model_dump(),
@@ -568,6 +624,7 @@ async def get_overview_stats(db: AsyncSession = Depends(get_db)):
             "total": len(projects),
             "active": len(active_projects),
             "completed": len(completed_projects),
+            "pending": len(pending_projects),
             "success_rate": (len(completed_projects) / len(projects) * 100) if projects else 0
         },
         "latest_update": datetime.utcnow().isoformat()

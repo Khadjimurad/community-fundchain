@@ -3,147 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FundChain Localization Test</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .test-section {
-            margin: 20px 0;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        .lang-switcher {
-            margin: 10px 0;
-        }
-        button {
-            padding: 8px 16px;
-            margin: 5px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .success {
-            color: green;
-        }
-        .error {
-            color: red;
-        }
-    </style>
+    <title>Тест локализации</title>
 </head>
 <body>
-    <h1>FundChain Localization System Test</h1>
+    <h1>Тест локализации</h1>
+    <p>Проверка ключа: voting.commit_phase.not_participating</p>
+    <p id="test-translation">Загрузка...</p>
     
-    <div class="lang-switcher">
-        <button onclick="setLanguage('en')">English</button>
-        <button onclick="setLanguage('ru')">Русский</button>
-        <button onclick="toggleLanguage()">Toggle Language</button>
-    </div>
-    
-    <div class="test-section">
-        <h2>Navigation Test</h2>
-        <ul>
-            <li data-i18n="navigation.dashboard">Dashboard</li>
-            <li data-i18n="navigation.projects">Projects</li>
-            <li data-i18n="navigation.voting">Voting</li>
-            <li data-i18n="navigation.treasury">Treasury</li>
-            <li data-i18n="navigation.personal">My Stats</li>
-            <li data-i18n="navigation.admin">Admin</li>
-        </ul>
-    </div>
-    
-    <div class="test-section">
-        <h2>Table Headers Test</h2>
-        <table border="1" style="width: 100%; border-collapse: collapse;">
-            <thead>
-                <tr>
-                    <th data-i18n="table.project">Project</th>
-                    <th data-i18n="table.priority_weight">Priority/Weight</th>
-                    <th data-i18n="table.progress">Progress</th>
-                    <th data-i18n="table.actions">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Sample Project</td>
-                    <td>High</td>
-                    <td>75%</td>
-                    <td><button data-i18n="buttons.view">View</button></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-    
-    <div class="test-section">
-        <h2>Filter Options Test</h2>
-        <select>
-            <option value="" data-i18n="filters.all_categories">All Categories</option>
-            <option value="healthcare" data-i18n="filters.healthcare">Healthcare</option>
-            <option value="education" data-i18n="filters.education">Education</option>
-            <option value="infrastructure" data-i18n="filters.infrastructure">Infrastructure</option>
-        </select>
-    </div>
-    
-    <div class="test-section">
-        <h2>Input Placeholder Test</h2>
-        <input type="text" data-i18n="personal.wallet_address_placeholder" placeholder="Enter wallet address">
-    </div>
-    
-    <div class="test-section">
-        <h2>System Status</h2>
-        <div id="test-results">
-            <p id="language-status">Current Language: <span id="current-lang">--</span></p>
-            <p id="init-status">i18n Initialized: <span id="init-result">--</span></p>
-            <p id="translation-count">Translations Loaded: <span id="trans-count">--</span></p>
-        </div>
-    </div>
+    <button id="switch-to-ru">Переключить на русский</button>
+    <button id="switch-to-en">Switch to English</button>
 
     <script src="./js/i18n.js"></script>
     <script>
-        // Test functions
-        function setLanguage(lang) {
-            if (window.i18n) {
-                window.i18n.setLanguage(lang);
-                updateStatus();
-            }
-        }
-        
-        function toggleLanguage() {
-            if (window.i18n) {
-                window.i18n.toggleLanguage();
-                updateStatus();
-            }
-        }
-        
-        function updateStatus() {
-            if (window.i18n) {
-                document.getElementById('current-lang').textContent = window.i18n.getCurrentLanguage();
-                document.getElementById('init-result').textContent = window.i18n.isInitialized() ? 'Yes' : 'No';
-                document.getElementById('init-result').className = window.i18n.isInitialized() ? 'success' : 'error';
-                
-                const currentTranslations = window.i18n.translations[window.i18n.getCurrentLanguage()];
-                const count = currentTranslations ? Object.keys(currentTranslations).length : 0;
-                document.getElementById('trans-count').textContent = count;
-            }
-        }
-        
-        // Listen for i18n events
-        window.addEventListener('i18nInitialized', function(event) {
-            console.log('i18n initialized with language:', event.detail.language);
-            updateStatus();
+        // Дождемся инициализации i18n
+        window.addEventListener('i18nInitialized', function() {
+            // Проверим перевод
+            const testElement = document.getElementById('test-translation');
+            const translation = i18n.t('voting.commit_phase.not_participating');
+            testElement.textContent = translation;
+            
+            console.log('Тестовый перевод:', translation);
         });
         
-        window.addEventListener('languageChanged', function(event) {
-            console.log('Language changed from', event.detail.from, 'to', event.detail.to);
-            updateStatus();
+        // Обработчики для переключения языка
+        document.getElementById('switch-to-ru').addEventListener('click', function() {
+            i18n.setLanguage('ru');
+            location.reload();
         });
         
-        // Initial status update
-        setTimeout(updateStatus, 1000);
+        document.getElementById('switch-to-en').addEventListener('click', function() {
+            i18n.setLanguage('en');
+            location.reload();
+        });
     </script>
 </body>
 </html>

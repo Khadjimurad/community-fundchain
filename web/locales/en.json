@@ -9,7 +9,9 @@
     "voting": "Voting",
     "treasury": "Treasury",
     "personal": "My Stats",
-    "admin": "Admin"
+    "admin": "Admin",
+    "contract_interface": "Contract Interface",
+    "project_payout": "Project Payout"
   },
   "controls": {
     "auto_refresh": "Auto Refresh",
@@ -25,9 +27,13 @@
     "title": "Community Fund Dashboard",
     "treasury_balance": "Treasury Balance (ETH)",
     "donations_7d": "Donations (7 days)",
+    "total_allocated": "Total Allocated (ETH)",
     "active_projects": "Active Projects",
     "soft_cap_reached": "Soft-cap Reached",
-    "funding_queue": "Funding Queue"
+    "funding_queue": "Funding Queue",
+    "total_donors": "Total Donors",
+    "pending_projects": "Pending Projects",
+    "completed_projects": "Completed Projects"
   },
   "filters": {
     "all_categories": "All Categories",
@@ -157,7 +163,8 @@
       "your_vote": "Your Vote",
       "for": "For",
       "against": "Against",
-      "abstain": "Abstain"
+      "abstain": "Abstain",
+      "not_participating": "Not Participating"
     }
   },
     "transaction": {
@@ -705,4 +712,93 @@
   "turnout": "Turnout",
   "projects_in_voting": "Projects in voting",
   "export_results": "Export results"
+,
+  "project_payout": {
+    "title": "Project Payout & Completion Workflow",
+    "page_title": "FundChain — Project Payout Interface",
+    "web3_connection": "Web3 Connection",
+    "rpc_url": "RPC URL",
+    "chain_id": "Chain ID",
+    "multisig_address": "Multisig Address",
+    "treasury_address": "Treasury Address",
+    "projects_address": "Projects Address",
+    "private_key": "Private Key (optional)",
+    "private_key_placeholder": "Enter private key for signing transactions",
+    "private_key_help": "If not provided, will try to use browser wallet (MetaMask)",
+    "connect_web3": "Connect to Web3",
+    "disconnect": "Disconnect",
+    "status": "Status",
+    "status_disconnected": "Disconnected",
+    "status_connected": "Connected",
+    "account": "Account",
+    "not_connected": "Not connected",
+    "info": "Info",
+    "info_connect_web3": "Connect to Web3 provider to interact with the smart contracts.",
+    "workflow_steps": {
+      "step_1": "Select Project",
+      "step_2": "Propose Payout",
+      "step_3": "Confirm",
+      "step_4": "Execute",
+      "step_5": "Complete"
+    },
+    "step_descriptions": {
+      "step_1_desc": "Choose a project ready for payout",
+      "step_2_desc": "Create multisig proposal",
+      "step_3_desc": "Collect required signatures",
+      "step_4_desc": "Execute payout transaction",
+      "step_5_desc": "Finalize project"
+    },
+    "step_1_content": {
+      "title": "Select Project for Payout",
+      "refresh_projects": "Refresh Projects",
+      "next_step": "Next: Propose Payout",
+      "loading_projects": "Loading projects...",
+      "info_step_1": "Step 1: Select a project that is ready for payout. Only projects with \"ReadyToPayout\" status are shown."
+    },
+    "step_2_content": {
+      "title": "Propose Project Payout",
+      "selected_project": "Selected Project",
+      "recipient_address": "Recipient Address",
+      "recipient_address_placeholder": "0x...",
+      "amount_eth": "Amount (ETH)",
+      "max_available": "Maximum available",
+      "payout_description": "Description",
+      "payout_description_placeholder": "Describe the purpose of this payout",
+      "back": "Back",
+      "propose_payout": "Propose Payout",
+      "info_step_2": "Step 2: Create a multisig proposal for project payout. This will not transfer funds yet, just create a proposal that requires signatures."
+    },
+    "step_3_content": {
+      "title": "Confirm Transaction",
+      "transaction": "Transaction",
+      "refresh_status": "Refresh Transaction Status",
+      "confirm_transaction": "Confirm Transaction",
+      "next_step": "Next: Execute Transaction",
+      "info_step_3": "Step 3: The transaction needs to be confirmed by multiple signers. Each authorized signer must confirm the transaction.",
+      "tx_details": "Transaction Details"
+    },
+    "step_4_content": {
+      "title": "Execute Transaction",
+      "transaction": "Transaction",
+      "warning": "Warning",
+      "warning_text": "This will transfer funds from the treasury to the specified recipient.",
+      "refresh_status": "Refresh Transaction Status",
+      "execute_transaction": "Execute Transaction",
+      "next_step": "Next: Complete Project",
+      "info_step_4": "Step 4: Once the required number of confirmations has been received, the transaction can be executed.",
+      "execution_details": "Execution Details"
+    },
+    "step_5_content": {
+      "title": "Complete Project",
+      "project": "Project",
+      "completion_notes": "Completion Notes",
+      "completion_notes_placeholder": "Add notes about project completion",
+      "refresh_status": "Refresh Project Status",
+      "mark_paid": "Mark Project as Paid",
+      "back": "Back",
+      "finish": "Finish Workflow",
+      "info_step_5": "Step 5: Mark the project as completed by updating its status to \"Paid\".",
+      "completion_details": "Completion Details"
+    }
+  }
 }

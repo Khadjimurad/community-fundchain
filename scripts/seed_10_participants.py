@@ -47,109 +47,116 @@ class TenParticipantSeeder:
         """Создание 10 участников с различными профилями."""
         logger.info("👥 Создание 10 участников...")
         
-        # Профили участников с реалистичными характеристиками
-        participant_profiles = [
-            {
-                'name': 'Алексей Волков',
-                'role': 'major_donor',
-                'sbt_weight': 20,
-                'donation_capacity': Decimal('15.0'),
-                'activity_level': 'high'
-            },
-            {
-                'name': 'Мария Петрова',
-                'role': 'community_leader', 
-                'sbt_weight': 15,
-                'donation_capacity': Decimal('8.0'),
-                'activity_level': 'high'
-            },
-            {
-                'name': 'Дмитрий Козлов',
-                'role': 'active_voter',
-                'sbt_weight': 12,
-                'donation_capacity': Decimal('5.0'),
-                'activity_level': 'high'
-            },
-            {
-                'name': 'Екатерина Сидорова',
-                'role': 'regular_member',
-                'sbt_weight': 8,
-                'donation_capacity': Decimal('3.0'),
-                'activity_level': 'medium'
-            },
-            {
-                'name': 'Андрей Морозов',
-                'role': 'project_creator',
-                'sbt_weight': 10,
-                'donation_capacity': Decimal('4.0'),
-                'activity_level': 'medium'
-            },
-            {
-                'name': 'Ольга Белова',
-                'role': 'frequent_donor',
-                'sbt_weight': 7,
-                'donation_capacity': Decimal('6.0'),
-                'activity_level': 'medium'
-            },
-            {
-                'name': 'Павел Новиков',
-                'role': 'occasional_donor',
-                'sbt_weight': 5,
-                'donation_capacity': Decimal('2.0'),
-                'activity_level': 'low'
-            },
-            {
-                'name': 'Татьяна Орлова',
-                'role': 'new_member',
-                'sbt_weight': 3,
-                'donation_capacity': Decimal('1.5'),
-                'activity_level': 'low'
-            },
-            {
-                'name': 'Сергей Лебедев',
-                'role': 'institutional_rep',
-                'sbt_weight': 18,
-                'donation_capacity': Decimal('12.0'),
-                'activity_level': 'high'
-            },
-            {
-                'name': 'Наталья Соколова',
-                'role': 'volunteer',
-                'sbt_weight': 6,
-                'donation_capacity': Decimal('2.5'),
-                'activity_level': 'medium'
-            }
-        ]
-        
-        async with self.db_manager.get_session() as session:
-            for i, profile in enumerate(participant_profiles):
-                # Генерация уникального адреса
-                address = f"0x{i+1:02d}{'a' * 36}{i+1:02d}"
-                
-                participant = {
-                    'id': f'participant_{i+1:02d}',
-                    'address': address,
-                    'name': profile['name'],
-                    'role': profile['role'],
-                    'sbt_weight': profile['sbt_weight'],
-                    'donation_capacity': profile['donation_capacity'],
-                    'activity_level': profile['activity_level'],
-                    'joined_days_ago': random.randint(1, 365)
+        try:
+            # Профили участников с реалистичными характеристиками
+            participant_profiles = [
+                {
+                    'name': 'Алексей Волков',
+                    'role': 'major_donor',
+                    'sbt_weight': 20,
+                    'donation_capacity': Decimal('15.0'),
+                    'activity_level': 'high'
+                },
+                {
+                    'name': 'Мария Петрова',
+                    'role': 'community_leader', 
+                    'sbt_weight': 15,
+                    'donation_capacity': Decimal('8.0'),
+                    'activity_level': 'high'
+                },
+                {
+                    'name': 'Дмитрий Козлов',
+                    'role': 'active_voter',
+                    'sbt_weight': 12,
+                    'donation_capacity': Decimal('5.0'),
+                    'activity_level': 'high'
+                },
+                {
+                    'name': 'Екатерина Сидорова',
+                    'role': 'regular_member',
+                    'sbt_weight': 8,
+                    'donation_capacity': Decimal('3.0'),
+                    'activity_level': 'medium'
+                },
+                {
+                    'name': 'Андрей Морозов',
+                    'role': 'project_creator',
+                    'sbt_weight': 10,
+                    'donation_capacity': Decimal('4.0'),
+                    'activity_level': 'medium'
+                },
+                {
+                    'name': 'Ольга Белова',
+                    'role': 'frequent_donor',
+                    'sbt_weight': 7,
+                    'donation_capacity': Decimal('6.0'),
+                    'activity_level': 'medium'
+                },
+                {
+                    'name': 'Павел Новиков',
+                    'role': 'occasional_donor',
+                    'sbt_weight': 5,
+                    'donation_capacity': Decimal('2.0'),
+                    'activity_level': 'low'
+                },
+                {
+                    'name': 'Татьяна Орлова',
+                    'role': 'new_member',
+                    'sbt_weight': 3,
+                    'donation_capacity': Decimal('1.5'),
+                    'activity_level': 'low'
+                },
+                {
+                    'name': 'Сергей Лебедев',
+                    'role': 'institutional_rep',
+                    'sbt_weight': 18,
+                    'donation_capacity': Decimal('12.0'),
+                    'activity_level': 'high'
+                },
+                {
+                    'name': 'Наталья Соколова',
+                    'role': 'volunteer',
+                    'sbt_weight': 6,
+                    'donation_capacity': Decimal('2.5'),
+                    'activity_level': 'medium'
                 }
-                
-                # Создание записи в базе данных
-                member = Member(
-                    address=address,
-                    sbt_weight=profile['sbt_weight'],
-                    role=profile['role'],
-                    joined_at=datetime.now() - timedelta(days=participant['joined_days_ago'])
-                )
-                
-                session.add(member)
-                self.participants.append(participant)
+            ]
             
-            await session.commit()
-            logger.info(f"✅ Создано {len(self.participants)} участников")
+            async with self.db_manager.get_session() as session:
+                for i, profile in enumerate(participant_profiles):
+                    logger.info(f"Создание участника {i+1}: {profile['name']}")
+                    # Генерация уникального адреса
+                    address = f"0x{i+1:02d}{'a' * 36}{i+1:02d}"
+                    
+                    participant = {
+                        'id': f'participant_{i+1:02d}',
+                        'address': address,
+                        'name': profile['name'],
+                        'role': profile['role'],
+                        'weight': profile['sbt_weight'],
+                        'donation_capacity': profile['donation_capacity'],
+                        'activity_level': profile['activity_level'],
+                        'joined_days_ago': random.randint(1, 365)
+                    }
+                    
+                    logger.info(f"Создание записи в базе данных для {profile['name']}")
+                    # Создание записи в базе данных
+                    member = Member(
+                        address=address,
+                        weight=profile['sbt_weight'],
+                        member_since=datetime.now() - timedelta(days=participant['joined_days_ago'])
+                    )
+                    
+                    session.add(member)
+                    self.participants.append(participant)
+                
+                await session.commit()
+                logger.info(f"✅ Создано {len(self.participants)} участников")
+        except Exception as e:
+            logger.error(f"💥 Ошибка при создании участников: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise
     
     async def create_diverse_projects(self):
         """Создание разнообразных проектов для тестирования."""
@@ -214,7 +221,7 @@ class TenParticipantSeeder:
         
         async with self.db_manager.get_session() as session:
             for i, template in enumerate(project_templates):
-                project_id = f"test_project_{i+1:03d}_{template['name'].lower().replace(' ', '_').replace(',', '')}"
+                project_id = f"tp_{i+1:02d}"
                 
                 project = Project(
                     id=project_id,
@@ -366,10 +373,11 @@ class TenParticipantSeeder:
             # Создание раунда голосования
             voting_round = VotingRound(
                 round_id=1,
-                phase='pending',
-                commit_deadline=datetime.now() + timedelta(days=7),
-                reveal_deadline=datetime.now() + timedelta(days=10),
-                created_at=datetime.now()
+                start_commit=datetime.now(),
+                end_commit=datetime.now() + timedelta(days=7),
+                end_reveal=datetime.now() + timedelta(days=10),
+                finalized=False,
+                snapshot_block=1500000
             )
             
             session.add(voting_round)
@@ -392,7 +400,8 @@ class TenParticipantSeeder:
                     commit_vote = Vote(
                         round_id=1,
                         voter_address=participant['address'],
-                        commit_hash=f"0x{random.randint(1000000, 9999999):08x}",
+                        project_id="0000000000000000000000000000000000000000000000000000000000000000",
+                        choice="not_participating",
                         tx_hash=f"0x{random.randint(1000000, 9999999):08x}",
                         block_number=2000000 + commit_count,
                         committed_at=datetime.now() - timedelta(hours=random.randint(1, 48))
@@ -412,7 +421,7 @@ class TenParticipantSeeder:
                             voter_address=participant['address'],
                             project_id=selected_project.id,
                             choice=choice,
-                            weight=participant['sbt_weight'],
+                            weight=participant['weight'],
                             tx_hash=f"0x{random.randint(1000000, 9999999):08x}",
                             block_number=2000000 + reveal_count,
                             revealed_at=datetime.now() - timedelta(hours=random.randint(1, 24))
@@ -501,7 +510,7 @@ class TenParticipantSeeder:
 """
         
         for participant in self.participants:
-            report += f"   {participant['name']} ({participant['role']}): {participant['sbt_weight']} SBT, до {participant['donation_capacity']} ETH\n"
+            report += f"   {participant['name']} ({participant['role']}): {participant['weight']} SBT, до {participant['donation_capacity']} ETH\n"
         
         report += f"""
 📋 ДЕТАЛИ ПО ПРОЕКТАМ:
@@ -562,6 +571,8 @@ async def main():
         return 1
     except Exception as e:
         logger.error(f"💥 Ошибка при создании тестовых данных: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return 1
     
     return 0

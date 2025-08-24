@@ -131,7 +131,7 @@ class TenParticipantSeeder:
                     'address': address,
                     'name': profile['name'],
                     'role': profile['role'],
-                    'weight': profile['weight'],  # Changed from weight to weight
+                    'weight': profile['weight'],
                     'donation_capacity': profile['donation_capacity'],
                     'activity_level': profile['activity_level'],
                     'joined_days_ago': random.randint(1, 365)
@@ -213,7 +213,7 @@ class TenParticipantSeeder:
         
         async with self.db_manager.get_session() as session:
             for i, template in enumerate(project_templates):
-                project_id = f"test_project_{i+1:03d}_{template['name'].lower().replace(' ', '_').replace(',', '')}"
+                project_id = f"tp_{i+1:02d}"
                 
                 project = Project(
                     id=project_id,
@@ -368,7 +368,8 @@ class TenParticipantSeeder:
                 start_commit=datetime.now(),
                 end_commit=datetime.now() + timedelta(days=7),
                 end_reveal=datetime.now() + timedelta(days=10),
-                finalized=False
+                finalized=False,
+                snapshot_block=1500000
             )
             
             session.add(voting_round)
@@ -391,7 +392,8 @@ class TenParticipantSeeder:
                     commit_vote = Vote(
                         round_id=1,
                         voter_address=participant['address'],
-                        commit_hash=f"0x{random.randint(1000000, 9999999):08x}",
+                        project_id="0000000000000000000000000000000000000000000000000000000000000000",
+                        choice="not_participating",
                         tx_hash=f"0x{random.randint(1000000, 9999999):08x}",
                         block_number=2000000 + commit_count,
                         committed_at=datetime.now() - timedelta(days=random.randint(5, 45))
@@ -411,7 +413,7 @@ class TenParticipantSeeder:
                             voter_address=participant['address'],
                             project_id=selected_project.id,
                             choice=choice,
-                            weight=participant['sbt_weight'],
+                            weight=participant['weight'],
                             tx_hash=f"0x{random.randint(1000000, 9999999):08x}",
                             block_number=2000000 + reveal_count,
                             revealed_at=datetime.now() - timedelta(days=random.randint(5, 45))

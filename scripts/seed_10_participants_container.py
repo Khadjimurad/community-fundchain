@@ -51,70 +51,70 @@ class TenParticipantSeeder:
         participant_profiles = [
             {
                 'name': 'Алексей Волков',
-                'role': 'major_donor',
+                'role': 'Крупный донор',
                 'weight': 20,
                 'donation_capacity': Decimal('15.0'),
                 'activity_level': 'high'
             },
             {
                 'name': 'Мария Петрова',
-                'role': 'community_leader', 
+                'role': 'Лидер сообщества', 
                 'weight': 15,
                 'donation_capacity': Decimal('8.0'),
                 'activity_level': 'high'
             },
             {
                 'name': 'Дмитрий Козлов',
-                'role': 'active_voter',
+                'role': 'Активный участник',
                 'weight': 12,
                 'donation_capacity': Decimal('5.0'),
                 'activity_level': 'high'
             },
             {
                 'name': 'Екатерина Сидорова',
-                'role': 'regular_member',
+                'role': 'Обычный участник',
                 'weight': 8,
                 'donation_capacity': Decimal('3.0'),
                 'activity_level': 'medium'
             },
             {
                 'name': 'Андрей Морозов',
-                'role': 'project_creator',
+                'role': 'Создатель проектов',
                 'weight': 10,
                 'donation_capacity': Decimal('4.0'),
                 'activity_level': 'medium'
             },
             {
                 'name': 'Ольга Белова',
-                'role': 'frequent_donor',
+                'role': 'Частый донор',
                 'weight': 7,
                 'donation_capacity': Decimal('6.0'),
                 'activity_level': 'medium'
             },
             {
                 'name': 'Павел Новиков',
-                'role': 'occasional_donor',
+                'role': 'Случайный донор',
                 'weight': 5,
                 'donation_capacity': Decimal('2.0'),
                 'activity_level': 'low'
             },
             {
                 'name': 'Татьяна Орлова',
-                'role': 'new_member',
+                'role': 'Новый участник',
                 'weight': 3,
                 'donation_capacity': Decimal('1.5'),
                 'activity_level': 'low'
             },
             {
                 'name': 'Сергей Лебедев',
-                'role': 'institutional_rep',
+                'role': 'Представитель организации',
                 'weight': 18,
                 'donation_capacity': Decimal('12.0'),
                 'activity_level': 'high'
             },
             {
                 'name': 'Наталья Соколова',
-                'role': 'volunteer',
+                'role': 'Волонтер',
                 'weight': 6,
                 'donation_capacity': Decimal('2.5'),
                 'activity_level': 'medium'
@@ -131,7 +131,7 @@ class TenParticipantSeeder:
                     'address': address,
                     'name': profile['name'],
                     'role': profile['role'],
-                    'weight': profile['weight'],  # Changed from weight to weight
+                    'weight': profile['weight'],
                     'donation_capacity': profile['donation_capacity'],
                     'activity_level': profile['activity_level'],
                     'joined_days_ago': random.randint(1, 365)
@@ -158,7 +158,7 @@ class TenParticipantSeeder:
             {
                 'name': 'Центр здоровья сообщества',
                 'description': 'Современный медицинский центр с качественным оборудованием и опытным персоналом для обслуживания местного сообщества.',
-                'category': 'healthcare',
+                'category': 'Здравоохранение',
                 'target': 25.0,
                 'soft_cap': 15.0,
                 'hard_cap': 35.0,
@@ -167,7 +167,7 @@ class TenParticipantSeeder:
             {
                 'name': 'Цифровая библиотека',
                 'description': 'Образовательное пространство с современными компьютерами, высокоскоростным интернетом и цифровыми обучающими платформами.',
-                'category': 'education',
+                'category': 'Образование',
                 'target': 18.0,
                 'soft_cap': 12.0,
                 'hard_cap': 25.0,
@@ -176,7 +176,7 @@ class TenParticipantSeeder:
             {
                 'name': 'Экологическая инициатива',
                 'description': 'Установка солнечных панелей и системы накопления энергии для обеспечения чистой, устойчивой энергии.',
-                'category': 'environment',
+                'category': 'Экология',
                 'target': 30.0,
                 'soft_cap': 20.0,
                 'hard_cap': 40.0,
@@ -185,7 +185,7 @@ class TenParticipantSeeder:
             {
                 'name': 'Приют для бездомных',
                 'description': 'Комплексное убежище с социальными услугами, профессиональным обучением и программами реабилитации.',
-                'category': 'social',
+                'category': 'Социальные',
                 'target': 22.0,
                 'soft_cap': 15.0,
                 'hard_cap': 30.0,
@@ -194,7 +194,7 @@ class TenParticipantSeeder:
             {
                 'name': 'Молодежный центр искусств',
                 'description': 'Творческое пространство для молодежи с профессиональным обучением и возможностями для выступлений.',
-                'category': 'culture',
+                'category': 'Культура',
                 'target': 16.0,
                 'soft_cap': 10.0,
                 'hard_cap': 22.0,
@@ -203,7 +203,7 @@ class TenParticipantSeeder:
             {
                 'name': 'Система экстренного реагирования',
                 'description': 'Современная сеть экстренной связи и реагирования для обеспечения безопасности сообщества.',
-                'category': 'infrastructure',
+                'category': 'Инфраструктура',
                 'target': 28.0,
                 'soft_cap': 18.0,
                 'hard_cap': 35.0,
@@ -213,7 +213,7 @@ class TenParticipantSeeder:
         
         async with self.db_manager.get_session() as session:
             for i, template in enumerate(project_templates):
-                project_id = f"test_project_{i+1:03d}_{template['name'].lower().replace(' ', '_').replace(',', '')}"
+                project_id = f"tp_{i+1:02d}"
                 
                 project = Project(
                     id=project_id,
@@ -247,10 +247,13 @@ class TenParticipantSeeder:
                 # Количество пожертвований зависит от уровня активности
                 if participant['activity_level'] == 'high':
                     num_donations = random.randint(3, 5)
+                    activity_label = 'Высокая'
                 elif participant['activity_level'] == 'medium':
                     num_donations = random.randint(1, 3)
+                    activity_label = 'Средняя'
                 else:  # low
                     num_donations = random.randint(0, 2)
+                    activity_label = 'Низкая'
                 
                 total_participant_donated = Decimal('0')
                 
@@ -368,7 +371,8 @@ class TenParticipantSeeder:
                 start_commit=datetime.now(),
                 end_commit=datetime.now() + timedelta(days=7),
                 end_reveal=datetime.now() + timedelta(days=10),
-                finalized=False
+                finalized=False,
+                snapshot_block=1500000
             )
             
             session.add(voting_round)
@@ -381,17 +385,21 @@ class TenParticipantSeeder:
                 # Вероятность участия в голосовании
                 if participant['activity_level'] == 'high':
                     participation_chance = 0.9
+                    activity_label = 'Высокая'
                 elif participant['activity_level'] == 'medium':
                     participation_chance = 0.7
+                    activity_label = 'Средняя'
                 else:
                     participation_chance = 0.4
+                    activity_label = 'Низкая'
                 
                 if random.random() < participation_chance:
                     # Создание коммита
                     commit_vote = Vote(
                         round_id=1,
                         voter_address=participant['address'],
-                        commit_hash=f"0x{random.randint(1000000, 9999999):08x}",
+                        project_id="0000000000000000000000000000000000000000000000000000000000000000",
+                        choice="not_participating",
                         tx_hash=f"0x{random.randint(1000000, 9999999):08x}",
                         block_number=2000000 + commit_count,
                         committed_at=datetime.now() - timedelta(days=random.randint(5, 45))
@@ -411,7 +419,7 @@ class TenParticipantSeeder:
                             voter_address=participant['address'],
                             project_id=selected_project.id,
                             choice=choice,
-                            weight=participant['sbt_weight'],
+                            weight=participant['weight'],
                             tx_hash=f"0x{random.randint(1000000, 9999999):08x}",
                             block_number=2000000 + reveal_count,
                             revealed_at=datetime.now() - timedelta(days=random.randint(5, 45))
@@ -500,7 +508,21 @@ class TenParticipantSeeder:
 """
         
         for participant in self.participants:
-            report += f"   {participant['name']} ({participant['role']}): {participant['weight']} SBT, до {participant['donation_capacity']} ETH\n"
+            role_labels = {
+                'major_donor': 'Крупный донор',
+                'community_leader': 'Лидер сообщества',
+                'active_voter': 'Активный участник',
+                'regular_member': 'Обычный участник',
+                'project_creator': 'Создатель проектов',
+                'frequent_donor': 'Частый донор',
+                'occasional_donor': 'Случайный донор',
+                'new_member': 'Новый участник',
+                'institutional_rep': 'Представитель организации',
+                'volunteer': 'Волонтер'
+            }
+            
+            role_label = role_labels.get(participant['role'], participant['role'])
+            report += f"   {participant['name']} ({role_label}): {participant['weight']} SBT, до {participant['donation_capacity']} ETH\n"
         
         report += f"""
 📋 ДЕТАЛИ ПО ПРОЕКТАМ:
@@ -508,7 +530,13 @@ class TenParticipantSeeder:
         
         for project in self.projects:
             funding_percentage = (project.total_allocated / project.target) * 100
-            report += f"   {project.name}: {project.total_allocated:.2f}/{project.target:.2f} ETH ({funding_percentage:.1f}%) - {project.status}\n"
+            status_labels = {
+                'funded': 'Профинансирован',
+                'active': 'Активный',
+                'pending': 'В ожидании'
+            }
+            status_label = status_labels.get(project.status, project.status)
+            report += f"   {project.name}: {project.total_allocated:.2f}/{project.target:.2f} ETH ({funding_percentage:.1f}%) - {status_label}\n"
         
         report += f"""
 ✅ ГОТОВНОСТЬ К ТЕСТИРОВАНИЮ:

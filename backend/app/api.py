@@ -79,7 +79,7 @@ async def get_project_progress(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    # Get allocation statistics
+    # Get allocation statistics (sums are advisory; authoritative amount is Project.total_allocated)
     allocation_query = select(
         func.count(Allocation.id).label('allocation_count'),
         func.sum(Allocation.amount).label('total_allocated'),
@@ -99,7 +99,9 @@ async def get_project_progress(
     payout_stats = payout_result.first()
     
     # Calculate progress metrics
-    total_allocated = float(allocation_stats.total_allocated or 0)
+    # Prefer Project.total_allocated (authoritative, e.g., after admin distribution),
+    # fall back to sum of Allocation amounts if missing
+    total_allocated = float(project.total_allocated or (allocation_stats.total_allocated or 0))
     total_paid_out = float(payout_stats.total_paid_out or 0)
     target = project.target
     soft_cap = project.soft_cap
@@ -393,20 +395,26 @@ async def get_voting_round_details(
         ]
     }
 
+async def finalize_latest_round(db: AsyncSession) -> Dict[str, Any]:
+    """Mark latest non-finalized round as finalized (MVP)."""
+    latest_round_query = select(VotingRound).where(VotingRound.finalized == False).order_by(desc(VotingRound.round_id)).limit(1)
+    result = await db.execute(latest_round_query)
+    round_obj = result.scalar_one_or_none()
+    if not round_obj:
+        return {"status": "noop", "message": "No active round"}
+    round_obj.finalized = True
+    await db.commit()
+    return {"status": "success", "round_id": round_obj.round_id}
+
 # Commit-Reveal Voting functions
 async def get_current_voting_round_info(db: AsyncSession) -> Dict[str, Any]:
-    """Get current active voting round information."""
-    
-    # Проверяем наличие активного раунда в базе данных
-    active_round_query = select(VotingRound).where(
-        VotingRound.finalized == False
-    ).order_by(desc(VotingRound.round_id)).limit(1)
-    
-    active_round_result = await db.execute(active_round_query)
-    active_round = active_round_result.scalar_one_or_none()
-    
-    if not active_round:
-        # Нет активного раунда
+    """Get latest voting round information (active or finalized)."""
+    # Берем самый последний раунд (включая финализированные)
+    round_query = select(VotingRound).order_by(desc(VotingRound.round_id)).limit(1)
+    round_result = await db.execute(round_query)
+    round_obj = round_result.scalar_one_or_none()
+
+    if not round_obj:
         return {
             "round_id": None,
             "phase": "no_active_round",
@@ -422,50 +430,53 @@ async def get_current_voting_round_info(db: AsyncSession) -> Dict[str, Any]:
             "turnout_percentage": 0.0,
             "projects": []
         }
-    
-    # Определяем текущую фазу
-    now = datetime.utcnow()
-    
-    if now < active_round.start_commit:
-        phase = "pending"
-        phase_message = "Voting round is pending"
-        time_remaining = int((active_round.start_commit - now).total_seconds())
-    elif now < active_round.end_commit:
-        phase = "commit"
-        phase_message = "Commit phase is active"
-        time_remaining = int((active_round.end_commit - now).total_seconds())
-    elif now < active_round.end_reveal:
-        phase = "reveal"
-        phase_message = "Reveal phase is active"
-        time_remaining = int((active_round.end_reveal - now).total_seconds())
-    else:
-        phase = "ended"
-        phase_message = "Voting round has ended"
+
+    # Фаза с учетом флага finalized
+    if round_obj.finalized:
+        phase = "finalized"
+        phase_message = "Voting round finalized"
         time_remaining = 0
-    
-    # Получаем проекты для данного раунда голосования
+    else:
+        now = datetime.utcnow()
+        if now < round_obj.start_commit:
+            phase = "pending"
+            phase_message = "Voting round is pending"
+            time_remaining = int((round_obj.start_commit - now).total_seconds())
+        elif now < round_obj.end_commit:
+            phase = "commit"
+            phase_message = "Commit phase is active"
+            time_remaining = int((round_obj.end_commit - now).total_seconds())
+        elif now < round_obj.end_reveal:
+            phase = "reveal"
+            phase_message = "Reveal phase is active"
+            time_remaining = int((round_obj.end_reveal - now).total_seconds())
+        else:
+            phase = "ended"
+            phase_message = "Voting round has ended"
+            time_remaining = 0
+
     projects_query = select(Project).join(
         VoteResult, VoteResult.project_id == Project.id
-    ).where(VoteResult.round_id == active_round.round_id)
-    
+    ).where(VoteResult.round_id == round_obj.round_id)
+
     projects_result = await db.execute(projects_query)
     projects = projects_result.scalars().all()
-    
+
     return {
-        "round_id": active_round.round_id,
+        "round_id": round_obj.round_id,
         "phase": phase,
         "phase_message": phase_message,
         "time_remaining": time_remaining,
-        "start_commit": active_round.start_commit.isoformat() if active_round.start_commit else None,
-        "end_commit": active_round.end_commit.isoformat() if active_round.end_commit else None,
-        "end_reveal": active_round.end_reveal.isoformat() if active_round.end_reveal else None,
-        "counting_method": active_round.counting_method or "weighted",
-        "total_participants": active_round.total_participants or 0,
-        "total_revealed": active_round.total_revealed or 0,
-        "total_active_members": active_round.total_active_members or 0,
+        "start_commit": round_obj.start_commit.isoformat() if round_obj.start_commit else None,
+        "end_commit": round_obj.end_commit.isoformat() if round_obj.end_commit else None,
+        "end_reveal": round_obj.end_reveal.isoformat() if round_obj.end_reveal else None,
+        "counting_method": round_obj.counting_method or "weighted",
+        "total_participants": round_obj.total_participants or 0,
+        "total_revealed": round_obj.total_revealed or 0,
+        "total_active_members": round_obj.total_active_members or 0,
         "turnout_percentage": round(
-            (active_round.total_revealed / active_round.total_active_members * 100)
-            if active_round.total_active_members and active_round.total_revealed else 0.0, 1
+            (round_obj.total_revealed / round_obj.total_active_members * 100)
+            if round_obj.total_active_members and round_obj.total_revealed else 0.0, 1
         ),
         "projects": [
             {
@@ -692,7 +703,7 @@ async def get_treasury_transactions(
     for donation in donations:
         transactions.append({
             "id": f"donation_{donation.id}",
-            "hash": donation.transaction_hash,
+            "hash": donation.tx_hash,
             "type": "donation",
             "amount": float(donation.amount),
             "timestamp": donation.timestamp,
@@ -855,3 +866,179 @@ async def create_system_log(
         "user_address": log_entry.user_address,
         "ip_address": log_entry.ip_address
     }
+
+# Distribution planning
+async def compute_distribution_plan(
+    method: str,
+    cap: str,
+    budget: Optional[float],
+    db: AsyncSession,
+) -> Dict[str, Any]:
+    """Compute a distribution plan based on voting priorities.
+
+    method: 'sequential' | 'proportional'
+    cap: 'target' | 'soft_cap'
+    budget: optional, defaults to treasury balance
+    """
+    # Determine available budget
+    treasury = await get_treasury_stats(db)
+    available_budget = treasury.total_balance if budget is None else max(0.0, float(budget))
+
+    # Build latest voting results map (project_id -> {final_priority, borda_points})
+    latest_round_query = select(func.max(VotingRound.round_id))
+    latest_round_result = await db.execute(latest_round_query)
+    latest_round_id = latest_round_result.scalar()
+
+    vote_map: Dict[str, Dict[str, Any]] = {}
+    if latest_round_id:
+        vr_query = select(VoteResult).where(VoteResult.round_id == latest_round_id)
+        vr_result = await db.execute(vr_query)
+        for r in vr_result.scalars().all():
+            vote_map[r.project_id] = {
+                "final_priority": r.final_priority or 0,
+                "borda_points": r.borda_points or 0,
+            }
+
+    # Fetch projects
+    proj_result = await db.execute(select(Project))
+    projects = proj_result.scalars().all()
+
+    # Calculate needs and weights
+    items = []
+    for p in projects:
+        target_value = p.target if cap == "target" else (p.soft_cap or p.target)
+        current_alloc = float(p.total_allocated or 0)
+        need = max(0.0, float(target_value) - current_alloc)
+        if need <= 0:
+            continue
+        vote_info = vote_map.get(p.id, {})
+        final_priority = vote_info.get("final_priority", 0)
+        borda_points = vote_info.get("borda_points", 0)
+        items.append({
+            "project_id": p.id,
+            "name": p.name,
+            "category": p.category,
+            "target": float(p.target),
+            "soft_cap": float(p.soft_cap),
+            "total_allocated": current_alloc,
+            "need": need,
+            "final_priority": final_priority or int(p.priority or 0),
+            "borda_points": borda_points or 0,
+        })
+
+    # Sort or weight
+    plan_entries = []
+    remaining = available_budget
+    if method == "sequential":
+        # Higher priority first; fallback to project.priority
+        items.sort(key=lambda x: (x["final_priority"], x["borda_points"]) , reverse=True)
+        for it in items:
+            if remaining <= 0:
+                break
+            allocate = min(it["need"], remaining)
+            if allocate <= 0:
+                continue
+            plan_entries.append({
+                "project_id": it["project_id"],
+                "name": it["name"],
+                "need": round(it["need"], 6),
+                "allocated": round(allocate, 6),
+            })
+            remaining -= allocate
+    else:
+        # Proportional by weights: prefer borda_points, then final_priority, then 1
+        weights = []
+        for it in items:
+            w = it["borda_points"] if it["borda_points"] > 0 else (it["final_priority"] if it["final_priority"] > 0 else 1)
+            weights.append(max(0.0, float(w)))
+        total_weight = sum(weights) if weights else 0.0
+
+        if total_weight <= 0 or available_budget <= 0:
+            total_weight = 1.0
+
+        # Initial proportional allocation with cap by need
+        provisional = []
+        for it, w in zip(items, weights):
+            share = available_budget * (w / total_weight) if total_weight > 0 else 0.0
+            allocated = min(it["need"], share)
+            provisional.append({
+                "project_id": it["project_id"],
+                "name": it["name"],
+                "need": round(it["need"], 6),
+                "allocated": round(allocated, 6),
+                "remaining_need": max(0.0, it["need"] - allocated),
+                "weight": w,
+            })
+
+        # Redistribute any leftover due to capping until either no leftover or no demand
+        leftover = available_budget - sum(p["allocated"] for p in provisional)
+        # Prevent infinite loops; at most number of projects iterations
+        for _ in range(len(provisional)):
+            if leftover <= 1e-9:
+                break
+            demanders = [p for p in provisional if p["remaining_need"] > 1e-9]
+            if not demanders:
+                break
+            total_w = sum(p["weight"] for p in demanders)
+            if total_w <= 0:
+                break
+            for p in demanders:
+                add = min(p["remaining_need"], leftover * (p["weight"] / total_w))
+                p["allocated"] = round(p["allocated"] + add, 6)
+                p["remaining_need"] = max(0.0, p["remaining_need"] - add)
+            leftover = available_budget - sum(p["allocated"] for p in provisional)
+
+        plan_entries = [{"project_id": p["project_id"], "name": p["name"], "need": p["need"], "allocated": p["allocated"]} for p in provisional]
+        remaining = max(0.0, available_budget - sum(p["allocated"] for p in provisional))
+
+    total_allocated_plan = round(sum(e["allocated"] for e in plan_entries), 6)
+    return {
+        "method": method,
+        "cap": cap,
+        "budget": round(available_budget, 6),
+        "total_allocated": total_allocated_plan,
+        "remaining_budget": round(remaining, 6),
+        "projects": plan_entries,
+        "projects_count": len(plan_entries),
+        "round_id": latest_round_id,
+    }
+
+async def apply_distribution(
+    method: str,
+    cap: str,
+    budget: Optional[float],
+    db: AsyncSession,
+) -> Dict[str, Any]:
+    """Apply a computed distribution plan to projects (MVP: updates project.total_allocated)."""
+    plan = await compute_distribution_plan(method=method, cap=cap, budget=budget, db=db)
+    applied: List[Dict[str, Any]] = []
+    for entry in plan.get("projects", []):
+        pid = entry["project_id"]
+        amount = float(entry.get("allocated", 0) or 0)
+        if amount <= 0:
+            continue
+        # load project for update
+        proj_result = await db.execute(select(Project).where(Project.id == pid))
+        proj = proj_result.scalar_one_or_none()
+        if not proj:
+            continue
+        # cap by need again to be safe
+        target_value = proj.target if cap == "target" else (proj.soft_cap or proj.target)
+        current_alloc = float(proj.total_allocated or 0)
+        need = max(0.0, float(target_value) - current_alloc)
+        to_add = min(need, amount)
+        if to_add <= 0:
+            continue
+        proj.total_allocated = float(current_alloc + to_add)
+        # optional status bump
+        if proj.total_allocated >= target_value and proj.status in ("active", "voting", "funding_ready"):
+            proj.status = "ready_to_payout"
+        applied.append({
+            "project_id": pid,
+            "allocated_added": round(to_add, 6),
+            "new_total_allocated": round(proj.total_allocated, 6),
+            "status": proj.status,
+        })
+    await db.commit()
+    plan["applied"] = applied
+    return plan
