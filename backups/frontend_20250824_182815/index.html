@@ -1,0 +1,1574 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title data-i18n="app.title">FundChain — Traceable Community Fund (MVP)</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    /* CSS Variables for theming */
+    :root {
+      --primary-color: #2563eb;
+      --secondary-color: #f1f5f9;
+      --success-color: #059669;
+      --warning-color: #d97706;
+      --danger-color: #dc2626;
+      --border-color: #e5e7eb;
+      --text-primary: #1f2937;
+      --text-secondary: #6b7280;
+      --bg-primary: #ffffff;
+      --bg-secondary: #f8fafc;
+    }
+
+    /* Reset and base styles */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 16px; /* Increased from standard 14px */
+      line-height: 1.7; /* Increased from 1.6 */
+      color: var(--text-primary);
+      background-color: var(--bg-secondary);
+    }
+
+    /* Layout */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    .header {
+      background: var(--bg-primary);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .header-top {
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.75rem 0;
+    }
+
+    .header-top-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-nav {
+      padding: 0.75rem 0;
+    }
+
+    .controls-container {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 1.75rem; /* Increased from 1.5rem */
+      font-weight: bold;
+      color: var(--primary-color);
+    }
+
+    .nav {
+      display: flex;
+      gap: 2rem;
+    }
+
+    .nav a {
+      text-decoration: none;
+      color: var(--text-secondary);
+      font-weight: 500;
+      font-size: 1.05rem; /* Added font size */
+      transition: color 0.2s;
+    }
+
+    .nav a:hover,
+    .nav a.active {
+      color: var(--primary-color);
+    }
+
+    .status-bar {
+      background: var(--bg-primary);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.5rem 0;
+      font-size: 0.95rem; /* Increased from 0.875rem */
+      color: var(--text-secondary);
+    }
+
+    .status-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .k-anonymity-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .k-indicator {
+      background: var(--success-color);
+      color: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.85rem; /* Increased from 0.75rem */
+    }
+
+    .main {
+      padding: 2rem 0;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .card-title {
+      font-size: 1.4rem; /* Increased from 1.25rem */
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    /* Dashboard Grid */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .metric-card {
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      text-align: center;
+    }
+
+    .metric-value {
+      font-size: 2.25rem; /* Increased from 2rem */
+      font-weight: bold;
+      color: var(--primary-color);
+      margin-bottom: 0.5rem;
+    }
+
+    .metric-label {
+      color: var(--text-secondary);
+      font-size: 0.95rem; /* Increased from 0.875rem */
+    }
+
+    /* Tables */
+    .table-responsive {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+
+    th, td {
+      padding: 0.85rem; /* Increased from 0.75rem */
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.95rem; /* Added font size */
+    }
+
+    th {
+      background: var(--secondary-color);
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    tr:hover {
+      background: var(--secondary-color);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-block;
+      padding: 0.6rem 1.2rem; /* Increased padding */
+      border: none;
+      border-radius: 0.375rem;
+      font-size: 0.95rem; /* Added font size */
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+
+    .btn-secondary {
+      background: var(--secondary-color);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: #e2e8f0;
+    }
+
+    .btn-sm {
+      padding: 0.35rem 0.7rem; /* Increased from 0.25rem 0.5rem */
+      font-size: 0.85rem; /* Increased from 0.75rem */
+    }
+
+    /* Progress bars */
+    .progress {
+      background: var(--secondary-color);
+      border-radius: 0.25rem;
+      height: 0.5rem;
+      overflow: hidden;
+      margin: 0.5rem 0;
+    }
+
+    .progress-bar {
+      background: var(--success-color);
+      height: 100%;
+      transition: width 0.3s;
+    }
+
+    /* Status badges */
+    .badge {
+      display: inline-block;
+      padding: 0.3rem 0.6rem; /* Increased from 0.25rem 0.5rem */
+      border-radius: 0.25rem;
+      font-size: 0.8rem; /* Increased from 0.75rem */
+      font-weight: 500;
+    }
+
+    .badge-success {
+      background: #dcfce7;
+      color: var(--success-color);
+    }
+
+    .badge-warning {
+      background: #fef3c7;
+      color: var(--warning-color);
+    }
+
+    .badge-danger {
+      background: #fee2e2;
+      color: var(--danger-color);
+    }
+
+    .badge-info {
+      background: #dbeafe;
+      color: var(--primary-color);
+    }
+
+    /* Voting interface */
+    .voting-section {
+      background: #f0f9ff;
+      border: 1px solid #0ea5e9;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin: 1rem 0;
+    }
+
+    .voting-timer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .timer {
+      font-family: monospace;
+      font-size: 1.25rem; /* Increased from 1.125rem */
+      font-weight: bold;
+      color: var(--primary-color);
+    }
+
+    .vote-results {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .vote-metric {
+      text-align: center;
+      padding: 0.75rem;
+      background: white;
+      border-radius: 0.375rem;
+    }
+
+    .vote-metric-value {
+      font-size: 1.65rem; /* Increased from 1.5rem */
+      font-weight: bold;
+      margin-bottom: 0.25rem;
+    }
+
+    .vote-metric-label {
+      font-size: 0.8rem; /* Increased from 0.75rem */
+      color: var(--text-secondary);
+    }
+
+    /* Voting forms */
+    .btn-group {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-group label {
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .btn-outline-success {
+      border: 1px solid var(--success-color);
+      color: var(--success-color);
+      background: white;
+    }
+
+    .btn-outline-success:hover,
+    .btn-outline-success.active {
+      background: var(--success-color);
+      color: white;
+    }
+
+    .btn-outline-danger {
+      border: 1px solid var(--danger-color);
+      color: var(--danger-color);
+      background: white;
+    }
+
+    .btn-outline-danger:hover,
+    .btn-outline-danger.active {
+      background: var(--danger-color);
+      color: white;
+    }
+
+    .btn-outline-info {
+      border: 1px solid var(--primary-color);
+      color: var(--primary-color);
+      background: white;
+    }
+
+    .btn-outline-info:hover,
+    .btn-outline-info.active {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .btn-outline-secondary {
+      border: 1px solid var(--secondary-color);
+      color: var(--text-secondary);
+      background: white;
+    }
+
+    .btn-outline-secondary:hover,
+    .btn-outline-secondary.active {
+      background: var(--secondary-color);
+      color: var(--text-primary);
+    }
+
+    .alert {
+      padding: 1rem;
+      border-radius: 0.375rem;
+      margin-bottom: 1rem;
+    }
+
+    .alert-info {
+      background: #dbeafe;
+      border: 1px solid #93c5fd;
+      color: #1e40af;
+    }
+
+    .alert-warning {
+      background: #fef3c7;
+      border: 1px solid #fbbf24;
+      color: #92400e;
+    }
+
+    .alert-success {
+      background: #dcfce7;
+      border: 1px solid #4ade80;
+      color: #166534;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      font-size: 1rem; /* Added font size */
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 0.8rem; /* Increased from 0.75rem */
+      border: 1px solid var(--border-color);
+      border-radius: 0.375rem;
+      font-size: 0.95rem; /* Increased from 0.875rem */
+    }
+
+    .form-text {
+      font-size: 0.8rem; /* Increased from 0.75rem */
+      color: var(--text-secondary);
+      margin-top: 0.25rem;
+    }
+
+    .btn-lg {
+      padding: 0.8rem 1.6rem; /* Increased padding */
+      font-size: 1.05rem; /* Increased from 1rem */
+    }
+
+    /* Modal system */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-backdrop {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+      max-width: 95vw;
+      max-height: 92vh;
+      overflow: auto;
+      position: relative;
+      z-index: 1001;
+      min-width: 640px; /* шире базово */
+      width: 100%;
+    }
+
+    .modal-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: between;
+      align-items: center;
+    }
+
+    .modal-title {
+      margin: 0;
+      font-size: 1.35rem; /* Увеличил с 1.25rem */
+      font-weight: 600;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-secondary);
+      margin-left: auto;
+    }
+
+    .modal-close:hover {
+      color: var(--text-primary);
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+    }
+
+    .modal-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+    }
+
+    /* Admin interface enhancements */
+    .admin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .admin-section {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 0.5rem;
+      border: 1px solid var(--border-color);
+      transition: box-shadow 0.2s ease;
+    }
+
+    .admin-section:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .admin-section h4 {
+      margin: 0 0 1.5rem 0;
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      border-bottom: 2px solid var(--primary-color);
+      padding-bottom: 0.5rem;
+    }
+
+    .action-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .action-buttons .btn {
+      justify-content: flex-start;
+      text-align: left;
+      padding: 0.75rem 1rem;
+      font-weight: 500;
+      border-radius: 0.375rem;
+      transition: all 0.2s ease;
+    }
+
+    .action-buttons .btn-lg {
+      padding: 1rem 1.25rem;
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .action-buttons .btn-lg:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .action-buttons .btn i {
+      margin-right: 0.5rem;
+      width: 16px;
+      text-align: center;
+    }
+
+    .status-indicator {
+      background: var(--bg-secondary);
+      padding: 0.75rem;
+      border-radius: 0.375rem;
+      border-left: 4px solid var(--success-color);
+    }
+
+    .status-label {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .status-value {
+      color: var(--success-color);
+      font-weight: 500;
+    }
+
+    .system-status {
+      background: var(--bg-secondary);
+      border-radius: 0.375rem;
+      padding: 1rem;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      padding: 0.5rem;
+      background: white;
+      border-radius: 0.25rem;
+      border-left: 3px solid var(--primary-color);
+    }
+
+    .status-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .status-icon {
+      margin-top: 0.125rem;
+      width: 16px;
+      text-align: center;
+      color: var(--text-secondary);
+    }
+
+    .status-icon.status-running {
+      color: var(--success-color);
+    }
+
+    .status-label {
+      font-weight: 600;
+      color: var(--text-primary);
+      min-width: 120px;
+    }
+
+    .contracts-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.25rem;
+    }
+
+    .contract-tag {
+      background: var(--primary-color);
+      color: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .export-description {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      background: var(--bg-secondary);
+      border-radius: 0.375rem;
+      border-left: 3px solid var(--warning-color);
+    }
+
+    .export-description i {
+      margin-top: 0.125rem;
+      color: var(--warning-color);
+    }
+
+    .export-description span {
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    /* System Management Full Width Section */
+    .system-management-section {
+      margin-top: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .status-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .contracts-status {
+      grid-column: 1 / -1;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .contracts-status .status-label {
+      margin-bottom: 0.5rem;
+    }
+
+    .system-actions {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .system-actions .btn {
+      flex: 0 0 auto;
+    }
+
+    @media (max-width: 768px) {
+      .status-row {
+        grid-template-columns: 1fr;
+      }
+      
+      .system-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .system-actions .btn {
+        width: 100%;
+      }
+    }
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 0.5rem;
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 0.5rem;
+    }
+
+    .status-running {
+      background: var(--success-color);
+    }
+
+    .status-stopped {
+      background: var(--danger-color);
+    }
+
+    .status-warning {
+      background: var(--warning-color);
+    }
+
+    /* Form styling */
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-section {
+      border: 1px solid var(--border-color);
+      border-radius: 0.375rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-section h5 {
+      margin: 0 0 1rem 0;
+      color: var(--text-primary);
+      font-size: 1.1rem; /* Увеличил с 1rem */
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0.5rem 0;
+    }
+
+    input[type="checkbox"] {
+      width: auto;
+    }
+
+    .textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    /* Data tables */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+
+    .data-table th,
+    .data-table td {
+      padding: 0.8rem; /* Увеличил с 0.75rem */
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.95rem; /* Добавил размер шрифта */
+    }
+
+    .data-table th {
+      background: var(--secondary-color);
+      font-weight: 600;
+    }
+
+    .data-table tr:hover {
+      background: #f8fafc;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn-xs {
+      padding: 0.3rem 0.6rem; /* Увеличил с 0.25rem 0.5rem */
+      font-size: 0.8rem; /* Увеличил с 0.75rem */
+    }
+
+    /* Analytics and reporting */
+    .analytics-report {
+      background: white;
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+    }
+
+    .report-header {
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .report-header h4 {
+      margin: 0 0 0.5rem 0;
+      color: var(--text-primary);
+    }
+
+    .report-header p {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 0.95rem; /* Увеличил с 0.875rem */
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .section {
+      margin-bottom: 2rem;
+    }
+
+    .section h5 {
+      margin: 0 0 1rem 0;
+      color: var(--text-primary);
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.5rem;
+    }
+
+    .progress-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      padding: 1rem;
+      background: var(--secondary-color);
+      border-radius: 0.375rem;
+    }
+
+    .flow-chart {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding: 1rem;
+      background: var(--secondary-color);
+      border-radius: 0.375rem;
+    }
+
+    .flow-chart div {
+      padding: 0.5rem;
+      background: white;
+      border-radius: 0.25rem;
+      border-left: 4px solid var(--primary-color);
+    }
+
+    /* Export options */
+    .export-section {
+      border: 1px solid var(--border-color);
+      border-radius: 0.375rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .export-section h5 {
+      margin: 0 0 1rem 0;
+      color: var(--text-primary);
+    }
+
+    /* Responsive enhancements for admin */
+    @media (max-width: 768px) {
+      .action-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+      
+      .modal-content {
+        min-width: 300px;
+        margin: 1rem;
+      }
+    }
+
+    /* Filters */
+    .filters {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .filter-label {
+      font-size: 0.95rem; /* Увеличил с 0.875rem */
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    select, input {
+      padding: 0.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: 0.375rem;
+      font-size: 0.95rem; /* Увеличил с 0.875rem */
+    }
+
+    /* Loading states */
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-secondary);
+    }
+
+    .spinner {
+      border: 3px solid var(--secondary-color);
+      border-top: 3px solid var(--primary-color);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Personal stats */
+    .personal-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .stat-item {
+      background: white;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      border: 1px solid var(--border-color);
+    }
+
+    .stat-value {
+      font-size: 1.25rem;
+      font-weight: bold;
+      color: var(--primary-color);
+    }
+
+    .stat-comparison {
+      font-size: 0.85rem; /* Increased from 0.75rem */
+      color: var(--text-secondary);
+      margin-top: 0.25rem;
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+      .container {
+        padding: 0 10px;
+      }
+
+      .header-top-content {
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: center;
+      }
+
+      .controls-container {
+        order: -1; /* Переключатели сверху на мобильных */
+      }
+
+      .nav {
+        gap: 1rem;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .vote-results {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .filters {
+        flex-direction: column;
+      }
+    }
+
+    /* Utility classes */
+    .hidden { display: none; }
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+    .text-muted { color: var(--text-secondary); }
+    .mt-1 { margin-top: 0.5rem; }
+    .mt-2 { margin-top: 1rem; }
+    .mb-1 { margin-bottom: 0.5rem; }
+    .mb-2 { margin-bottom: 1rem; }
+    .ml-2 { margin-left: 1rem; }
+    .mr-2 { margin-right: 1rem; }
+
+    /* Language switcher and controls */
+
+    #language-switcher, #auto-refresh-toggle {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.95rem; /* Увеличил с 0.875rem */
+      border: 1px solid var(--border-color);
+      border-radius: 0.375rem;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    #auto-refresh-toggle {
+      padding: 0.4rem 0.5rem; /* Уменьшенный padding для компактности */
+      font-size: 1.1rem; /* Увеличенный размер иконки */
+      min-width: auto;
+    }
+
+    #language-switcher:hover, #auto-refresh-toggle:hover {
+      background: var(--secondary-color);
+      border-color: var(--primary-color);
+    }
+
+    #language-switcher:focus, #auto-refresh-toggle:focus {
+      outline: 2px solid var(--primary-color);
+      outline-offset: 2px;
+    }
+
+    #auto-refresh-toggle.enabled {
+      background: var(--success-color);
+      color: white;
+      border-color: var(--success-color);
+    }
+
+    #auto-refresh-toggle.disabled {
+      background: var(--danger-color);
+      color: white;
+      border-color: var(--danger-color);
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <!-- Первая строка: логотип и переключатели -->
+    <div class="header-top">
+      <div class="container">
+        <div class="header-top-content">
+          <div class="logo" data-i18n="app.logo">🏛️ FundChain</div>
+          <div class="controls-container">
+            <button id="auto-refresh-toggle" class="btn btn-secondary enabled" onclick="app.toggleAutoRefresh()" title="Toggle Auto Refresh">
+              🔄
+            </button>
+            <button id="language-switcher" class="btn btn-secondary" onclick="window.i18n.toggleLanguage()" title="Switch Language" data-i18n="language.switch_to_english" data-i18n-title="language.switch_to_english">
+              🇺🇸 EN
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Вторая строка: навигационное меню -->
+    <div class="header-nav">
+      <div class="container">
+        <nav class="nav">
+          <a href="#" class="nav-link active" data-section="dashboard" data-i18n="navigation.dashboard">Dashboard</a>
+          <a href="#" class="nav-link" data-section="projects" data-i18n="navigation.projects">Projects</a>
+          <a href="#" class="nav-link" data-section="voting" data-i18n="navigation.voting">Voting</a>
+          <a href="#" class="nav-link" data-section="treasury" data-i18n="navigation.treasury">Treasury</a>
+          <a href="#" class="nav-link" data-section="personal" data-i18n="navigation.personal">My Stats</a>
+          <a href="./admin.html" data-i18n="navigation.admin">Admin</a>
+          <a href="./contract-interface.html" data-i18n="navigation.contract_interface">Contract Interface</a>
+          <a href="./project-payout.html" data-i18n="navigation.project_payout">Project Payout</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <div class="container">
+      <div class="status-content">
+        <div><span data-i18n="status.last_updated">Last updated</span>: <span id="last-updated">--</span></div>
+        <div class="k-anonymity-indicator">
+          <span class="k-indicator" id="k-indicator" data-i18n="status.k_anonymous">k≥5 anonymous</span>
+          <span data-i18n="status.privacy_protected">Privacy protected</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="main">
+    <div class="container">
+      
+      <!-- Dashboard Section -->
+      <section id="dashboard-section" class="section">
+        <h1 data-i18n="dashboard.title">Community Fund Dashboard</h1>
+        
+        <!-- Key Metrics -->
+        <div class="dashboard-grid">
+          <div class="metric-card">
+            <div class="metric-value" id="treasury-balance">--</div>
+            <div class="metric-label" data-i18n="dashboard.treasury_balance">Treasury Balance (ETH)</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="donations-7d">--</div>
+            <div class="metric-label" data-i18n="dashboard.donations_7d">Donations (7 days)</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="total-allocated-dashboard">--</div>
+            <div class="metric-label" data-i18n="dashboard.total_allocated">Total Allocated (ETH)</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="active-projects">--</div>
+            <div class="metric-label" data-i18n="dashboard.active_projects">Active Projects</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="soft-cap-reached">--</div>
+            <div class="metric-label" data-i18n="dashboard.soft_cap_reached">Soft-cap Reached</div>
+          </div>
+          <!-- New Metrics -->
+          <div class="metric-card">
+            <div class="metric-value" id="total-donors">--</div>
+            <div class="metric-label" data-i18n="dashboard.total_donors">Total Donors</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="pending-projects">--</div>
+            <div class="metric-label" data-i18n="dashboard.pending_projects">Pending Projects</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="completed-projects">--</div>
+            <div class="metric-label" data-i18n="dashboard.completed_projects">Completed Projects</div>
+          </div>
+        </div>
+
+        <!-- Funding Queue -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title" data-i18n="dashboard.funding_queue">Funding Queue</h2>
+            <div class="card-actions">
+              <select id="category-filter" class="btn-secondary">
+                <option value="" data-i18n="filters.all_categories">All Categories</option>
+                <option value="infrastructure" data-i18n="filters.infrastructure">Infrastructure</option>
+                <option value="healthcare" data-i18n="filters.healthcare">Healthcare</option>
+                <option value="education" data-i18n="filters.education">Education</option>
+                <option value="aid" data-i18n="filters.aid">Emergency Aid</option>
+              </select>
+              <select id="status-filter" class="btn-secondary">
+                <option value="" data-i18n="filters.all_status">All Status</option>
+                <option value="active" data-i18n="projects.active">Active</option>
+                <option value="voting" data-i18n="projects.voting">Voting</option>
+                <option value="ready_to_payout" data-i18n="projects.ready_to_payout">Ready to Payout</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="table-responsive">
+            <table id="projects-table">
+              <thead>
+                <tr>
+                  <th data-i18n="table.project">Project</th>
+                  <th data-i18n="table.priority_weight">Priority/Weight</th>
+                  <th data-i18n="table.progress">Progress</th>
+                  <th data-i18n="table.needed">Needed</th>
+                  <th data-i18n="table.voting_results">Voting Results</th>
+                  <th data-i18n="table.eta">ETA</th>
+                  <th data-i18n="table.actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="projects-tbody">
+                <tr>
+                  <td colspan="7" class="loading">
+                    <div class="spinner"></div>
+                    <span data-i18n="table.loading">Loading projects...</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Projects Section -->
+      <section id="projects-section" class="section hidden">
+        <div class="card-header">
+          <h1 data-i18n="projects.title">Projects</h1>
+          <button class="btn btn-primary" onclick="showCreateProject()" data-i18n="projects.create_project">Create Project</button>
+        </div>
+        
+        <div class="filters">
+          <div class="filter-group">
+            <label class="filter-label" data-i18n="projects.category">Category</label>
+            <select id="project-category-filter">
+              <option value="" data-i18n="filters.all_categories">All Categories</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label" data-i18n="projects.status">Status</label>
+            <select id="project-status-filter">
+              <option value="" data-i18n="filters.all_status">All Status</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label" data-i18n="projects.period">Period</label>
+            <select id="project-period-filter">
+              <option value="7" data-i18n="projects.last_7_days">Last 7 days</option>
+              <option value="30" data-i18n="projects.last_30_days">Last 30 days</option>
+              <option value="90" data-i18n="projects.last_90_days">Last 90 days</option>
+              <option value="all" data-i18n="projects.all_time">All time</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="table-responsive">
+            <table id="projects-table-main">
+              <thead>
+                <tr>
+                  <th data-i18n="table.project">Project</th>
+                  <th data-i18n="table.priority_weight">Priority/Weight</th>
+                  <th data-i18n="table.progress">Progress</th>
+                  <th data-i18n="table.needed">Needed</th>
+                  <th data-i18n="table.voting_results">Voting Results</th>
+                  <th data-i18n="table.eta">ETA</th>
+                  <th data-i18n="table.actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="projects-main-tbody">
+                <tr>
+                  <td colspan="7" class="loading">
+                    <div class="spinner"></div>
+                    <span data-i18n="table.loading">Loading projects...</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Voting Section -->
+      <section id="voting-section" class="section hidden">
+        <h1 data-i18n="voting.title">Priority Voting</h1>
+        
+        <div class="voting-section">
+          <div class="voting-timer">
+            <div>
+              <strong data-i18n="voting.current_round">Current Round</strong>: <span id="current-round">Нет</span>
+            </div>
+                          <div class="timer" id="voting-timer">00:00:00</div>
+            <div>
+              <strong data-i18n="voting.phase">Phase</strong>: <span id="voting-phase">Нет активного раунда</span>
+            </div>
+          </div>
+          
+          <div class="vote-results">
+            <div class="vote-metric">
+              <div class="vote-metric-value" id="total-participants">0</div>
+              <div class="vote-metric-label" data-i18n="voting.participants">Participants</div>
+            </div>
+            <div class="vote-metric">
+              <div class="vote-metric-value" id="total-revealed">0</div>
+              <div class="vote-metric-label" data-i18n="voting.revealed">Revealed</div>
+            </div>
+            <div class="vote-metric">
+              <div class="vote-metric-value" id="turnout-percentage">0.0%</div>
+              <div class="vote-metric-label" data-i18n="voting.turnout_percentage">Turnout</div>
+            </div>
+            <div class="vote-metric">
+              <div class="vote-metric-value" id="voting-method">взвешенное</div>
+              <div class="vote-metric-label" data-i18n="voting.method">Method</div>
+            </div>
+          </div>
+          
+          <!-- Testing Controls -->
+          <div class="text-center mt-3">
+            <button class="btn btn-sm btn-primary" onclick="app.loadVotingSection()" title="${i18n.t('voting.refresh_tooltip')}" data-i18n="voting.refresh_button">
+              🔄 Refresh
+            </button>
+            <button class="btn btn-sm btn-warning ml-2" onclick="resetVotingStatus()" title="${i18n.t('voting.reset_tooltip')}" data-i18n="voting.reset_button">
+              🗿 Reset
+            </button>
+            <button class="btn btn-sm btn-outline ml-2" onclick="app.finalizeRound()" data-i18n="voting.finalize_round">Завершить раунд</button>
+          </div>
+        </div>
+
+        <!-- Distribution Actions -->
+        <div id="voting-distribution" class="card mt-3">
+          <div class="card-header">
+            <h2 class="card-title" data-i18n="admin.distribution_plan">План распределения</h2>
+          </div>
+          <div class="card-body">
+            <div class="mb-2">
+              <div class="btn-group">
+                <button class="btn btn-primary" onclick="app.planDistribution('sequential')" data-i18n="buttons.distribute_sequential">Распределить по приоритету</button>
+                <button class="btn btn-secondary" onclick="app.planDistribution('proportional')" data-i18n="buttons.distribute_proportional">Распределить пропорционально</button>
+                <button class="btn" onclick="app.applyDistribution('sequential')" data-i18n="buttons.apply_distribution">Применить план</button>
+                <button class="btn btn-outline" onclick="app.finalizeRound()" data-i18n="voting.finalize_round">Завершить раунд</button>
+              </div>
+            </div>
+            <div id="distribution-plan-result" class="mt-2"></div>
+          </div>
+        </div>
+
+        <!-- Commit Phase Interface -->
+        <div id="commit-voting-section" class="card hidden">
+          <div class="card-header">
+            <h2 class="card-title" data-i18n="voting.commit_votes">Commit Your Votes</h2>
+          </div>
+          <div class="card-body">
+            <form id="commit-vote-form">
+              <!-- Dynamically populated by JavaScript -->
+            </form>
+          </div>
+        </div>
+
+        <!-- Reveal Phase Interface -->
+        <div id="reveal-voting-section" class="card hidden">
+          <div class="card-header">
+            <h2 class="card-title" data-i18n="voting.reveal_votes">Reveal Your Votes</h2>
+          </div>
+          <div class="card-body">
+            <form id="reveal-vote-form">
+              <!-- Dynamically populated by JavaScript -->
+            </form>
+          </div>
+        </div>
+
+        <!-- Voting Complete Section -->
+        <div id="voting-complete-section" class="card hidden">
+          <div class="card-header">
+            <h2 class="card-title" data-i18n="voting.voting_complete">Voting Round Complete</h2>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-success">
+              <p data-i18n="voting.voting_completed_message">The voting round has been completed and finalized. View the results below.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Current Voting Projects -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title" data-i18n="voting.projects_in_round">Projects in Current Round</h2>
+          </div>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="table.project">Project</th>
+                  <th data-i18n="table.progress">Progress</th>
+                  <th data-i18n="projects.status">Status</th>
+                  <th data-i18n="voting.current_results">Current Results</th>
+                  <th data-i18n="table.actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="voting-projects-tbody">
+                <tr>
+                  <td colspan="5" class="loading">
+                    <div class="spinner"></div>
+                    <span data-i18n="voting.loading_voting_projects">Loading voting projects...</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Voting Results History -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title" data-i18n="voting.voting_results">Voting Results</h2>
+          </div>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="voting.project_id">Project ID</th>
+                  <th data-i18n="table.for">For</th>
+                  <th data-i18n="table.against">Against</th>
+                  <th data-i18n="table.abstain">Abstain</th>
+                  <th data-i18n="table.not_participating">Not Participating</th>
+                  <th data-i18n="table.turnout">Turnout</th>
+                  <th data-i18n="table.final_priority">Final Priority</th>
+                </tr>
+              </thead>
+              <tbody id="voting-results-tbody">
+                <tr>
+                  <td colspan="7" class="loading">
+                    <div class="spinner"></div>
+                    <span data-i18n="voting.loading_voting_results">Loading voting results...</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="treasury-section" class="section hidden">
+        <h1 data-i18n="treasury.title">Treasury Overview</h1>
+        
+        <div class="dashboard-grid">
+          <div class="metric-card">
+            <div class="metric-value" id="total-balance">--</div>
+            <div class="metric-label" data-i18n="treasury.total_balance">Total Balance</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="total-donations">--</div>
+            <div class="metric-label" data-i18n="treasury.total_donations">Total Donations</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="total-allocated">--</div>
+            <div class="metric-label" data-i18n="treasury.total_allocated">Total Allocated</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="total-paid-out">--</div>
+            <div class="metric-label" data-i18n="treasury.total_paid_out">Total Paid Out</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title" data-i18n="treasury.recent_transactions">Recent Transactions</h2>
+            <div class="card-actions">
+              <button class="btn btn-secondary" onclick="exportTreasuryData()" data-i18n="treasury.export_csv">Export CSV</button>
+            </div>
+          </div>
+          
+          <div id="treasury-transactions" class="loading">
+            <div class="spinner"></div>
+            <span data-i18n="treasury.loading_transactions">Loading transactions...</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Personal Stats Section -->
+      <section id="personal-section" class="section hidden">
+        <div class="card-header">
+          <h1 data-i18n="personal.title">My Contribution Stats</h1>
+          <div class="card-actions">
+            <input type="text" id="wallet-address" data-i18n="personal.wallet_address_placeholder" placeholder="Enter wallet address" class="btn-secondary">
+            <button class="btn btn-primary" onclick="loadPersonalStats()" data-i18n="personal.load_stats">Load Stats</button>
+          </div>
+        </div>
+        
+        <div id="personal-stats-content" class="hidden">
+          <div class="personal-stats">
+            <div class="stat-item">
+              <div class="stat-value" id="my-total-donated">--</div>
+              <div class="metric-label" data-i18n="personal.total_donated">Total Donated (ETH)</div>
+              <div class="stat-comparison" id="donation-percentile">--</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="my-projects-count">--</div>
+              <div class="metric-label" data-i18n="personal.projects_supported">Projects Supported</div>
+              <div class="stat-comparison" id="projects-comparison">--</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="my-avg-share">--%</div>
+              <div class="metric-label" data-i18n="personal.average_share">Average Share</div>
+              <div class="stat-comparison" id="share-percentile">--</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title" data-i18n="personal.my_project_allocations">My Project Allocations</h2>
+              <div class="card-actions">
+                <button class="btn btn-secondary" onclick="exportPersonalData()" data-i18n="personal.export_my_data">Export My Data</button>
+              </div>
+            </div>
+            
+            <div id="my-allocations" class="loading">
+              <div class="spinner"></div>
+              <span data-i18n="personal.loading_allocations">Loading allocations...</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      
+      
+      <!-- Admin Modals -->
+      <div id="admin-modal" class="modal hidden">
+        <div class="modal-backdrop" onclick="app.closeModal()"></div>
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 id="modal-title" data-i18n="admin.admin_action">Admin Action</h3>
+            <button class="modal-close" onclick="app.closeModal()" data-i18n="buttons.close">&times;</button>
+          </div>
+          <div class="modal-body" id="modal-body">
+            <!-- Dynamic content -->
+          </div>
+          <div class="modal-footer" id="modal-footer">
+            <button class="btn btn-secondary" onclick="app.closeModal()" data-i18n="buttons.cancel">Cancel</button>
+          </div>
+        </div>
+      </div>
+      
+    </div>
+  </main>
+
+  <!-- Include i18n system -->
+  <script src="./js/i18n.js"></script>
+  <!-- Include enhanced JavaScript -->
+  <script src="./app.js?v=1.4.26"></script>
+</body>
+</html>
