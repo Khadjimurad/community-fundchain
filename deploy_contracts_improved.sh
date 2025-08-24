@@ -274,9 +274,74 @@ DEPLOYMENT_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%S.000Z)
 DEPLOYMENT_BLOCK=$BLOCK_NUMBER
 EOF
 
+    # Создаем .env файл в корне проекта для backend
+    cat > ".env" << EOF
+# FundChain Environment Configuration
+# Generated on: $(date -u +%Y-%m-%dT%H:%M:%S.000Z)
+
+# Application
+APP_NAME=FundChain API
+DEBUG=true
+ENVIRONMENT=development
+
+# Server
+HOST=0.0.0.0
+PORT=8000
+
+# Database
+DATABASE_URL=sqlite+aiosqlite:///./fundchain.db
+
+# Blockchain Configuration
+RPC_URL=http://anvil:8545
+WEB3_PROVIDER_URI=http://anvil:8545
+CHAIN_ID=31337
+START_BLOCK=0
+
+# Contract Addresses
+TREASURY_ADDRESS=$TREASURY_ADDRESS
+PROJECTS_ADDRESS=$PROJECTS_ADDRESS
+GOVERNANCE_SBT_ADDRESS=$GOVERNANCE_SBT_ADDRESS
+BALLOT_ADDRESS=$BALLOT_ADDRESS
+MULTISIG_ADDRESS=$MULTISIG_ADDRESS
+
+# Private Key (for development only)
+PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+
+# API Settings
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:8001,http://127.0.0.1:8001
+API_RATE_LIMIT=100
+
+# Security
+SECRET_KEY=dev_secret_key_change_in_production
+
+# Privacy
+K_ANONYMITY_THRESHOLD=5
+ENABLE_PRIVACY_FILTERS=true
+
+# Indexer
+INDEXER_ENABLED=true
+INDEXER_POLL_INTERVAL=5
+INDEXER_BATCH_SIZE=1000
+
+# Cache
+CACHE_TTL=300
+ENABLE_CACHING=true
+
+# Logging
+LOG_LEVEL=INFO
+LOG_FORMAT=text
+
+# Export
+MAX_EXPORT_RECORDS=10000
+
+# Deployment Info
+DEPLOYMENT_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%S.000Z)
+DEPLOYMENT_BLOCK=$BLOCK_NUMBER
+EOF
+
     # Создаем файл для frontend
     cat > "deployment_logs/frontend_config.js" << EOF
-// Frontend Configuration - Generated on: $(date -u +%Y-%m-%dT%H:%M:%S.000Z)
+// Frontend Configuration - Generated on: $(date -u +%Y-%m-%S.000Z)
 // Copy this configuration to your frontend files
 
 const CONTRACT_ADDRESSES = {
@@ -308,7 +373,71 @@ const ACCOUNT_KEYS = {
     }
 };
 
-export { CONTRACT_ADDRESSES, NETWORK_CONFIG, ACCOUNT_KEYS };
+// Export for different module systems
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { CONTRACT_ADDRESSES, NETWORK_CONFIG, ACCOUNT_KEYS };
+} else if (typeof window !== 'undefined') {
+    window.CONTRACT_ADDRESSES = CONTRACT_ADDRESSES;
+    window.NETWORK_CONFIG = NETWORK_CONFIG;
+    window.ACCOUNT_KEYS = ACCOUNT_KEYS;
+}
+EOF
+
+    # Создаем contract-config.js для web папки
+    cat > "web/contract-config.js" << EOF
+// Конфигурация контрактов FundChain
+// Автоматически сгенерировано: $(date -u +%Y-%m-%dT%H:%M:%S.000Z)
+
+const CONTRACT_CONFIG = {
+    // Адреса контрактов
+    addresses: {
+        treasury: '$TREASURY_ADDRESS',
+        projects: '$PROJECTS_ADDRESS',
+        governanceSBT: '$GOVERNANCE_SBT_ADDRESS',
+        ballot: '$BALLOT_ADDRESS',
+        multisig: '$MULTISIG_ADDRESS'
+    },
+    
+    // Конфигурация сети
+    network: {
+        rpcUrl: 'http://localhost:8545',
+        chainId: 31337,
+        networkName: 'Anvil Local'
+    },
+    
+    // Тестовые аккаунты
+    testAccounts: {
+        owner1: {
+            address: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+            privateKey: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
+        },
+        owner2: {
+            address: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+            privateKey: '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d'
+        },
+        owner3: {
+            address: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
+            privateKey: '0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a'
+        }
+    },
+    
+    // Методы для получения адресов
+    getAddress: function(contractName) {
+        return this.addresses[contractName.toLowerCase()];
+    },
+    
+    // Проверка подключения к сети
+    isCorrectNetwork: function(chainId) {
+        return chainId === this.network.chainId;
+    }
+};
+
+// Экспорт для использования в других модулях
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = CONTRACT_CONFIG;
+} else if (typeof window !== 'undefined') {
+    window.CONTRACT_CONFIG = CONTRACT_CONFIG;
+}
 EOF
 
     # Создаем README с инструкциями
@@ -368,6 +497,8 @@ cast call $PROJECTS_ADDRESS "projectCount()" --rpc-url http://localhost:8545
 EOF
 
     log "✅ Файлы с информацией о развертывании созданы в папке deployment_logs/"
+    log "✅ contract-config.js создан в папке web/"
+    log "✅ .env файл создан в корне проекта для backend"
 }
 
 # Вывод результатов
@@ -392,7 +523,7 @@ show_results() {
     echo ""
     echo "🚀 Следующие шаги:"
     echo "   1. Скопируйте адреса в ваш frontend код"
-    echo "   2. Обновите backend .env файл"
+    echo "   2. Backend автоматически использует .env файл"
     echo "   3. Перезапустите backend и frontend"
     echo ""
 }

@@ -140,6 +140,7 @@
     "no_projects_in_round": "No projects in current voting round",
     "waiting_for_results": "Waiting for results",
     "refresh_button": "Refresh",
+    "sync_blockchain": "Sync Blockchain",
     "reset_button": "Reset",
     "refresh_tooltip": "Refresh voting results",
             "reset_tooltip": "Reset voting status (for admin)",

@@ -4430,6 +4430,50 @@ class FundChainApp {
         return `<span class="badge badge-secondary">${displayStatus}</span>`;
     }
   }
+
+  // Sync voting data with blockchain
+  async syncWithBlockchain() {
+    try {
+      console.log('🔄 Syncing voting data with blockchain...');
+      
+      // Show loading state
+      const syncButton = document.querySelector('button[onclick="app.syncWithBlockchain()"]');
+      if (syncButton) {
+        syncButton.disabled = true;
+        syncButton.innerHTML = '⏳ Syncing...';
+      }
+      
+      // Call blockchain sync endpoint
+      const syncResult = await this.fetchJSON('/votes/sync-blockchain', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('Blockchain sync result:', syncResult);
+      
+      // Show success message
+      this.showSuccess('✅ Данные успешно синхронизированы с блокчейном');
+      
+      // Reload voting section with fresh data
+      await this.loadVotingSection();
+      
+      // Reload projects section to show updated voting results
+      await this.loadProjects();
+      
+    } catch (error) {
+      console.error('Failed to sync with blockchain:', error);
+      this.showError('❌ Ошибка синхронизации с блокчейном: ' + (error.message || 'Неизвестная ошибка'));
+    } finally {
+      // Restore button state
+      const syncButton = document.querySelector('button[onclick="app.syncWithBlockchain()"]');
+      if (syncButton) {
+        syncButton.disabled = false;
+        syncButton.innerHTML = '⛓️ Sync Blockchain';
+      }
+    }
+  }
 }
 
 // Global functions for onclick handlers

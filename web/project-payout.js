@@ -937,34 +937,7 @@ class ProjectPayoutInterface {
         console.warn('Failed to setup debug event listeners:', error);
       }
     
-          // Make debug buttons visible for testing
-      try {
-        setTimeout(() => {
-          let debugBtn = document.getElementById('debug-state');
-          if (!debugBtn) {
-            debugBtn = document.querySelector('[data-debug-state]') || 
-                      document.querySelector('.debug-state');
-          }
-          
-          let clearBtn = document.getElementById('clear-tx-id');
-          if (!clearBtn) {
-            clearBtn = document.querySelector('[data-clear-tx-id]') || 
-                      document.querySelector('.clear-tx-id');
-          }
-          
-          let resetBtn = document.getElementById('reset-workflow');
-          if (!resetBtn) {
-            resetBtn = document.querySelector('[data-reset-workflow]') || 
-                      document.querySelector('.reset-workflow');
-          }
-          
-          if (debugBtn) debugBtn.style.display = 'inline-block';
-          if (clearBtn) clearBtn.style.display = 'inline-block';
-          if (resetBtn) resetBtn.style.display = 'inline-block';
-        }, 1000);
-      } catch (error) {
-        console.warn('Failed to setup debug button visibility:', error);
-      }
+          // Debug buttons are now visible by default in HTML
     
           // Step 1 events
       try {
@@ -1259,7 +1232,7 @@ class ProjectPayoutInterface {
           console.log('Connected with account:', this.account);
         } catch (error) {
           console.error('Custom provider connection error:', error);
-          this.showError('Не удалось подключиться к провайдеру: ' + error.message);
+          console.error('Не удалось подключиться к провайдеру: ' + error.message);
           return;
         }
       } else if (window.ethereum) {
@@ -1273,7 +1246,7 @@ class ProjectPayoutInterface {
           console.log('Connected with account:', this.account);
         } catch (error) {
           console.error('MetaMask connection error:', error);
-          this.showError('Не удалось подключиться к MetaMask: ' + error.message);
+          console.error('Не удалось подключиться к MetaMask: ' + error.message);
           return;
         }
       } else if (rpcUrl) {
@@ -1286,11 +1259,11 @@ class ProjectPayoutInterface {
           this.showWarning('Подключение установлено в режиме просмотра. Для отправки транзакций необходимо подключить кошелек с приватным ключом или использовать MetaMask.');
         } catch (error) {
           console.error('Custom provider connection error:', error);
-          this.showError('Не удалось подключиться к провайдеру: ' + error.message);
+          console.error('Не удалось подключиться к провайдеру: ' + error.message);
           return;
         }
       } else {
-        this.showError('Пожалуйста, укажите браузерный кошелек или RPC URL');
+        console.error('Пожалуйста, укажите браузерный кошелек или RPC URL');
         return;
       }
       
@@ -1300,7 +1273,7 @@ class ProjectPayoutInterface {
         console.log('Web3 connection confirmed');
       } catch (error) {
         console.error('Web3 connection error:', error);
-        this.showError('Не удалось подключиться к сети. Проверьте, что указанный RPC URL доступен.');
+        console.error('Не удалось подключиться к сети. Проверьте, что указанный RPC URL доступен.');
         this.web3 = null;
         this.account = null;
         return;
@@ -1312,7 +1285,7 @@ class ProjectPayoutInterface {
         console.log('Contracts initialized');
       } catch (error) {
         console.error('Contract initialization error:', error);
-        this.showError('Не удалось инициализировать контракты: ' + error.message);
+        console.error('Не удалось инициализировать контракты: ' + error.message);
         return;
       }
       
@@ -1382,7 +1355,7 @@ class ProjectPayoutInterface {
       return true;
     } catch (error) {
       console.error('Connection error:', error);
-      this.showError('Не удалось подключиться к Web3: ' + error.message);
+      console.error('Не удалось подключиться к Web3: ' + error.message);
       return false;
     }
   }
@@ -1460,7 +1433,6 @@ class ProjectPayoutInterface {
       this.updateWorkflowStep(1);
     } catch (error) {
       console.error('Error disconnecting from Web3:', error);
-      this.showError('Failed to disconnect from Web3: ' + error.message);
     }
   }
 
@@ -1476,7 +1448,6 @@ class ProjectPayoutInterface {
       this.showSuccess('Workflow reset completed');
     } catch (error) {
       console.error('Error resetting workflow:', error);
-      this.showError('Failed to reset workflow: ' + error.message);
     }
   }
 
@@ -1499,47 +1470,60 @@ class ProjectPayoutInterface {
       const success = await this.connectWeb3();
       
       if (!success) {
-        this.showError('Необходимо подключение к Web3 для выполнения этого действия');
+        console.error('Необходимо подключение к Web3 для выполнения этого действия');
       }
       
       return success;
     } catch (error) {
       console.error('Error checking Web3 connection:', error);
-      this.showError('Failed to check Web3 connection: ' + error.message);
       return false;
     }
   }
 
   initializeContracts() {
     try {
-      let multisigAddressElement = document.getElementById('multisig-address');
-      if (!multisigAddressElement) {
-        multisigAddressElement = document.querySelector('[data-multisig-address]') || 
-                                document.querySelector('.multisig-address');
+      // Try to get addresses from CONTRACT_CONFIG first
+      let multisigAddress, treasuryAddress, projectsAddress;
+      
+      if (typeof CONTRACT_CONFIG !== 'undefined' && CONTRACT_CONFIG.addresses) {
+        // Use addresses from CONTRACT_CONFIG
+        multisigAddress = CONTRACT_CONFIG.addresses.multisig;
+        treasuryAddress = CONTRACT_CONFIG.addresses.treasury;
+        projectsAddress = CONTRACT_CONFIG.addresses.projects;
+        console.log('Using contract addresses from CONTRACT_CONFIG');
+      } else {
+        // Fallback to DOM elements or default addresses
+        let multisigAddressElement = document.getElementById('multisig-address');
+        if (!multisigAddressElement) {
+          multisigAddressElement = document.querySelector('[data-multisig-address]') || 
+                                  document.querySelector('.multisig-address');
+        }
+        
+        let treasuryAddressElement = document.getElementById('treasury-address');
+        if (!treasuryAddressElement) {
+          treasuryAddressElement = document.querySelector('[data-treasury-address]') || 
+                                  document.querySelector('.treasury-address');
+        }
+        
+        let projectsAddressElement = document.getElementById('projects-address');
+        if (!projectsAddressElement) {
+          projectsAddressElement = document.querySelector('[data-projects-address]') || 
+                                  document.querySelector('.projects-address');
+        }
+        
+        multisigAddress = multisigAddressElement ? multisigAddressElement.value : '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318';
+        treasuryAddress = treasuryAddressElement ? treasuryAddressElement.value : '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707';
+        projectsAddress = projectsAddressElement ? projectsAddressElement.value : '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0';
+        console.log('Using contract addresses from DOM elements or defaults');
       }
       
-      let treasuryAddressElement = document.getElementById('treasury-address');
-      if (!treasuryAddressElement) {
-        treasuryAddressElement = document.querySelector('[data-treasury-address]') || 
-                                document.querySelector('.treasury-address');
-      }
-      
-      let projectsAddressElement = document.getElementById('projects-address');
-      if (!projectsAddressElement) {
-        projectsAddressElement = document.querySelector('[data-projects-address]') || 
-                                document.querySelector('.projects-address');
-      }
-      
-      const multisigAddress = multisigAddressElement ? multisigAddressElement.value : '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318';
-      const treasuryAddress = treasuryAddressElement ? treasuryAddressElement.value : '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707';
-      const projectsAddress = projectsAddressElement ? projectsAddressElement.value : '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0';
+      console.log('Contract addresses:', { multisigAddress, treasuryAddress, projectsAddress });
       
       this.contracts.multisig = new this.web3.eth.Contract(this.abis.multisig, multisigAddress);
       this.contracts.treasury = new this.web3.eth.Contract(this.abis.treasury, treasuryAddress);
       this.contracts.projects = new this.web3.eth.Contract(this.abis.projects, projectsAddress);
     } catch (error) {
       console.error('Error initializing contracts:', error);
-      this.showError('Failed to initialize contracts: ' + error.message);
     }
   }
 
@@ -1548,7 +1532,7 @@ class ProjectPayoutInterface {
       console.log('refreshProjects() method called');
       
       if (!this.web3 || !this.contracts.projects) {
-        this.showError('Not connected to Web3');
+        console.error('Not connected to Web3');
         return;
       }
       
@@ -1578,21 +1562,29 @@ class ProjectPayoutInterface {
             console.log('Project IDs from contract:', projectIds);
             
             if (projectIds && projectIds.length > 0) {
-              for (let i = 0; i < Math.min(projectIds.length, 10); i++) {
+              for (let i = 0; i < projectIds.length; i++) {
                 try {
                   const projectId = projectIds[i];
                   const project = await this.contracts.projects.methods.projects(projectId).call();
+                  
+                  // Проверяем, что проект существует и имеет корректный ID
                   if (project && project.id && project.id !== '0x0000000000000000000000000000000000000000000000000000000000000000') {
-                    projects.push({
-                      id: project.id,
-                      name: project.name || `Project ${i}`,
-                      description: project.description || 'No description',
-                      status: parseInt(project.status) || 0,
-                      target: project.target || '0',
-                      totalAllocated: project.totalAllocated || '0',
-                      totalPaidOut: project.totalPaidOut || '0',
-                      category: project.category || 'General'
-                    });
+                    const projectStatus = parseInt(project.status) || 0;
+                    
+                    // Добавляем только проекты со статусом "ReadyToPayout" (4)
+                    if (projectStatus === 4) {
+                      projects.push({
+                        id: project.id,
+                        name: project.name || `Project ${i}`,
+                        description: project.description || 'No description',
+                        status: projectStatus,
+                        target: project.target || '0',
+                        totalAllocated: project.totalAllocated || '0',
+                        totalPaidOut: project.totalPaidOut || '0',
+                        category: project.category || 'General',
+                        creator: project.creator || '0x0000000000000000000000000000000000000000'
+                      });
+                    }
                   }
                 } catch (projectError) {
                   console.warn(`Failed to get project ${i}:`, projectError);
@@ -1603,50 +1595,37 @@ class ProjectPayoutInterface {
             console.warn('Failed to get projects from contract, using demo data:', contractError);
           }
           
-          // Если не удалось получить проекты из контракта, используем демо-данные
+          // Если не удалось получить проекты из контракта, показываем сообщение об отсутствии проектов
           if (projects.length === 0) {
-            projects = [
-              {
-                id: '0x0000000000000000000000000000000000000000000000000000000000000001',
-                name: 'Строительство общественного центра',
-                description: 'Проект по строительству общественного центра в районе',
-                status: 4, // ReadyToPayout
-                target: this.web3.utils.toWei('10', 'ether'),
-                totalAllocated: this.web3.utils.toWei('8', 'ether'),
-                totalPaidOut: this.web3.utils.toWei('0', 'ether'),
-                category: 'Инфраструктура'
-              },
-              {
-                id: '0x0000000000000000000000000000000000000000000000000000000000000002',
-                name: 'Образовательная программа',
-                description: 'Программа для поддержки образования в регионе',
-                status: 4, // ReadyToPayout
-                target: this.web3.utils.toWei('5', 'ether'),
-                totalAllocated: this.web3.utils.toWei('5', 'ether'),
-                totalPaidOut: this.web3.utils.toWei('0', 'ether'),
-                category: 'Образование'
-              },
-              {
-                id: '0x0000000000000000000000000000000000000000000000000000000000000003',
-                name: 'Экологическая инициатива',
-                description: 'Проект по очистке реки и прибрежных территорий',
-                status: 4, // ReadyToPayout
-                target: this.web3.utils.toWei('3', 'ether'),
-                totalAllocated: this.web3.utils.toWei('3', 'ether'),
-                totalPaidOut: this.web3.utils.toWei('0', 'ether'),
-                category: 'Экология'
-              }
-            ];
+            projectsList.innerHTML = `
+              <div class="alert alert-info">
+                <h4>Нет проектов для выплаты</h4>
+                <p>В данный момент нет проектов со статусом "ReadyToPayout".</p>
+                <p>Проекты должны пройти все этапы финансирования и голосования, чтобы стать доступными для выплаты.</p>
+              </div>
+            `;
+            return;
           }
           
           // Если проектов нет
           if (projects.length === 0) {
-            projectsList.innerHTML = '<div class="alert alert-info">Нет проектов для отображения.</div>';
+            projectsList.innerHTML = `
+              <div class="alert alert-info">
+                <h4>Нет проектов для выплаты</h4>
+                <p>В данный момент нет проектов со статусом "ReadyToPayout".</p>
+                <p>Проекты должны пройти все этапы финансирования и голосования, чтобы стать доступными для выплаты.</p>
+                <div class="mt-3">
+                  <button class="btn btn-secondary" onclick="window.projectPayout.refreshProjects()">
+                    <i class="fas fa-sync-alt"></i> Обновить список
+                  </button>
+                </div>
+              </div>
+            `;
             return;
           }
           
           // Отображаем список проектов
-          let projectsHTML = '<h4>Доступные проекты:</h4><div class="project-list">';
+          let projectsHTML = '<h4>Проекты готовые к выплате:</h4><div class="project-list">';
           
           projects.forEach(project => {
             const availableAmount = this.web3.utils.fromWei(
@@ -1654,30 +1633,33 @@ class ProjectPayoutInterface {
               'ether'
             );
             
-            // Определяем статус проекта
-            const statusMap = ['Draft', 'Active', 'FundingReady', 'Voting', 'ReadyToPayout', 'Paid', 'Cancelled', 'Archived'];
-            const statusText = statusMap[project.status] || 'Unknown';
-            const statusClass = project.status === 4 ? 'badge-info' : 
-                               project.status === 5 ? 'badge-success' : 
-                               project.status === 6 ? 'badge-danger' : 'badge-secondary';
+            const targetAmount = this.web3.utils.fromWei(project.target, 'ether');
+            const allocatedAmount = this.web3.utils.fromWei(project.totalAllocated, 'ether');
+            const paidOutAmount = this.web3.utils.fromWei(project.totalPaidOut, 'ether');
             
             projectsHTML += `
               <div class="project-card" data-project-id="${project.id}">
                 <div class="project-header">
                   <div class="project-title">${project.name}</div>
                   <div class="project-status">
-                    <span class="badge ${statusClass}">${statusText}</span>
+                    <span class="badge badge-info">Готов к выплате</span>
                   </div>
                 </div>
                 <div class="project-details">
-                  <div>${project.description}</div>
+                  <div class="project-description">${project.description}</div>
                   <div class="project-metrics">
-                    <div class="project-metric">Категория: ${project.category}</div>
-                    <div class="project-metric">Доступно: ${availableAmount} ETH</div>
-                    <div class="project-metric">Статус: ${statusText}</div>
+                    <div class="project-metric"><strong>Целевая сумма:</strong> ${targetAmount} ETH</div>
+                    <div class="project-metric"><strong>Выделено:</strong> ${allocatedAmount} ETH</div>
+                    <div class="project-metric"><strong>Выплачено:</strong> ${paidOutAmount} ETH</div>
+                    <div class="project-metric"><strong>Доступно для выплаты:</strong> <span class="text-success">${availableAmount} ETH</span></div>
+                    <div class="project-metric"><strong>Категория:</strong> ${project.category}</div>
                   </div>
                 </div>
-                <button class="btn btn-primary select-project-btn" data-project-id="${project.id}">Выбрать</button>
+                <div class="project-actions">
+                  <button class="btn btn-primary select-project-btn" data-project-id="${project.id}">
+                    <i class="fas fa-check"></i> Выбрать для выплаты
+                  </button>
+                </div>
               </div>
             `;
           });
@@ -1742,7 +1724,7 @@ class ProjectPayoutInterface {
                 };
                 this.loadProjectById(projectId, [mockProject]);
               } else {
-                this.showError('Пожалуйста, введите корректный ID проекта');
+                console.error('Пожалуйста, введите корректный ID проекта');
               }
             });
           }
@@ -1750,7 +1732,7 @@ class ProjectPayoutInterface {
       }
     } catch (error) {
       console.error('Error in refreshProjects:', error);
-      this.showError('Не удалось обновить список проектов: ' + error.message);
+      console.error('Не удалось обновить список проектов: ' + error.message);
     }
   }
 
@@ -1760,7 +1742,7 @@ class ProjectPayoutInterface {
       const projectId = manualProjectIdElement ? manualProjectIdElement.value : '';
       
       if (!projectId || !this.web3.utils.isHexStrict(projectId)) {
-        this.showError('Invalid project ID (must be hex)');
+        console.error('Invalid project ID (must be hex)');
         return;
       }
       
@@ -1769,13 +1751,13 @@ class ProjectPayoutInterface {
       
       // Check if project exists
       if (!project || project.createdAt === '0') {
-        this.showError('Project not found');
+        console.error('Project not found');
         return;
       }
       
       // Check if project is ReadyToPayout (status 4) or Paid (status 5)
       if (project.status !== '4' && project.status !== '5') {
-        this.showError(`Project is not ready for payout. Current status: ${project.status}`);
+        console.error(`Project is not ready for payout. Current status: ${project.status}`);
         return;
       }
       
@@ -1811,7 +1793,7 @@ class ProjectPayoutInterface {
       this.showSuccess('Project loaded successfully');
     } catch (error) {
       console.error('Error loading project:', error);
-      this.showError('Failed to load project: ' + error.message);
+              console.error('Failed to load project: ' + error.message);
     }
   }
   
@@ -1824,14 +1806,14 @@ class ProjectPayoutInterface {
       
       if (!project) {
         console.error(`Project with ID ${projectId} not found`);
-        this.showError(`Проект с ID ${projectId} не найден`);
+        console.error(`Проект с ID ${projectId} не найден`);
         return;
       }
       
       // Validate project data
       if (!project.id || !project.name) {
         console.error('Invalid project data:', project);
-        this.showError('Некорректные данные проекта');
+        console.error('Некорректные данные проекта');
         return;
       }
       
@@ -1864,7 +1846,7 @@ class ProjectPayoutInterface {
       this.showSuccess('Проект успешно загружен');
     } catch (error) {
       console.error('Error loading project by ID:', error);
-      this.showError('Не удалось загрузить проект: ' + error.message);
+              console.error('Не удалось загрузить проект: ' + error.message);
     }
   }
 
@@ -1994,7 +1976,7 @@ class ProjectPayoutInterface {
     }
     
     if (!this.currentProject) {
-      this.showError('Проект не выбран');
+      console.error('Проект не выбран');
       return;
     }
     
@@ -2078,7 +2060,7 @@ class ProjectPayoutInterface {
       }
     } catch (error) {
       console.error('Error calculating max available amount:', error);
-      this.showError('Ошибка при расчете максимальной доступной суммы: ' + error.message);
+      console.error('Ошибка при расчете максимальной суммы: ' + error.message);
     }
   }
 
@@ -2135,10 +2117,10 @@ class ProjectPayoutInterface {
               // Refresh the step with the new transaction ID
               this.setupStep3();
             } else {
-              this.showError('Неверный ID транзакции. Пожалуйста, проверьте ID и попробуйте снова.');
+              console.error('Неверный ID транзакции. Пожалуйста, проверьте ID и попробуйте снова.');
             }
           } else {
-            this.showError('Пожалуйста, введите корректный ID транзакции');
+                          console.error('Пожалуйста, введите корректный ID транзакции');
           }
         });
       }
@@ -2233,7 +2215,7 @@ class ProjectPayoutInterface {
 
   setupStep5() {
     if (!this.currentProject) {
-      this.showError('No project selected');
+      console.error('No project selected');
       return;
     }
     
@@ -2265,7 +2247,6 @@ class ProjectPayoutInterface {
       }
     } catch (error) {
       console.error('Error moving to next step:', error);
-      this.showError('Failed to move to next step: ' + error.message);
     }
   }
 
@@ -2276,7 +2257,6 @@ class ProjectPayoutInterface {
       }
     } catch (error) {
       console.error('Error moving to previous step:', error);
-      this.showError('Failed to move to previous step: ' + error.message);
     }
   }
 
@@ -2288,12 +2268,12 @@ class ProjectPayoutInterface {
       
       // Проверяем, что у нас есть действующий аккаунт для отправки транзакции
       if (!this.account) {
-        this.showError('Для отправки транзакции необходимо подключить кошелек с приватным ключом или использовать MetaMask. Пожалуйста, укажите приватный ключ или подключите MetaMask.');
+        console.error('Для отправки транзакции необходимо подключить кошелек с приватным ключом или использовать MetaMask. Пожалуйста, укажите приватный ключ или подключите MetaMask.');
         return;
       }
       
       if (!this.currentProject) {
-        this.showError('Проект не выбран');
+        console.error('Проект не выбран');
         return;
       }
       
@@ -2306,13 +2286,13 @@ class ProjectPayoutInterface {
       const description = payoutDescriptionElement ? (payoutDescriptionElement.value || `Выплата по проекту ${this.currentProject.name}`) : `Выплата по проекту ${this.currentProject.name}`;
       
       if (!this.web3.utils.isAddress(recipient)) {
-        this.showError('Неверный адрес получателя');
+        console.error('Неверный адрес получателя');
         return;
       }
       
       // Validate amount
       if (!amount || amount === '0') {
-        this.showError('Пожалуйста, укажите корректную сумму выплаты');
+        console.error('Пожалуйста, укажите корректную сумму выплаты');
         return;
       }
       
@@ -2488,7 +2468,7 @@ class ProjectPayoutInterface {
         }
       } else {
         console.error('Failed to extract transaction ID');
-        this.showError('Не удалось получить ID транзакции. Проверьте консоль для получения дополнительной информации.');
+        console.error('Не удалось получить ID транзакции. Проверьте консоль для получения дополнительной информации.');
         // Восстанавливаем кнопку
         if (proposeButton) {
           proposeButton.disabled = false;
@@ -2515,7 +2495,7 @@ class ProjectPayoutInterface {
       this.updateWorkflowStep(3);
     } catch (error) {
       console.error('Payout proposal error:', error);
-      this.showError('Не удалось создать предложение на выплату: ' + error.message);
+      console.error('Не удалось создать предложение на выплату: ' + error.message);
       
       // Восстанавливаем кнопку
       const proposeButton = document.getElementById('propose-button');
@@ -2708,17 +2688,17 @@ class ProjectPayoutInterface {
   async confirmTransaction() {
     try {
       if (!this.web3 || !this.contracts.multisig) {
-        this.showError('Not connected to Web3');
+        console.error('Not connected to Web3');
         return;
       }
       
       if (!this.account) {
-        this.showError('Для подтверждения транзакции необходимо подключить кошелек с приватным ключом или использовать MetaMask. Пожалуйста, укажите приватный ключ или подключите MetaMask.');
+        console.error('Для подтверждения транзакции необходимо подключить кошелек с приватным ключом или использовать MetaMask. Пожалуйста, укажите приватный ключ или подключите MetaMask.');
         return;
       }
       
       if (!this.currentTransactionId) {
-        this.showError('No transaction selected');
+        console.error('No transaction selected');
         return;
       }
       
@@ -2765,7 +2745,7 @@ class ProjectPayoutInterface {
       }
     } catch (error) {
       console.error('Confirmation error:', error);
-      this.showError(`Failed to confirm transaction: ${error.message}`);
+      console.error(`Failed to confirm transaction: ${error.message}`);
       
       // Restore button
       const confirmButton = document.getElementById('confirm-button');
@@ -2892,7 +2872,7 @@ class ProjectPayoutInterface {
       }
     } catch (error) {
       console.error('Error refreshing transaction status:', error);
-      this.showError('Failed to refresh transaction status: ' + error.message);
+      console.error('Failed to refresh transaction status: ' + error.message);
     }
   }
 
@@ -2998,24 +2978,24 @@ class ProjectPayoutInterface {
       }
     } catch (error) {
       console.error('Error refreshing execution status:', error);
-      this.showError('Failed to refresh execution status: ' + error.message);
+      console.error('Failed to refresh execution status: ' + error.message);
     }
   }
 
   async executeTransaction() {
     try {
       if (!this.web3 || !this.contracts.multisig) {
-        this.showError('Not connected to Web3');
+        console.error('Not connected to Web3');
         return;
       }
       
       if (!this.account) {
-        this.showError('Для выполнения транзакции необходимо подключить кошелек с приватным ключом или использовать MetaMask. Пожалуйста, укажите приватный ключ или подключите MetaMask.');
+        console.error('Для выполнения транзакции необходимо подключить кошелек с приватным ключом или использовать MetaMask. Пожалуйста, укажите приватный ключ или подключите MetaMask.');
         return;
       }
       
       if (!this.currentTransactionId) {
-        this.showError('No transaction selected');
+        console.error('No transaction selected');
         return;
       }
       
@@ -3073,7 +3053,7 @@ class ProjectPayoutInterface {
       }
     } catch (error) {
       console.error('Execution error:', error);
-      this.showError(`Failed to execute transaction: ${error.message}`);
+      console.error(`Failed to execute transaction: ${error.message}`);
     }
   }
 
@@ -3115,24 +3095,24 @@ class ProjectPayoutInterface {
       }
     } catch (error) {
       console.error('Error refreshing project status:', error);
-      this.showError('Failed to refresh project status: ' + error.message);
+      console.error('Failed to refresh project status: ' + error.message);
     }
   }
 
   async completeProject() {
     try {
       if (!this.web3 || !this.contracts.projects) {
-        this.showError('Not connected to Web3');
+        console.error('Not connected to Web3');
         return;
       }
       
       if (!this.account) {
-        this.showError('Для завершения проекта необходимо подключить кошелек с приватным ключом или использовать MetaMask. Пожалуйста, укажите приватный ключ или подключите MetaMask.');
+        console.error('Для завершения проекта необходимо подключить кошелек с приватным ключом или использовать MetaMask. Пожалуйста, укажите приватный ключ или подключите MetaMask.');
         return;
       }
       
       if (!this.currentProject) {
-        this.showError('No project selected');
+        console.error('No project selected');
         return;
       }
       
@@ -3174,21 +3154,12 @@ class ProjectPayoutInterface {
       }
     } catch (error) {
       console.error('Project completion error:', error);
-      this.showError(`Failed to complete project: ${error.message}`);
+      console.error(`Failed to complete project: ${error.message}`);
     }
   }
 
   finishWorkflow() {
     this.showSuccess('Project payout workflow completed successfully!');
-    
-    // Попробуем показать модальное окно
-    try {
-      this.showModal('Workflow Completed', '<p>The project payout workflow has been completed successfully.</p><p>You can start a new workflow or disconnect from Web3.</p>');
-    } catch (modalError) {
-      console.warn('Failed to show completion modal:', modalError);
-      // Если модальное окно не работает, показываем простое сообщение
-      alert('Project payout workflow completed successfully!');
-    }
     
     // Сбрасываем состояние для нового workflow
     this.currentTransactionId = null;
@@ -3208,7 +3179,6 @@ class ProjectPayoutInterface {
       this.showSuccess('Transaction ID cleared from localStorage');
     } catch (error) {
       console.error('Error clearing transaction ID:', error);
-      this.showError('Failed to clear transaction ID: ' + error.message);
     }
   }
 
@@ -3237,19 +3207,19 @@ class ProjectPayoutInterface {
     try {
       const manualTxIdInput = document.getElementById('manual-tx-id-step2');
       if (!manualTxIdInput) {
-        this.showError('Manual transaction ID input not found');
+        console.error('Manual transaction ID input not found');
         return;
       }
       
       const txId = manualTxIdInput.value.trim();
       if (!txId) {
-        this.showError('Please enter a transaction ID');
+        console.error('Please enter a transaction ID');
         return;
       }
       
       // Validate that it's a number
       if (isNaN(txId) || parseInt(txId) <= 0) {
-        this.showError('Transaction ID must be a positive number');
+        console.error('Transaction ID must be a positive number');
         return;
       }
       
@@ -3267,7 +3237,6 @@ class ProjectPayoutInterface {
       }
     } catch (error) {
       console.error('Error setting manual transaction ID:', error);
-      this.showError('Failed to set manual transaction ID: ' + error.message);
     }
   }
 
@@ -3284,11 +3253,10 @@ class ProjectPayoutInterface {
         this.showSuccess('Manual form displayed for testing');
       } else {
         console.error('Manual form not found');
-        this.showError('Manual form not found in DOM');
+        console.error('Manual form not found in DOM');
       }
     } catch (error) {
       console.error('Error testing manual form display:', error);
-      this.showError('Failed to test manual form display: ' + error.message);
     }
   }
 
@@ -3296,7 +3264,7 @@ class ProjectPayoutInterface {
   continueToStep3() {
     try {
       if (!this.currentTransactionId) {
-        this.showError('Please set a transaction ID first');
+        console.error('Please set a transaction ID first');
         return;
       }
       
@@ -3304,7 +3272,6 @@ class ProjectPayoutInterface {
       this.updateWorkflowStep(3);
     } catch (error) {
       console.error('Error continuing to step 3:', error);
-      this.showError('Failed to continue to step 3: ' + error.message);
     }
   }
   
@@ -3312,7 +3279,7 @@ class ProjectPayoutInterface {
   skipToNextStep() {
     try {
       if (!this.currentTransactionId) {
-        this.showError('Please set a transaction ID first');
+        console.error('Please set a transaction ID first');
         return;
       }
       
@@ -3323,7 +3290,6 @@ class ProjectPayoutInterface {
       this.nextStep();
     } catch (error) {
       console.error('Error skipping to next step:', error);
-      this.showError('Failed to skip to next step: ' + error.message);
     }
   }
   
@@ -3355,19 +3321,19 @@ class ProjectPayoutInterface {
     try {
       const manualTxIdInput = document.getElementById('manual-tx-id');
       if (!manualTxIdInput) {
-        this.showError('Manual transaction ID input not found');
+        console.error('Manual transaction ID input not found');
         return;
       }
       
       const txId = manualTxIdInput.value.trim();
       if (!txId) {
-        this.showError('Please enter a transaction ID');
+        console.error('Please enter a transaction ID');
         return;
       }
       
       // Validate that it's a number
       if (isNaN(txId) || parseInt(txId) <= 0) {
-        this.showError('Transaction ID must be a positive number');
+        console.error('Transaction ID must be a positive number');
         return;
       }
       
@@ -3388,7 +3354,6 @@ class ProjectPayoutInterface {
       }
     } catch (error) {
       console.error('Error setting manual transaction ID:', error);
-      this.showError('Failed to set manual transaction ID: ' + error.message);
     }
   }
 
@@ -3404,33 +3369,52 @@ class ProjectPayoutInterface {
       console.log('LocalStorage transaction ID:', localStorage.getItem('currentTransactionId'));
       console.log('====================');
       
-      this.showModal('Current State', `
-        <div style="text-align: left;">
-          <p><strong>Web3 connected:</strong> ${!!this.web3}</p>
-          <p><strong>Account:</strong> ${this.account || 'None'}</p>
-          <p><strong>Current project:</strong> ${this.currentProject ? this.currentProject.name : 'None'}</p>
-          <p><strong>Current transaction ID:</strong> ${this.currentTransactionId || 'None'}</p>
-          <p><strong>Workflow step:</strong> ${this.workflowStep}</p>
-          <p><strong>LocalStorage transaction ID:</strong> ${localStorage.getItem('currentTransactionId') || 'None'}</p>
-          <hr>
-          <p><strong>Debug Info:</strong></p>
-          <p>Last transaction receipt: ${window.lastTxReceipt ? 'Available' : 'None'}</p>
-          <p>Console commands:</p>
-          <code>window.lastTxReceipt</code> - view last receipt<br>
-          <code>window.lastTxReceipt.logs</code> - view transaction logs<br>
-          <code>window.lastTxReceipt.events</code> - view events
+      console.log('=== Debug Info ===');
+      console.log('Last transaction receipt:', window.lastTxReceipt ? 'Available' : 'None');
+      console.log('Console commands:');
+      console.log('window.lastTxReceipt - view last receipt');
+      console.log('window.lastTxReceipt.logs - view transaction logs');
+      console.log('window.lastTxReceipt.events - view events');
+
+      // Показываем модальное окно с информацией о состоянии
+      const stateInfo = `
+        <div class="alert alert-info">
+          <h4>Состояние системы</h4>
+          <div class="data-table">
+            <table>
+              <tr><td><strong>Web3:</strong></td><td>${!!this.web3 ? 'Да' : 'Нет'}</td></tr>
+              <tr><td><strong>Аккаунт:</strong></td><td>${this.account || 'Не подключен'}</td></tr>
+              <tr><td><strong>Проект:</strong></td><td>${this.currentProject ? this.currentProject.name : 'Не выбран'}</td></tr>
+              <tr><td><strong>TX ID:</strong></td><td>${this.currentTransactionId || 'Не установлен'}</td></tr>
+              <tr><td><strong>Шаг:</strong></td><td>${this.workflowStep}</td></tr>
+              <tr><td><strong>LocalStorage:</strong></td><td>${localStorage.getItem('currentTransactionId') || 'Не установлен'}</td></tr>
+            </table>
+          </div>
         </div>
-      `);
+        
+        <div class="alert alert-info">
+          <h4>Отладка</h4>
+          <p><strong>Транзакция:</strong> ${window.lastTxReceipt ? 'Доступна' : 'Отсутствует'}</p>
+          <p><strong>Команды:</strong></p>
+          <ul>
+            <li><code>window.lastTxReceipt</code> - последняя транзакция</li>
+            <li><code>window.lastTxReceipt.logs</code> - логи</li>
+            <li><code>window.lastTxReceipt.events</code> - события</li>
+          </ul>
+        </div>
+      `;
+      
+      this.showModal('Состояние системы', stateInfo);
     } catch (error) {
       console.error('Error checking state:', error);
-      this.showError('Failed to check state: ' + error.message);
+      this.showError('Ошибка при проверке состояния: ' + error.message);
     }
   }
 
   showError(message) {
     console.error(message);
     try {
-      this.showModal('Error', `<div class="alert alert-danger">${message}</div>`);
+      this.showModal('Ошибка', `<div class="alert alert-danger"><strong>Ошибка:</strong> ${message}</div>`);
     } catch (error) {
       console.warn('Failed to show error modal:', error);
       // Fallback to simple alert
@@ -3440,9 +3424,8 @@ class ProjectPayoutInterface {
 
   showSuccess(message) {
     console.log(message);
-    // Show success message to user
     try {
-      this.showModal('Success', `<div class="alert alert-success">${message}</div>`);
+      this.showModal('Успешно', `<div class="alert alert-success"><strong>Успешно:</strong> ${message}</div>`);
     } catch (error) {
       console.warn('Failed to show success modal:', error);
       // Fallback to simple alert
@@ -3453,7 +3436,7 @@ class ProjectPayoutInterface {
   showWarning(message) {
     console.warn(message);
     try {
-      this.showModal('Warning', `<div class="alert alert-warning">${message}</div>`);
+      this.showModal('Предупреждение', `<div class="alert alert-warning"><strong>Предупреждение:</strong> ${message}</div>`);
     } catch (error) {
       console.warn('Failed to show warning modal:', error);
       // Fallback to simple alert
@@ -3463,27 +3446,21 @@ class ProjectPayoutInterface {
 
   showModal(title, content) {
     try {
-      const modalTitle = document.getElementById('modal-title');
-      if (modalTitle) {
-        modalTitle.textContent = title;
-      }
-      
-      const modalBody = document.getElementById('modal-body');
-      if (modalBody) {
-        modalBody.innerHTML = content;
-      }
-      
       const modal = document.getElementById('modal');
-      if (modal) {
+      const modalTitle = document.getElementById('modal-title');
+      const modalBody = document.getElementById('modal-body');
+      
+      if (modal && modalTitle && modalBody) {
+        modalTitle.textContent = title;
+        modalBody.innerHTML = content;
         modal.classList.remove('hidden');
       } else {
-        console.warn('Modal element not found, falling back to alert');
-        alert(`${title}\n\n${content.replace(/<[^>]*>/g, '')}`);
+        console.error('Modal elements not found');
+        console.log(`${title}: ${content.replace(/<[^>]*>/g, '')}`);
       }
     } catch (error) {
-      console.warn('Failed to show modal:', error);
-      // Fallback to simple alert
-      alert(`${title}\n\n${content.replace(/<[^>]*>/g, '')}`);
+      console.error('Failed to show modal:', error);
+      console.log(`${title}: ${content.replace(/<[^>]*>/g, '')}`);
     }
   }
 
@@ -3494,7 +3471,7 @@ class ProjectPayoutInterface {
         modal.classList.add('hidden');
       }
     } catch (error) {
-      console.warn('Failed to close modal:', error);
+      console.error('Failed to close modal:', error);
     }
   }
 }

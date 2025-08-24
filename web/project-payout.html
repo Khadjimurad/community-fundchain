@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title data-i18n="project_payout.page_title">FundChain — Project Payout Interface</title>
+  <title data-i18n="project_payout.page_title">FundChain — Интерфейс выплат по проектам</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
     :root { --primary-color: #2563eb; --secondary-color: #f1f5f9; --success-color: #059669; --warning-color: #d97706; --danger-color: #dc2626; --border-color: #e5e7eb; --text-primary: #1f2937; --text-secondary: #6b7280; --bg-primary: #ffffff; --bg-secondary: #f8fafc; }
@@ -53,15 +53,7 @@
     .alert-warning { background: #fef3c7; border-left: 4px solid #f59e0b; }
     .alert-success { background: #dcfce7; border-left: 4px solid var(--success-color); }
     .alert-danger { background: #fee2e2; border-left: 4px solid var(--danger-color); }
-    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; display: flex; align-items: center; justify-content: center; }
-    .modal.hidden { display: none; }
-    .modal-backdrop { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
-    .modal-content { background: white; border-radius: 0.5rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); max-width: 90vw; max-height: 90vh; overflow: auto; position: relative; z-index: 1001; min-width: 400px; }
-    .modal-header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: between; align-items: center; }
-    .modal-title { margin: 0; font-size: 1.35rem; font-weight: 600; }
-    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-secondary); margin-left: auto; }
-    .modal-body { padding: 1.5rem; }
-    .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; gap: 1rem; justify-content: flex-end; }
+
     .payout-workflow { display: flex; margin-bottom: 2rem; }
     .workflow-step { flex: 1; padding: 1rem; text-align: center; border: 1px solid var(--border-color); border-radius: 0.5rem; margin: 0 0.5rem; background: var(--bg-primary); position: relative; }
     .workflow-step.active { border-color: var(--primary-color); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2); }
@@ -71,15 +63,19 @@
     .workflow-step.completed .step-number { background: var(--success-color); color: white; }
     .step-title { font-weight: 600; margin-bottom: 0.5rem; }
     .step-description { font-size: 0.9rem; color: var(--text-secondary); }
-    .project-card { border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; cursor: pointer; transition: all 0.2s; }
-    .project-card:hover { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-    .project-card.selected { border-color: var(--primary-color); background: #f0f7ff; }
+    .project-card { border: 1px solid var(--border-color); border-radius: 0.75rem; padding: 1.5rem; margin-bottom: 1.5rem; transition: all 0.2s; background: var(--bg-primary); }
+    .project-card:hover { box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.1); transform: translateY(-2px); }
+    .project-card.selected { border-color: var(--primary-color); background: #f0f7ff; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
     .project-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; }
     .project-title { font-weight: 600; }
     .project-status { }
     .project-details { font-size: 0.9rem; }
-    .project-metrics { display: flex; margin-top: 0.5rem; gap: 1rem; }
-    .project-metric { font-size: 0.85rem; color: var(--text-secondary); }
+    .project-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .project-metric { font-size: 0.9rem; color: var(--text-secondary); padding: 0.5rem; background: var(--bg-secondary); border-radius: 0.375rem; }
+    .project-description { margin-bottom: 1rem; line-height: 1.5; }
+    .project-actions { margin-top: 1rem; text-align: right; }
+    .text-success { color: var(--success-color); }
+    .mt-3 { margin-top: 1rem; }
     .transaction-list { margin: 1rem 0; }
     .transaction-item { padding: 1rem; border: 1px solid var(--border-color); border-radius: 0.375rem; margin-bottom: 0.5rem; }
     .transaction-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; }
@@ -87,6 +83,31 @@
     .transaction-actions { display: flex; gap: 0.5rem; }
     .transaction-details { font-size: 0.9rem; color: var(--text-secondary); }
     .step-content { padding: 1.5rem 0; }
+    
+    /* Modal styles */
+    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; display: flex; align-items: center; justify-content: center; }
+    .modal.hidden { display: none; }
+    .modal-backdrop { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); }
+    .modal-content { position: relative; background: var(--bg-primary); border-radius: 0.75rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); width: 95%; max-width: 800px; max-height: 85vh; overflow-y: auto; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem 0.75rem; border-bottom: 1px solid var(--border-color); }
+    .modal-title { margin: 0; font-size: 1.1rem; font-weight: 600; }
+    .modal-close { background: none; border: none; font-size: 1.25rem; cursor: pointer; color: var(--text-secondary); padding: 0; width: 1.75rem; height: 1.75rem; display: flex; align-items: center; justify-content: center; border-radius: 0.375rem; transition: all 0.2s; }
+    .modal-close:hover { background: var(--bg-secondary); color: var(--text-primary); }
+    .modal-body { padding: 1rem 1.5rem; }
+    .modal-footer { padding: 0.75rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 0.5rem; }
+    
+    /* Дополнительные стили для модального окна */
+    .modal-body code { background: var(--bg-secondary); padding: 0.2rem 0.4rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.85rem; }
+    .modal-body ul { margin: 0.75rem 0; padding-left: 1.25rem; }
+    .modal-body li { margin-bottom: 0.25rem; }
+    .modal-body h4 { margin: 0.75rem 0 0.5rem; font-size: 1rem; }
+    .modal-body p { margin: 0.5rem 0; }
+    .modal-body .alert { padding: 0.75rem; margin-bottom: 0.75rem; }
+    .modal-body .data-table { margin-top: 0.5rem; }
+    .modal-body .data-table table { width: 100%; border-collapse: collapse; }
+    .modal-body .data-table td { padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; }
+    .modal-body .data-table td:first-child { font-weight: 500; width: 40%; }
+    .modal-body .data-table td:last-child { width: 60%; word-break: break-all; }
   </style>
 </head>
 <body>
@@ -128,16 +149,16 @@
 
   <main class="main">
     <div class="container">
-      <h1 data-i18n="project_payout.title">Project Payout & Completion Workflow</h1>
-      <p class="text-muted" data-i18n="project_payout.info_connect_web3">Streamlined interface for project payouts and project completion</p>
+      <h1 data-i18n="project_payout.title"><i class="fas fa-money-bill-wave"></i> Выплаты по проектам и завершение проектов</h1>
+      <p class="text-muted" data-i18n="project_payout.info_connect_web3">Интерфейс для выплат по проектам и завершения проектов</p>
 
       <div class="card">
         <div class="card-header">
-          <h2 class="card-title" data-i18n="project_payout.web3_connection">Web3 Connection</h2>
+          <h2 class="card-title" data-i18n="project_payout.web3_connection"><i class="fas fa-plug"></i> Подключение к Web3</h2>
         </div>
         <div class="card-body">
           <div class="alert alert-info">
-            <strong data-i18n="project_payout.info">Info:</strong> <span data-i18n="project_payout.info_connect_web3">Connect to Web3 provider to interact with the smart contracts.</span>
+            <strong data-i18n="project_payout.info">Информация:</strong> <span data-i18n="project_payout.info_connect_web3">Подключитесь к Web3 провайдеру для взаимодействия со смарт-контрактами.</span>
           </div>
           
           <div class="form-row">
@@ -173,12 +194,22 @@
           </div>
           
           <div class="form-group">
-            <button id="connect-button" class="btn btn-primary" data-i18n="project_payout.connect_web3">Connect to Web3</button>
-            <button id="disconnect-button" class="btn btn-secondary hidden" data-i18n="project_payout.disconnect">Disconnect</button>
-            <!-- Temporary debug button - remove in production -->
-            <button id="debug-state" class="btn btn-info" style="display: none;">Check State</button>
-            <button id="clear-tx-id" class="btn btn-warning" style="display: none;">Clear TX ID</button>
-            <button id="reset-workflow" class="btn btn-danger" style="display: none;">Reset Workflow</button>
+            <button id="connect-button" class="btn btn-primary" data-i18n="project_payout.connect_web3">
+              <i class="fas fa-plug"></i> Подключиться к Web3
+            </button>
+            <button id="disconnect-button" class="btn btn-secondary hidden" data-i18n="project_payout.disconnect">
+              <i class="fas fa-times"></i> Отключиться
+            </button>
+            <!-- Debug button -->
+            <button id="debug-state" class="btn btn-info">
+              <i class="fas fa-info-circle"></i> Check State
+            </button>
+            <button id="clear-tx-id" class="btn btn-warning">
+              <i class="fas fa-eraser"></i> Clear TX ID
+            </button>
+            <button id="reset-workflow" class="btn btn-danger">
+              <i class="fas fa-redo"></i> Reset Workflow
+            </button>
           </div>
         </div>
       </div>
@@ -187,50 +218,58 @@
         <div class="payout-workflow">
           <div class="workflow-step active" id="step-1">
             <div class="step-number">1</div>
-            <div class="step-title" data-i18n="project_payout.workflow_steps.step_1">Select Project</div>
-            <div class="step-description" data-i18n="project_payout.step_descriptions.step_1_desc">Choose a project ready for payout</div>
+            <div class="step-title" data-i18n="project_payout.workflow_steps.step_1">Выбор проекта</div>
+            <div class="step-description" data-i18n="project_payout.step_descriptions.step_1_desc">Выберите проект готовый к выплате</div>
           </div>
           <div class="workflow-step" id="step-2">
             <div class="step-number">2</div>
-            <div class="step-title" data-i18n="project_payout.workflow_steps.step_2">Propose Payout</div>
-            <div class="step-description" data-i18n="project_payout.step_descriptions.step_2_desc">Create multisig proposal</div>
+            <div class="step-title" data-i18n="project_payout.workflow_steps.step_2">Предложение выплаты</div>
+            <div class="step-description" data-i18n="project_payout.step_descriptions.step_2_desc">Создайте предложение в мультисиг</div>
           </div>
           <div class="workflow-step" id="step-3">
             <div class="step-number">3</div>
-            <div class="step-title" data-i18n="project_payout.workflow_steps.step_3">Confirm</div>
-            <div class="step-description" data-i18n="project_payout.step_descriptions.step_3_desc">Collect required signatures</div>
+            <div class="step-title" data-i18n="project_payout.workflow_steps.step_3">Подтверждение</div>
+            <div class="step-description" data-i18n="project_payout.step_descriptions.step_3_desc">Соберите необходимые подписи</div>
           </div>
           <div class="workflow-step" id="step-4">
             <div class="step-number">4</div>
-            <div class="step-title" data-i18n="project_payout.workflow_steps.step_4">Execute</div>
-            <div class="step-description" data-i18n="project_payout.step_descriptions.step_4_desc">Execute payout transaction</div>
+            <div class="step-title" data-i18n="project_payout.workflow_steps.step_4">Выполнение</div>
+            <div class="step-description" data-i18n="project_payout.step_descriptions.step_4_desc">Выполните транзакцию выплаты</div>
           </div>
           <div class="workflow-step" id="step-5">
             <div class="step-number">5</div>
-            <div class="step-title" data-i18n="project_payout.workflow_steps.step_5">Complete</div>
-            <div class="step-description" data-i18n="project_payout.step_descriptions.step_5_desc">Finalize project</div>
+            <div class="step-title" data-i18n="project_payout.workflow_steps.step_5">Завершение</div>
+            <div class="step-description" data-i18n="project_payout.step_descriptions.step_5_desc">Завершите проект</div>
           </div>
         </div>
 
         <!-- Step 1: Select Project -->
         <div class="card" id="step-1-content">
           <div class="card-header">
-            <h2 class="card-title" data-i18n="project_payout.step_1_content.title">Select Project for Payout</h2>
+            <h2 class="card-title" data-i18n="project_payout.step_1_content.title"><i class="fas fa-list"></i> Выберите проект для выплаты</h2>
             <div class="card-actions">
-              <button id="refresh-projects-button" class="btn btn-secondary" data-i18n="project_payout.step_1_content.refresh_projects">Refresh Projects</button>
+                              <button id="refresh-projects-button" class="btn btn-secondary" data-i18n="project_payout.step_1_content.refresh_projects">
+                  <i class="fas fa-sync-alt"></i> Обновить список
+                </button>
             </div>
           </div>
           <div class="card-body">
             <div class="alert alert-info">
-              <strong data-i18n="project_payout.workflow_steps.step_1">Step 1:</strong> <span data-i18n="project_payout.step_1_content.info_step_1">Select a project that is ready for payout. Only projects with "ReadyToPayout" status are shown.</span>
+              <strong data-i18n="project_payout.workflow_steps.step_1">Шаг 1:</strong> <span data-i18n="project_payout.step_1_content.info_step_1">Выберите проект, который готов к выплате. Отображаются только проекты со статусом "ReadyToPayout".</span>
             </div>
             
             <div id="projects-list">
-              <p class="text-muted" data-i18n="project_payout.step_1_content.loading_projects">Loading projects...</p>
+              <div class="alert alert-info">
+                <h4>Выберите проект для выплаты</h4>
+                <p>Здесь отображаются только проекты со статусом "ReadyToPayout" (готовые к выплате).</p>
+                <p>Если проектов нет, это означает, что ни один проект еще не прошел все этапы финансирования и голосования.</p>
+              </div>
             </div>
             
             <div class="form-group">
-              <button id="next-step-1" class="btn btn-primary" disabled data-i18n="project_payout.step_1_content.next_step">Next: Propose Payout</button>
+              <button id="next-step-1" class="btn btn-primary" disabled data-i18n="project_payout.step_1_content.next_step">
+                <i class="fas fa-arrow-right"></i> Следующий шаг: Предложить выплату
+              </button>
             </div>
           </div>
         </div>
@@ -238,7 +277,7 @@
         <!-- Step 2: Propose Payout -->
         <div class="card hidden" id="step-2-content">
           <div class="card-header">
-            <h2 class="card-title" data-i18n="project_payout.step_2_content.title">Propose Project Payout</h2>
+            <h2 class="card-title" data-i18n="project_payout.step_2_content.title"><i class="fas fa-file-invoice-dollar"></i> Предложить выплату по проекту</h2>
           </div>
           <div class="card-body">
             <div class="alert alert-info">
@@ -305,7 +344,7 @@
         <!-- Step 3: Confirm Transaction -->
         <div class="card hidden" id="step-3-content">
           <div class="card-header">
-            <h2 class="card-title" data-i18n="project_payout.step_3_content.title">Confirm Transaction</h2>
+            <h2 class="card-title" data-i18n="project_payout.step_3_content.title"><i class="fas fa-check-circle"></i> Подтвердить транзакцию</h2>
           </div>
           <div class="card-body">
             <div class="alert alert-info">
@@ -352,7 +391,7 @@
         <!-- Step 4: Execute Transaction -->
         <div class="card hidden" id="step-4-content">
           <div class="card-header">
-            <h2 class="card-title" data-i18n="project_payout.step_4_content.title">Execute Transaction</h2>
+            <h2 class="card-title" data-i18n="project_payout.step_4_content.title"><i class="fas fa-play-circle"></i> Выполнить транзакцию</h2>
           </div>
           <div class="card-body">
             <div class="alert alert-info">
@@ -389,7 +428,7 @@
         <!-- Step 5: Complete Project -->
         <div class="card hidden" id="step-5-content">
           <div class="card-header">
-            <h2 class="card-title" data-i18n="project_payout.step_5_content.title">Complete Project</h2>
+            <h2 class="card-title" data-i18n="project_payout.step_5_content.title"><i class="fas fa-flag-checkered"></i> Завершить проект</h2>
           </div>
           <div class="card-body">
             <div class="alert alert-info">
@@ -427,16 +466,19 @@
     </div>
   </main>
 
+  <!-- Modal для Check State -->
   <div id="modal" class="modal hidden">
-    <div class="modal-backdrop" onclick="projectPayout.closeModal()"></div>
+    <div class="modal-backdrop"></div>
     <div class="modal-content">
       <div class="modal-header">
-        <h3 id="modal-title" data-i18n="modal.title">Modal Title</h3>
-        <button class="modal-close" onclick="projectPayout.closeModal()">&times;</button>
+        <h3 class="modal-title" id="modal-title">Состояние системы</h3>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
       </div>
-      <div class="modal-body" id="modal-body"></div>
-      <div class="modal-footer" id="modal-footer">
-        <button class="btn btn-secondary" onclick="projectPayout.closeModal()" data-i18n="buttons.close">Close</button>
+      <div class="modal-body" id="modal-body">
+        <!-- Содержимое модального окна будет добавляться динамически -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal()">Закрыть</button>
       </div>
     </div>
   </div>
@@ -444,5 +486,13 @@
   <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
   <script src="./js/i18n.js"></script>
   <script src="./project-payout.js"></script>
+  <script>
+    // Глобальная функция для закрытия модального окна
+    function closeModal() {
+      if (window.projectPayout) {
+        window.projectPayout.closeModal();
+      }
+    }
+  </script>
 </body>
 </html>

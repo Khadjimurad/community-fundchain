@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панель управления Anvil</title>
+    <link rel="stylesheet" href="anvil_front.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Панель управления Anvil</h1>
+        </header>
+        
+        <nav class="tabs">
+            <button class="tab-button active" data-tab="contracts">Контракты</button>
+            <button class="tab-button" data-tab="accounts">Аккаунты</button>
+        </nav>
+        
+        <main class="tab-content">
+            <section id="contracts-tab" class="tab-pane active">
+                <div id="contracts-content">
+                    <!-- Contracts data will be loaded here -->
+                </div>
+            </section>
+            
+            <section id="accounts-tab" class="tab-pane">
+                <div id="accounts-content">
+                    <!-- Accounts data will be loaded here -->
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <script src="contract-config.js"></script>
+    <script src="anvil_front.js"></script>
+</body>
+</html>

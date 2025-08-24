@@ -564,8 +564,8 @@ async def list_payouts(
 
 # User stats endpoints
 async def get_user_stats(
-    user_address: str = Path(..., description="User wallet address"),
-    db: AsyncSession = Depends(get_db)
+    user_address: str,
+    db: AsyncSession
 ) -> DonorStatsResponse:
     """Get comprehensive user statistics."""
     
@@ -575,7 +575,13 @@ async def get_user_stats(
     member = member_result.scalar_one_or_none()
     
     if not member:
-        raise HTTPException(status_code=404, detail="User not found")
+        # Возвращаем пустую статистику вместо ошибки 404
+        return DonorStatsResponse(
+            total_donated=0.0,
+            supported_projects=0,
+            average_share_percentile=0.0,
+            allocations=[]
+        )
     
     # Get donation statistics
     donation_query = select(

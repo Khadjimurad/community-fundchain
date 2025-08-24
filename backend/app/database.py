@@ -216,7 +216,11 @@ async def database_health_check():
                 result = await session.execute(text("SELECT MAX(timestamp) FROM donations"))
                 last_donation = result.scalar()
                 if last_donation:
-                    health_status["last_activity"] = last_donation.isoformat()
+                    # Проверяем, что это datetime объект
+                    if hasattr(last_donation, 'isoformat'):
+                        health_status["last_activity"] = last_donation.isoformat()
+                    else:
+                        health_status["last_activity"] = str(last_donation)
     
     except Exception as e:
         health_status["errors"].append(str(e))

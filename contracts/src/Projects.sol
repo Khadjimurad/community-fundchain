@@ -203,6 +203,41 @@ contract Projects {
         return projectsByCategory[category];
     }
     
+    function getProject(bytes32 id) external view returns (
+        string memory name,
+        string memory description,
+        uint256 target,
+        uint256 softCap,
+        uint256 hardCap,
+        uint256 createdAt,
+        uint256 deadline,
+        Status status,
+        string memory category,
+        uint256 priority,
+        bool softCapEnabled,
+        uint256 totalAllocated,
+        uint256 totalPaidOut
+    ) {
+        Project memory project = projects[id];
+        require(project.createdAt != 0, "Project not found");
+        
+        return (
+            project.name,
+            project.description,
+            project.target,
+            project.softCap,
+            project.hardCap,
+            project.createdAt,
+            project.deadline,
+            project.status,
+            project.category,
+            project.priority,
+            project.softCapEnabled,
+            project.totalAllocated,
+            project.totalPaidOut
+        );
+    }
+    
     function getActiveProjectsByCategory(string memory category) external view returns (bytes32[] memory) {
         bytes32[] memory categoryProjects = projectsByCategory[category];
         bytes32[] memory activeProjects = new bytes32[](categoryProjects.length);
