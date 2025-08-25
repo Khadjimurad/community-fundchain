@@ -307,27 +307,45 @@ async def get_voting_summary(
     
     result = db.execute(query)
     vote_results = result.scalars().all()
-    
-    # Calculate turnout percentage for each result
+
+    # Calculate turnout percentage for each result (with fallbacks if round counters are zero)
     responses = []
     for result in vote_results:
+        turnout_percentage = 0.0
         if result.round:
+            total_revealed = int(result.round.total_revealed or 0)
+            total_active = int(result.round.total_active_members or 0)
+            # Fallbacks if stored counters are missing
+            if total_revealed == 0 or total_active == 0:
+                try:
+                    # Distinct voters who revealed in this round
+                    revealed_q = select(func.count(func.distinct(Vote.voter_address))).where(
+                        Vote.round_id == result.round.round_id
+                    )
+                    revealed_res = db.execute(revealed_q)
+                    total_revealed = int(revealed_res.scalar() or 0)
+                except Exception:
+                    total_revealed = 0
+                try:
+                    # Active members are holders of SBT
+                    active_q = select(func.count(Member.id)).where(Member.has_token == True)
+                    active_res = db.execute(active_q)
+                    total_active = int(active_res.scalar() or 0)
+                except Exception:
+                    total_active = 0
             turnout_percentage = (
-                (result.round.total_revealed / result.round.total_active_members * 100)
-                if result.round.total_active_members > 0 else 0
+                (total_revealed / total_active * 100.0) if total_active > 0 and total_revealed > 0 else 0.0
             )
-        else:
-            turnout_percentage = 0
-        
+
         responses.append(VoteResponse(
             project_id=result.project_id,
             for_weight=result.for_weight,
             against_weight=result.against_weight,
             abstained_count=result.abstained_count,
             not_participating_count=result.not_participating_count,
-            turnout_percentage=round(turnout_percentage, 2)
+            turnout_percentage=round(float(turnout_percentage), 2)
         ))
-    
+
     return responses
 
 async def get_voting_round_details(
@@ -358,10 +376,23 @@ async def get_voting_round_details(
     total_against_weight = sum(r.against_weight for r in results)
     total_abstained = sum(r.abstained_count for r in results)
     
-    turnout_percentage = (
-        (voting_round.total_revealed / voting_round.total_active_members * 100)
-        if voting_round.total_active_members > 0 else 0
-    )
+    # Compute turnout with fallbacks
+    total_revealed = int(voting_round.total_revealed or 0)
+    total_active = int(voting_round.total_active_members or 0)
+    if total_revealed == 0 or total_active == 0:
+        try:
+            revealed_q = select(func.count(func.distinct(Vote.voter_address))).where(Vote.round_id == round_id)
+            revealed_res = db.execute(revealed_q)
+            total_revealed = int(revealed_res.scalar() or 0)
+        except Exception:
+            total_revealed = 0
+        try:
+            active_q = select(func.count(Member.id)).where(Member.has_token == True)
+            active_res = db.execute(active_q)
+            total_active = int(active_res.scalar() or 0)
+        except Exception:
+            total_active = 0
+    turnout_percentage = ((total_revealed / total_active * 100.0) if total_active > 0 and total_revealed > 0 else 0.0)
     
     return {
         "round_id": round_id,

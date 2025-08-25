@@ -1710,7 +1710,7 @@ class ProjectPayoutInterface {
             projectsList.innerHTML = `
               <div class="alert alert-info">
                 <h4>Нет проектов для выплаты</h4>
-                <p>В данный момент нет проектов со статусом "ReadyToPayout".</p>
+                <p>В данный момент нет проектов со статусом "Готов к выплате".</p>
                 <p>Проекты должны пройти все этапы финансирования и голосования, чтобы стать доступными для выплаты.</p>
               </div>
             `;
@@ -1722,7 +1722,7 @@ class ProjectPayoutInterface {
             projectsList.innerHTML = `
               <div class="alert alert-info">
                 <h4>Нет проектов для выплаты</h4>
-                <p>В данный момент нет проектов со статусом "ReadyToPayout".</p>
+                <p>В данный момент нет проектов со статусом "Готов к выплате".</p>
                 <p>Проекты должны пройти все этапы финансирования и голосования, чтобы стать доступными для выплаты.</p>
                 <div class="mt-3">
                   <button class="btn btn-secondary" onclick="window.projectPayout.refreshProjects()">
@@ -3142,11 +3142,11 @@ class ProjectPayoutInterface {
           });
           
           console.log('Project status updated to Paid:', updateReceipt);
-          this.showSuccess('Статус проекта автоматически обновлен на "Paid"');
+          this.showSuccess('Статус проекта автоматически обновлен на "Оплачен"');
           
           // Update current project status
           this.currentProject.status = 5;
-          this.currentProject.statusText = 'Paid';
+          this.currentProject.statusText = 'Оплачен';
           
         } catch (updateError) {
           console.warn('Failed to automatically update project status:', updateError);

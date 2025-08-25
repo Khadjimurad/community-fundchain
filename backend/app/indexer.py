@@ -560,6 +560,19 @@ class BlockchainIndexer:
             counting_method="weighted" if event_data.args.countingMethod == 0 else "borda",
             snapshot_block=event_data.args.snapshotBlock
         )
+
+        # Проставляем базовые метрики участия на момент старта раунда (деноминатор для turnout)
+        try:
+            from sqlalchemy import select
+            active_q = select(Member).where(Member.has_token == True)
+            res = session.execute(active_q)
+            active_members = len(res.scalars().all())
+            voting_round.total_active_members = int(active_members)
+            # В качестве стартового количества участников используем активных членов
+            voting_round.total_participants = int(active_members)
+        except Exception as e:
+            logger.warning(f"Failed to prefill active members for round {event_data.args.roundId}: {e}")
+
         session.add(voting_round)
     
     async def _process_ballotcommitreveal_voterevealed(self, session: AsyncSession, event_data: EventData):
@@ -641,6 +654,118 @@ class BlockchainIndexer:
                 round_row.total_revealed = int((round_row.total_revealed or 0) + 1)
         except Exception as e:
             logger.error(f"Error updating VotingRound counters: {e}")
+        
+        # Update project statuses optimistically based on current aggregates
+        try:
+            for i, project_id in enumerate(event_data.args.projects):
+                pid_hex = Web3.to_hex(project_id)
+                try:
+                    stmt_res = select(VoteResult).where(
+                        VoteResult.round_id == event_data.args.roundId,
+                        VoteResult.project_id == pid_hex
+                    )
+                    res = session.execute(stmt_res)
+                    vr = res.scalar_one_or_none()
+                    if vr is not None:
+                        f = int(vr.for_weight or 0)
+                        a = int(vr.against_weight or 0)
+                        if f > a:
+                            # Mark project as ready_to_payout
+                            stmt_proj = select(Project).where(Project.id == pid_hex)
+                            res_proj = session.execute(stmt_proj)
+                            project = res_proj.scalar_one_or_none()
+                            if project is not None and project.status != "ready_to_payout":
+                                project.status = "ready_to_payout"
+                except Exception as e:
+                    logger.warning(f"Failed to update project status for {pid_hex}: {e}")
+        except Exception as e:
+            logger.warning(f"Post-reveal project status update failed: {e}")
+    
+    async def _process_ballotcommitreveal_votefinalized(self, session: AsyncSession, event_data: EventData):
+        """Process BallotCommitReveal VoteFinalized event: persist aggregated results and update statuses."""
+        try:
+            round_id = int(event_data.args.roundId)
+            project_ids = list(event_data.args.projectIds)
+            for_weights = list(event_data.args.forWeights)
+            against_weights = list(event_data.args.againstWeights)
+            abstained_counts = list(event_data.args.abstainedCounts)
+            not_participating_counts = list(event_data.args.notParticipatingCounts)
+            turnout_percentage = int(event_data.args.turnoutPercentage)
+            
+            # Mark round as finalized
+            try:
+                stmt_round = select(VotingRound).where(VotingRound.round_id == round_id)
+                res_round = session.execute(stmt_round)
+                round_row = res_round.scalar_one_or_none()
+                if round_row is not None:
+                    round_row.finalized = True
+            except Exception as e:
+                logger.error(f"Failed to update VotingRound.finalized for round {round_id}: {e}")
+            
+            # Upsert results per project and update project status
+            for i, pid in enumerate(project_ids):
+                try:
+                    pid_hex = Web3.to_hex(pid)
+                except Exception:
+                    # If already hex string
+                    pid_hex = getattr(pid, 'hex', lambda: str(pid))()
+                    if not isinstance(pid_hex, str):
+                        pid_hex = str(pid)
+                # Upsert VoteResult
+                try:
+                    stmt_res = select(VoteResult).where(
+                        VoteResult.round_id == round_id,
+                        VoteResult.project_id == pid_hex
+                    )
+                    res = session.execute(stmt_res)
+                    vr = res.scalar_one_or_none()
+                    if vr is None:
+                        vr = VoteResult(
+                            round_id=round_id,
+                            project_id=pid_hex,
+                            for_weight=int(for_weights[i]) if i < len(for_weights) else 0,
+                            against_weight=int(against_weights[i]) if i < len(against_weights) else 0,
+                            abstained_count=int(abstained_counts[i]) if i < len(abstained_counts) else 0,
+                            not_participating_count=int(not_participating_counts[i]) if i < len(not_participating_counts) else 0,
+                            borda_points=0,
+                            final_priority=0
+                        )
+                        session.add(vr)
+                    else:
+                        vr.for_weight = int(for_weights[i]) if i < len(for_weights) else (vr.for_weight or 0)
+                        vr.against_weight = int(against_weights[i]) if i < len(against_weights) else (vr.against_weight or 0)
+                        vr.abstained_count = int(abstained_counts[i]) if i < len(abstained_counts) else (vr.abstained_count or 0)
+                        vr.not_participating_count = int(not_participating_counts[i]) if i < len(not_participating_counts) else (vr.not_participating_count or 0)
+                except Exception as e:
+                    logger.error(f"Error upserting VoteResult for project {pid_hex}: {e}")
+                
+                # Update Project status based on results (simple rule: for > against => ready_to_payout)
+                try:
+                    stmt_proj = select(Project).where(Project.id == pid_hex)
+                    res_proj = session.execute(stmt_proj)
+                    project = res_proj.scalar_one_or_none()
+                    if project is not None:
+                        project.updated_block = event_data.blockNumber
+                        f = int(for_weights[i]) if i < len(for_weights) else 0
+                        a = int(against_weights[i]) if i < len(against_weights) else 0
+                        if f > a:
+                            project.status = "ready_to_payout"
+                except Exception as e:
+                    logger.error(f"Error updating project {pid_hex} status: {e}")
+            
+            # Optionally, store turnout in AggregateStats
+            try:
+                session.add(AggregateStats(
+                    stat_type="voting_turnout",
+                    stat_key=f"round_{round_id}",
+                    value=float(turnout_percentage),
+                    calculated_at_block=event_data.blockNumber
+                ))
+            except Exception:
+                # Non-critical
+                pass
+        except Exception as e:
+            logger.error(f"Error processing VoteFinalized: {e}")
     
     # Utility methods
     def _get_or_create_member(self, session: AsyncSession, address: str) -> Member:

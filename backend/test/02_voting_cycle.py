@@ -50,6 +50,35 @@ class VotingCycleTester:
         # Initialize voting_accounts as empty list
         self.voting_accounts = []
     
+    def advance_time_and_mine(self, seconds: int) -> bool:
+        """Advance EVM time and mine a block on Anvil."""
+        try:
+            if seconds <= 0:
+                return True
+            # Increase time
+            try:
+                # Web3.py v5/v6 compatibility: prefer manager.request_blocking if available
+                if hasattr(self.web3, 'manager') and hasattr(self.web3.manager, 'request_blocking'):
+                    self.web3.manager.request_blocking("evm_increaseTime", [seconds])
+                else:
+                    self.web3.provider.make_request("evm_increaseTime", [seconds])
+            except Exception as e:
+                logger.warning(f"⚠️ evm_increaseTime failed: {e}")
+                return False
+            # Mine a block
+            try:
+                if hasattr(self.web3, 'manager') and hasattr(self.web3.manager, 'request_blocking'):
+                    self.web3.manager.request_blocking("evm_mine", [])
+                else:
+                    self.web3.provider.make_request("evm_mine", [])
+            except Exception as e:
+                logger.warning(f"⚠️ evm_mine failed: {e}")
+                return False
+            return True
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to advance time: {e}")
+            return False
+
     def load_contract_addresses(self):
         """Load contract addresses from deployed_contracts.json."""
         try:
@@ -489,8 +518,8 @@ class VotingCycleTester:
             
             # Start a new voting round
             txn = ballot_contract.functions.startRound(
-                300,  # 5 minutes commit duration
-                300,  # 5 minutes reveal duration
+                15,  # 15 seconds commit duration
+                15,  # 15 seconds reveal duration
                 project_ids,
                 0,  # CountingMethod.Simple (0)
                 True  # enableAutoCancellation
@@ -832,7 +861,7 @@ class VotingCycleTester:
                 {
                     'name': 'All Projects Round',
                     'projects': ['demo-project-1', 'demo-project-2', 'demo-project-3'],
-                    'duration': (300, 300)  # 5 minutes commit, 5 minutes reveal
+                    'duration': (15, 15)  # 15s commit, 15s reveal
                 }
             ]
             
@@ -1143,7 +1172,7 @@ class VotingCycleTester:
                 {
                     'name': 'Fast Test - All Projects',
                     'projects': ['demo-project-1', 'demo-project-2', 'demo-project-3'],
-                    'duration': (300, 300)  # 5 minutes commit, 5 minutes reveal
+                    'duration': (15, 15)  # 15s commit, 15s reveal
                 }
             ]
             
@@ -1202,7 +1231,7 @@ class VotingCycleTester:
             return []
 
     def wait_for_commit_phase_end(self, round_id, max_wait_time=120):
-        """Wait for commit phase to end and then proceed to reveal."""
+        """Wait for commit phase to end. If on Anvil, advance time instantly."""
         try:
             logger.info(f"⏳ Waiting for commit phase to end for Round {round_id}...")
             
@@ -1221,16 +1250,16 @@ class VotingCycleTester:
                         logger.info(f"   Current time: {current_time}, Commit end: {round_info[1]}")
                         return True
                     
-                    # Wait a bit before checking again
-                    remaining_time = round_info[1] - current_time
-                    logger.info(f"⏳ Commit phase still active. Remaining: {remaining_time}s")
+                    # Try to fast-forward time on Anvil
+                    remaining_time = round_info[1] - current_time + 1
+                    logger.info(f"⏳ Commit phase still active. Remaining: {remaining_time - 1}s")
+                    if remaining_time > 0:
+                        if self.advance_time_and_mine(remaining_time):
+                            # Re-check immediately after mining
+                            continue
                     
-                    if remaining_time <= 0:
-                        break
-                    
-                    # Wait for shorter time or remaining time, whichever is smaller
-                    wait_time = min(10, remaining_time)
-                    time.sleep(wait_time)
+                    # Fallback: short sleep if we couldn't advance time
+                    time.sleep(1)
                     
                 except Exception as e:
                     logger.warning(f"⚠️ Error checking round status: {e}")

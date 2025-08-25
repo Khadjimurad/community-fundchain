@@ -346,8 +346,8 @@ class FundChainApp {
       row.innerHTML = `
         <td>
           <div><strong><a href="#" onclick="app.viewProject('${project.id}'); return false;" style="text-decoration: none; color: #007bff;">${this.escapeHtml(project.name)}</a></strong></div>
-          <div class="text-muted" style="font-size: 0.875rem;">${this.escapeHtml(project.category)}</div>
-          <span class="badge badge-${this.getStatusBadgeClass(project.status)}">${project.status}</span>
+          <div class="text-muted" style="font-size: 0.875rem;">${this.escapeHtml(this.getCategoryText(project.category))}</div>
+          <span class="badge badge-${this.getStatusBadgeClass(project.status)}">${this.getProjectStatusText(project.status)}</span>
         </td>
         <td class="text-center">${project.priority || '-'}</td>
         <td>
@@ -458,8 +458,8 @@ class FundChainApp {
       row.innerHTML = `
         <td>
           <div><strong><a href="#" onclick="app.viewProject('${project.id}'); return false;" style="text-decoration: none; color: #007bff;">${this.escapeHtml(project.name)}</a></strong></div>
-          <div class="text-muted" style="font-size: 0.875rem;">${this.escapeHtml(project.category)}</div>
-          <span class="badge badge-${this.getStatusBadgeClass(project.status)}">${project.status}</span>
+          <div class="text-muted" style="font-size: 0.875rem;">${this.escapeHtml(this.getCategoryText(project.category))}</div>
+          <span class="badge badge-${this.getStatusBadgeClass(project.status)}">${this.getProjectStatusText(project.status)}</span>
         </td>
         <td class="text-center">${project.priority || '-'}</td>
         <td>
@@ -612,7 +612,7 @@ class FundChainApp {
     const statusText = document.getElementById('project-detail-status-text');
     const statusBadge = document.getElementById('project-detail-status-badge');
 
-    statusText.textContent = status;
+    statusText.textContent = this.getProjectStatusText(status);
     statusBadge.className = `badge badge-${this.getStatusBadgeClass(status)}`;
   }
 
@@ -1393,15 +1393,81 @@ class FundChainApp {
     return div.innerHTML;
   }
 
+  getCategoryText(category) {
+    const key = String(category || '').toLowerCase();
+    const map = {
+      'healthcare': i18n.t('filters.healthcare') || 'Здравоохранение',
+      'education': i18n.t('filters.education') || 'Образование',
+      'infrastructure': i18n.t('filters.infrastructure') || 'Инфраструктура',
+      'aid': i18n.t('filters.aid') || 'Чрезвычайная помощь',
+      'environment': 'Экология',
+      'social': 'Социальное',
+      'culture': 'Культура',
+      'recreation': 'Досуг',
+      'commerce': 'Коммерция'
+    };
+    return map[key] || category;
+  }
+
+  normalizeProjectStatus(status) {
+    if (typeof status === 'number') {
+      const numberToKey = {
+        0: 'draft',
+        1: 'active',
+        2: 'paused',
+        3: 'cancelled',
+        4: 'ready_to_payout',
+        5: 'completed',
+        6: 'failed'
+      };
+      return numberToKey[status] || 'active';
+    }
+    // Обрабатываем строковые числа ("0".."6")
+    const str = String(status ?? '').trim();
+    if (/^\d+$/.test(str)) {
+      const n = parseInt(str, 10);
+      return this.normalizeProjectStatus(n);
+    }
+    const raw = str.toLowerCase();
+    const compact = raw.replace(/\s+|-/g, '_');
+    // Canonicalize known variants
+    if (compact === 'readytopayout' || compact === 'ready_to_payout') return 'ready_to_payout';
+    if (compact === 'canceled') return 'cancelled';
+    if (compact === 'complete' || compact === 'completed') return 'completed';
+    if (compact === 'pay' || compact === 'payed' || compact === 'paid') return 'paid';
+    return compact;
+  }
+
   getStatusBadgeClass(status) {
+    const key = this.normalizeProjectStatus(status);
     const statusClasses = {
+      'draft': 'secondary',
       'active': 'info',
       'voting': 'warning',
-      'ready_to_payout': 'success',
+      'paused': 'warning',
+      'ready_to_payout': 'primary',
       'paid': 'secondary',
-      'cancelled': 'danger'
+      'completed': 'success',
+      'cancelled': 'danger',
+      'failed': 'danger'
     };
-    return statusClasses[status] || 'info';
+    return statusClasses[key] || 'info';
+  }
+
+  getProjectStatusText(status) {
+    const key = this.normalizeProjectStatus(status);
+    const map = {
+      'draft': 'Черновик',
+      'active': i18n.t('projects.active') || 'Активный',
+      'voting': i18n.t('projects.voting') || 'Голосование',
+      'paused': 'Приостановлен',
+      'ready_to_payout': i18n.t('projects.ready_to_payout') || 'Готов к выплате',
+      'paid': 'Оплачен',
+      'completed': 'Завершён',
+      'cancelled': 'Отменён',
+      'failed': 'Неуспешный'
+    };
+    return map[key] || status;
   }
 
   calculateETA(project) {
@@ -1601,7 +1667,7 @@ class FundChainApp {
         <div class="project-section">
           <h5>${this.escapeHtml(project.name)}</h5>
           <div class="project-meta">
-            <span class="badge badge-${this.getStatusBadgeClass(project.status)}">${project.status}</span>
+            <span class="badge badge-${this.getStatusBadgeClass(project.status)}">${this.getProjectStatusText(project.status)}</span>
             <span class="badge badge-secondary">${this.escapeHtml(project.category)}</span>
           </div>
         </div>
@@ -3133,7 +3199,7 @@ class FundChainApp {
           <tr>
             <td><strong>${this.escapeHtml(project.name)}</strong></td>
             <td><span class="badge badge-info">${this.escapeHtml(project.category)}</span></td>
-            <td><span class="badge badge-${this.getStatusBadgeClass(project.status)}">${project.status}</span></td>
+            <td><span class="badge badge-${this.getStatusBadgeClass(project.status)}">${this.getProjectStatusText(project.status)}</span></td>
             <td>${this.formatETH(project.target)} ETH</td>
             <td>${this.formatETH(project.total_allocated)} ETH</td>
             <td>${progress}%</td>

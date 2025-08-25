@@ -72,9 +72,29 @@
       return div.innerHTML;
     }
 
+    normalizeProjectStatus(status) {
+      if (typeof status === 'number') {
+        const map = { 0: 'draft', 1: 'active', 2: 'paused', 3: 'cancelled', 4: 'ready_to_payout', 5: 'completed', 6: 'failed' };
+        return map[status] || 'active';
+      }
+      const str = String(status ?? '').trim();
+      if (/^\d+$/.test(str)) {
+        const n = parseInt(str, 10);
+        return this.normalizeProjectStatus(n);
+      }
+      const raw = str.toLowerCase();
+      const compact = raw.replace(/\s+|-/g, '_');
+      if (compact === 'readytopayout' || compact === 'ready_to_payout') return 'ready_to_payout';
+      if (compact === 'canceled') return 'cancelled';
+      if (compact === 'complete' || compact === 'completed') return 'completed';
+      if (compact === 'pay' || compact === 'payed' || compact === 'paid') return 'paid';
+      return compact;
+    }
+
     getStatusBadgeClass(status) {
-      const statusClasses = { 'active': 'info', 'voting': 'warning', 'ready_to_payout': 'success', 'paid': 'secondary', 'cancelled': 'danger' };
-      return statusClasses[status] || 'info';
+      const key = this.normalizeProjectStatus(status);
+      const statusClasses = { 'draft': 'secondary', 'active': 'info', 'voting': 'warning', 'paused': 'warning', 'ready_to_payout': 'primary', 'paid': 'secondary', 'completed': 'success', 'cancelled': 'danger', 'failed': 'danger' };
+      return statusClasses[key] || 'info';
     }
 
     showModal(title, body, footer = '') {

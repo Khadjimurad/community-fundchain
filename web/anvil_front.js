@@ -197,6 +197,7 @@ async function loadProjects() {
                 
                 // Проверяем, что проект существует
                 if (project && project.id !== '0x0000000000000000000000000000000000000000000000000000000000000000') {
+                    const statusNumeric = parseInt(project.status);
                     projects.push({
                         id: project.id,
                         name: project.name || `Проект ${i}`,
@@ -204,7 +205,8 @@ async function loadProjects() {
                         target: web3.utils.fromWei(project.target, 'ether'),
                         softCap: web3.utils.fromWei(project.softCap, 'ether'),
                         hardCap: web3.utils.fromWei(project.hardCap, 'ether'),
-                        status: getProjectStatus(parseInt(project.status)),
+                        statusKey: getProjectStatusKey(statusNumeric),
+                        statusText: getProjectStatusText(statusNumeric),
                         category: project.category || 'Общая',
                         createdAt: new Date(parseInt(project.createdAt) * 1000).toLocaleDateString('ru-RU'),
                         deadline: project.deadline ? new Date(parseInt(project.deadline) * 1000).toLocaleDateString('ru-RU') : 'Не указано',
@@ -260,7 +262,7 @@ async function loadProjects() {
                     <td><strong>${project.name}</strong></td>
                     <td>${project.description}</td>
                     <td>${project.target} ETH</td>
-                    <td><span class="status-badge status-${project.status.toLowerCase()}">${project.status}</span></td>
+                    <td><span class="status-badge status-${project.statusKey}">${project.statusText}</span></td>
                     <td>${project.category}</td>
                     <td>${project.createdAt}</td>
                     <td>${project.deadline}</td>
@@ -289,18 +291,31 @@ async function loadProjects() {
     }
 }
 
-// Функция для получения статуса проекта
-function getProjectStatus(status) {
-    const statuses = {
-        0: 'Draft',
-        1: 'Active',
-        2: 'Paused',
-        3: 'Cancelled',
-        4: 'ReadyToPayout',
-        5: 'Completed',
-        6: 'Failed'
+// Функции для получения статуса проекта
+function getProjectStatusKey(status) {
+    const keys = {
+        0: 'draft',
+        1: 'active',
+        2: 'paused',
+        3: 'cancelled',
+        4: 'readytopayout',
+        5: 'completed',
+        6: 'failed'
     };
-    return statuses[status] || 'Unknown';
+    return keys[status] || 'unknown';
+}
+
+function getProjectStatusText(status) {
+    const texts = {
+        0: 'Черновик',
+        1: 'Активный',
+        2: 'Приостановлен',
+        3: 'Отменён',
+        4: 'Готов к выплате',
+        5: 'Завершён',
+        6: 'Неуспешный'
+    };
+    return texts[status] || 'Неизвестно';
 }
 
 // Функция для создания тестового проекта

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Full Test Cycle Runner for FundChain
-# Запускает полный цикл тестирования: заполнение данных → голосование → готовность к выплатам
+# Запускает полный цикл тестирования: заполнение данных → голосование → блокчейн-проверки
 
 set -e
 
@@ -50,7 +50,7 @@ copy_test_files() {
     docker exec $CONTAINER_NAME mkdir -p $TEST_DIR
     
     # Copy all test files one by one with error handling
-    local test_files=("01_seed_real_data.py" "02_voting_cycle.py" "03_payout_ready.py")
+    local test_files=("01_seed_real_data.py" "02_voting_cycle.py" "04_blockchain_only.py")
     
     for file in "${test_files[@]}"; do
         if [ -f "test/$file" ]; then
@@ -114,14 +114,13 @@ show_summary() {
     echo ""
     echo -e "${GREEN}✅ What was accomplished:${NC}"
     echo "   1. 🌱 Real data seeded with Anvil addresses"
-    echo "   2. 🗳️ Complete voting cycle executed"
-    echo "   3. 💸 Projects ready for payout"
+    echo "   2. 🗳️ Complete on-chain voting cycle executed"
+    echo "   3. 🔗 Blockchain-only checks completed"
     echo ""
     echo -e "${GREEN}🚀 Next steps:${NC}"
     echo "   1. Open http://localhost:3000 in your browser"
     echo "   2. Check the dashboard for updated data"
-    echo "   3. Go to 'Project Payout' section"
-    echo "   4. Execute payouts via smart contracts"
+    echo "   3. Verify contracts and voting state in the UI"
     echo ""
     echo -e "${BLUE}📁 Test reports saved in: test/ directory${NC}"
     echo -e "${BLUE}📊 Check individual test outputs for detailed results${NC}"
@@ -163,9 +162,9 @@ main() {
     fi
     ((phase++))
     
-    # Phase 3: Payout readiness
-    show_progress $phase $total_phases "Payout Readiness"
-    if ! run_test "03_payout_ready" "03_payout_ready.py" $phase; then
+    # Phase 3: Blockchain-only checks
+    show_progress $phase $total_phases "Blockchain-only Checks"
+    if ! run_test "04_blockchain_only" "04_blockchain_only.py" $phase; then
         all_tests_passed=false
     fi
     
@@ -177,7 +176,7 @@ main() {
     else
         echo ""
         echo -e "${RED}⚠️ Some tests failed. Check the logs above for details.${NC}"
-        echo -e "${YELLOW}💡 You may need to fix issues before proceeding to payouts.${NC}"
+        echo -e "${YELLOW}💡 You may need to fix issues before proceeding.${NC}"
         exit 1
     fi
 }

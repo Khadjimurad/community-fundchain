@@ -68,7 +68,7 @@ class RealDataSeeder:
                 'description': 'Строительство колодца для обеспечения чистой водой местной общины',
                 'target': 10.0,
                 'category': 'infrastructure',
-                'status': '3'  # under_review
+                'status': 'active'
             },
             {
                 'id': self.real_project_ids[1],
@@ -76,7 +76,7 @@ class RealDataSeeder:
                 'description': 'Закупка экстренных медицинских принадлежностей для местной клиники',
                 'target': 5.0,
                 'category': 'healthcare',
-                'status': '3'  # under_review
+                'status': 'active'
             },
             {
                 'id': self.real_project_ids[2],
@@ -84,7 +84,7 @@ class RealDataSeeder:
                 'description': 'Компьютеры и учебные материалы для местной школы',
                 'target': 15.0,
                 'category': 'education',
-                'status': '3'  # under_review
+                'status': 'active'
             },
             {
                 'id': self.real_project_ids[3],
@@ -92,7 +92,7 @@ class RealDataSeeder:
                 'description': 'Установка солнечных панелей для обеспечения электроэнергией общинного центра',
                 'target': 25.0,
                 'category': 'energy',
-                'status': '3'  # under_review
+                'status': 'active'
             },
             {
                 'id': self.real_project_ids[4],
@@ -100,7 +100,7 @@ class RealDataSeeder:
                 'description': 'Строительство безопасной детской площадки в парке',
                 'target': 8.0,
                 'category': 'recreation',
-                'status': '3'  # under_review
+                'status': 'active'
             },
             {
                 'id': self.real_project_ids[5],
@@ -108,7 +108,7 @@ class RealDataSeeder:
                 'description': 'Создание общественной библиотеки с книгами на разных языках',
                 'target': 12.0,
                 'category': 'education',
-                'status': '3'  # under_review
+                'status': 'active'
             },
             {
                 'id': self.real_project_ids[6],
@@ -116,7 +116,7 @@ class RealDataSeeder:
                 'description': 'Создание центра досуга и поддержки для пожилых людей',
                 'target': 18.0,
                 'category': 'social',
-                'status': '3'  # under_review
+                'status': 'active'
             },
             {
                 'id': self.real_project_ids[7],
@@ -124,7 +124,7 @@ class RealDataSeeder:
                 'description': 'Покупка автомобиля скорой помощи для экстренных случаев',
                 'target': 35.0,
                 'category': 'healthcare',
-                'status': '3'  # under_review
+                'status': 'active'
             },
             {
                 'id': self.real_project_ids[8],
@@ -132,7 +132,7 @@ class RealDataSeeder:
                 'description': 'Строительство крытого фермерского рынка для местных производителей',
                 'target': 20.0,
                 'category': 'commerce',
-                'status': '3'  # under_review
+                'status': 'active'
             },
             {
                 'id': self.real_project_ids[9],
@@ -140,7 +140,7 @@ class RealDataSeeder:
                 'description': 'Оборудование многофункционального спортивного зала',
                 'target': 22.0,
                 'category': 'recreation',
-                'status': '3'  # under_review
+                'status': 'active'
             }
         ]
     
