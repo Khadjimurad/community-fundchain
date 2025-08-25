@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-01 - Seed Real Data Test
+01 - Seed Real Data Test (SYNC VERSION)
 Заполняет базу реальными данными с токенами и адресами из Anvil
+Исправленная версия для работы с синхронной базой данных
 """
 
-import asyncio
 import os
 import sys
 import logging
@@ -15,7 +15,7 @@ from decimal import Decimal
 # Add the app directory to the path for imports
 sys.path.append('/app')
 
-from app.database import get_db_manager
+from app.database import SessionLocal
 from app.models import Project, Donation, Allocation, Member, VotingRound, Vote, VoteResult, Payout
 
 # Configure logging
@@ -26,7 +26,6 @@ class RealDataSeeder:
     """Seeds database with real data using Anvil addresses and smart contract IDs."""
     
     def __init__(self):
-        self.db_manager = None
         self.test_results = {
             'passed': 0,
             'failed': 0,
@@ -113,6 +112,14 @@ class RealDataSeeder:
             },
             {
                 'id': self.real_project_ids[6],
+                'name': 'Центр для пожилых',
+                'description': 'Создание центра досуга и поддержки для пожилых людей',
+                'target': 18.0,
+                'category': 'social',
+                'status': '3'  # under_review
+            },
+            {
+                'id': self.real_project_ids[7],
                 'name': 'Скорая помощь',
                 'description': 'Покупка автомобиля скорой помощи для экстренных случаев',
                 'target': 35.0,
@@ -120,19 +127,11 @@ class RealDataSeeder:
                 'status': '3'  # under_review
             },
             {
-                'id': self.real_project_ids[7],
+                'id': self.real_project_ids[8],
                 'name': 'Фермерский рынок',
                 'description': 'Строительство крытого фермерского рынка для местных производителей',
                 'target': 20.0,
                 'category': 'commerce',
-                'status': '3'  # under_review
-            },
-            {
-                'id': self.real_project_ids[8],
-                'name': 'Центр для пожилых',
-                'description': 'Создание центра досуга и поддержки для пожилых людей',
-                'target': 18.0,
-                'category': 'social',
                 'status': '3'  # under_review
             },
             {
@@ -145,61 +144,46 @@ class RealDataSeeder:
             }
         ]
     
-    async def initialize(self):
-        """Initialize database connection."""
-        logger.info("🚀 Initializing real data seeder...")
-        
-        self.db_manager = get_db_manager()
-        logger.info("✅ Database connection established")
-    
-    async def run_seeding_tests(self):
-        """Execute all seeding tests."""
+    def run_seeding_tests(self):
+        """Run all seeding tests."""
         logger.info("🌱 Starting real data seeding tests...")
         
         try:
-            # Check if we should skip seeding
-            if await self.should_skip_seeding():
-                await self.generate_seeding_report()
-                return True
+            # Check existing data
+            self.check_existing_data()
             
-            # Phase 1: Create participants
-            await self.test_create_participants()
+            # Run tests
+            self.test_create_participants()
+            self.test_create_projects()
+            self.test_create_donations()
+            self.test_create_allocations()
             
-            # Phase 2: Create projects
-            await self.test_create_projects()
-            
-            # Phase 3: Create donations
-            await self.test_create_donations()
-            
-            # Phase 4: Create allocations
-            await self.test_create_allocations()
-            
-            # Final Report
-            await self.generate_seeding_report()
+            # Generate report
+            self.generate_seeding_report()
             
         except Exception as e:
-            logger.error(f"❌ Seeding test suite failed with error: {e}")
-            self.test_results['errors'].append(f"Critical error: {e}")
-            return False
+            logger.error(f"❌ Seeding tests failed: {e}")
+            self.test_results['failed'] += 1
+            self.test_results['errors'].append(f"General error: {e}")
     
-    async def check_existing_data(self):
+    def check_existing_data(self):
         """Check if data already exists in the database."""
         logger.info("🔍 Checking existing data...")
         
         try:
             from sqlalchemy import text
             
-            async with self.db_manager.get_session() as session:
+            with SessionLocal() as session:
                 # Check participants
-                result = await session.execute(text("SELECT COUNT(*) FROM members"))
+                result = session.execute(text("SELECT COUNT(*) FROM members"))
                 participant_count = result.scalar()
                 
                 # Check projects
-                result = await session.execute(text("SELECT COUNT(*) FROM projects"))
+                result = session.execute(text("SELECT COUNT(*) FROM projects"))
                 project_count = result.scalar()
                 
                 # Check donations
-                result = await session.execute(text("SELECT COUNT(*) FROM donations"))
+                result = session.execute(text("SELECT COUNT(*) FROM donations"))
                 donation_count = result.scalar()
                 
                 logger.info(f"📊 Existing data: {participant_count} participants, {project_count} projects, {donation_count} donations")
@@ -214,9 +198,9 @@ class RealDataSeeder:
             logger.error(f"❌ Failed to check existing data: {e}")
             return {'participants': 0, 'projects': 0, 'donations': 0}
     
-    async def should_skip_seeding(self):
+    def should_skip_seeding(self):
         """Determine if seeding should be skipped based on existing data."""
-        existing_data = await self.check_existing_data()
+        existing_data = self.check_existing_data()
         
         # If we have substantial data, skip seeding
         if existing_data['participants'] >= 5 and existing_data['projects'] >= 5:
@@ -225,12 +209,12 @@ class RealDataSeeder:
         
         return False
     
-    async def test_create_participants(self):
+    def test_create_participants(self):
         """Test creation of 10 participants with real addresses."""
         logger.info("👥 Testing participant creation...")
         
         try:
-            async with self.db_manager.get_session() as session:
+            with SessionLocal() as session:
                 # Create 10 participants with real addresses
                 for i, address in enumerate(self.real_addresses):
                     # Generate realistic weight based on address (deterministic)
@@ -245,7 +229,7 @@ class RealDataSeeder:
                     )
                     session.add(member)
                 
-                await session.commit()
+                session.commit()
                 logger.info(f"✅ Created {len(self.real_addresses)} participants with real addresses")
                 self.test_results['passed'] += 1
                 
@@ -254,12 +238,12 @@ class RealDataSeeder:
             self.test_results['failed'] += 1
             self.test_results['errors'].append(f"Participant creation: {e}")
     
-    async def test_create_projects(self):
+    def test_create_projects(self):
         """Test creation of 10 projects with real IDs."""
         logger.info("📋 Testing project creation...")
         
         try:
-            async with self.db_manager.get_session() as session:
+            with SessionLocal() as session:
                 for project_data in self.projects_data:
                     project = Project(
                         id=project_data['id'],
@@ -279,7 +263,7 @@ class RealDataSeeder:
                     )
                     session.add(project)
                 
-                await session.commit()
+                session.commit()
                 logger.info(f"✅ Created {len(self.projects_data)} projects with Russian names and descriptions")
                 self.test_results['passed'] += 1
                 
@@ -288,34 +272,34 @@ class RealDataSeeder:
             self.test_results['failed'] += 1
             self.test_results['errors'].append(f"Project creation: {e}")
     
-    async def test_create_donations(self):
-        """Test creation of realistic donations."""
+    def test_create_donations(self):
+        """Test creation of donations from participants."""
         logger.info("💰 Testing donation creation...")
         
         try:
-            async with self.db_manager.get_session() as session:
-                donation_count = 0
-                
+            with SessionLocal() as session:
+                # Create donations for each participant
                 for i, address in enumerate(self.real_addresses):
-                    # Each participant makes 1-3 donations
-                    num_donations = random.randint(1, 3)
+                    # Generate realistic donation amount
+                    amount = random.uniform(0.1, 2.0)
                     
-                    for j in range(num_donations):
-                        amount = Decimal(str(random.uniform(0.5, 5.0)))
-                        
-                        donation = Donation(
-                            receipt_id=f"receipt_{address[:8]}_{j}_{donation_count}",
-                            donor_address=address,
-                            amount=float(amount),
-                            tx_hash=f"0x{random.randint(1000000, 9999999):08x}{random.randint(1000000, 9999999):08x}",
-                            block_number=2000000 + donation_count,
-                            timestamp=datetime.now() - timedelta(days=random.randint(1, 30))
-                        )
-                        session.add(donation)
-                        donation_count += 1
+                    donation = Donation(
+                        receipt_id=f"receipt_{i}_{int(datetime.now().timestamp())}",
+                        donor_address=address,
+                        amount=amount,
+                        timestamp=datetime.now() - timedelta(days=random.randint(1, 30)),
+                        tx_hash=f"0x{random.randint(1000000, 9999999):x}",
+                        block_number=1500000 + random.randint(1, 1000)
+                    )
+                    session.add(donation)
+                    
+                    # Update member's total donated
+                    member = session.query(Member).filter(Member.address == address).first()
+                    if member:
+                        member.total_donated += amount
                 
-                await session.commit()
-                logger.info(f"✅ Created {donation_count} donations")
+                session.commit()
+                logger.info(f"✅ Created donations for {len(self.real_addresses)} participants")
                 self.test_results['passed'] += 1
                 
         except Exception as e:
@@ -323,48 +307,38 @@ class RealDataSeeder:
             self.test_results['failed'] += 1
             self.test_results['errors'].append(f"Donation creation: {e}")
     
-    async def test_create_allocations(self):
-        """Test creation of realistic allocations."""
+    def test_create_allocations(self):
+        """Test creation of allocations for projects."""
         logger.info("📈 Testing allocation creation...")
         
         try:
-            async with self.db_manager.get_session() as session:
-                allocation_count = 0
-                
+            with SessionLocal() as session:
                 # Get all donations
-                from sqlalchemy import text
-                donations_result = await session.execute(text("SELECT id, amount, donor_address FROM donations"))
-                donations = donations_result.fetchall()
+                donations = session.query(Donation).all()
                 
-                # Get all projects
-                projects_result = await session.execute(text("SELECT id, target FROM projects"))
-                projects = projects_result.fetchall()
-                
+                # Create allocations for each donation
                 for donation in donations:
-                    donation_id, amount, donor_address = donation
-                    
-                    # Allocate to random project
-                    project = random.choice(projects)
-                    project_id, target = project
-                    
-                    # Allocate 70-100% of donation to project
-                    allocation_amount = amount * random.uniform(0.7, 1.0)
-                    
-                    allocation = Allocation(
-                        project_id=project_id,
-                        donor_address=donor_address,
-                        donation_id=donation_id,
-                        amount=allocation_amount,
-                        allocation_type='direct',
-                        tx_hash=f"0x{random.randint(1000000, 9999999):08x}{random.randint(1000000, 9999999):08x}",
-                        block_number=2500000 + allocation_count,
-                        timestamp=datetime.now() - timedelta(days=random.randint(1, 20))
-                    )
-                    session.add(allocation)
-                    allocation_count += 1
+                    # Get random project
+                    projects = session.query(Project).all()
+                    if projects:
+                        project = random.choice(projects)
+                        allocation = Allocation(
+                            donation_id=donation.id,
+                            project_id=project.id,
+                            donor_address=donation.donor_address,
+                            amount=donation.amount,
+                            allocation_type='donation',
+                            timestamp=donation.timestamp,
+                            tx_hash=f"0x{random.randint(1000000, 9999999):x}",
+                            block_number=donation.block_number
+                        )
+                        session.add(allocation)
+                        
+                        # Update project's total allocated
+                        project.total_allocated += donation.amount
                 
-                await session.commit()
-                logger.info(f"✅ Created {allocation_count} allocations")
+                session.commit()
+                logger.info(f"✅ Created allocations for {len(donations)} donations")
                 self.test_results['passed'] += 1
                 
         except Exception as e:
@@ -372,82 +346,86 @@ class RealDataSeeder:
             self.test_results['failed'] += 1
             self.test_results['errors'].append(f"Allocation creation: {e}")
     
-    async def generate_seeding_report(self):
+    def generate_seeding_report(self):
         """Generate comprehensive seeding test report."""
         logger.info("📋 Generating seeding test report...")
         
-        # Get current data counts
-        existing_data = await self.check_existing_data()
-        
-        total_tests = self.test_results['passed'] + self.test_results['failed']
-        success_rate = (self.test_results['passed'] / total_tests * 100) if total_tests > 0 else 0
-        
-        report = f"""
+        try:
+            # Check final data
+            final_data = self.check_existing_data()
+            
+            # Generate report
+            report = f"""
         
 🌱 REAL DATA SEEDING TEST REPORT
 =================================
 
 📊 TEST SUMMARY:
-   Total Tests: {total_tests}
+   Total Tests: 4
    Passed: {self.test_results['passed']} ✅
    Failed: {self.test_results['failed']} ❌
-   Success Rate: {success_rate:.1f}%
+   Success Rate: {(self.test_results['passed'] / 4 * 100):.1f}%
 
 🔑 REAL DATA USED:
-   - 10 participants with real Anvil addresses
-   - 10 projects with Russian names and descriptions
+   - {len(self.real_addresses)} participants with real Anvil addresses
+   - {len(self.projects_data)} projects with Russian names and descriptions
    - Realistic donation amounts and allocations
    - Proper database relationships
 
 📋 DATA STATUS:
-   - Participants: {existing_data['participants']}
-   - Projects: {existing_data['projects']}
-   - Donations: {existing_data['donations']}
+   - Participants: {final_data['participants']}
+   - Projects: {final_data['projects']}
+   - Donations: {final_data['donations']}
    - Allocations: Distributed across projects
    
 """
-        
-        if self.test_results['errors']:
-            report += "❌ ERRORS ENCOUNTERED:\n"
-            for error in self.test_results['errors']:
-                report += f"   - {error}\n"
-        
-        if success_rate >= 80:
-            report += "\n🎉 OVERALL RESULT: REAL DATA SUCCESSFULLY SEEDED!"
-            report += "\n🚀 Next step: Run voting tests"
-        elif existing_data['participants'] >= 5 and existing_data['projects'] >= 5:
-            report += "\n✅ OVERALL RESULT: SUFFICIENT DATA ALREADY EXISTS"
-            report += "\n🚀 Ready for voting tests"
-        else:
-            report += "\n⚠️ OVERALL RESULT: SEEDING NEEDS IMPROVEMENTS"
-        
-        logger.info(report)
-        
-        # Save report to file
-        report_file = f"test/01_seeding_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-        with open(report_file, 'w') as f:
-            f.write(report)
-        
-        logger.info(f"📄 Seeding test report saved to: {report_file}")
+            
+            if self.test_results['errors']:
+                report += "❌ ERRORS ENCOUNTERED:\n"
+                for error in self.test_results['errors']:
+                    report += f"   - {error}\n"
+            
+            if self.test_results['failed'] == 0:
+                report += "\n✅ OVERALL RESULT: SEEDING COMPLETED SUCCESSFULLY"
+            else:
+                report += f"\n⚠️ OVERALL RESULT: SEEDING NEEDS IMPROVEMENTS ({self.test_results['failed']} errors)"
+            
+            logger.info(report)
+            
+            # Save report to file
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            report_file = f"test/01_seeding_report_{timestamp}.txt"
+            
+            try:
+                with open(report_file, 'w', encoding='utf-8') as f:
+                    f.write(report)
+                logger.info(f"📄 Seeding test report saved to: {report_file}")
+            except Exception as e:
+                logger.warning(f"⚠️ Could not save report to file: {e}")
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to generate report: {e}")
 
-
-async def main():
-    """Main function to run real data seeding."""
-    seeder = RealDataSeeder()
+def main():
+    """Main function to run the seeding tests."""
+    logger.info("🚀 Initializing real data seeder...")
     
     try:
-        await seeder.initialize()
-        await seeder.run_seeding_tests()
+        seeder = RealDataSeeder()
         
-    except KeyboardInterrupt:
-        logger.info("🛑 Real data seeding interrupted by user")
+        # Check if we should skip seeding
+        if seeder.should_skip_seeding():
+            logger.info("✅ Seeding skipped - sufficient data already exists")
+            return
+        
+        # Run tests
+        seeder.run_seeding_tests()
+        
+        logger.info("🎉 Real data seeding completed!")
+        
     except Exception as e:
-        logger.error(f"💥 Real data seeding failed: {e}")
-        return 1
-    
-    return 0
-
+        logger.error(f"❌ Critical error in seeding: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    exit_code = asyncio.run(main())
-    sys.exit(exit_code)
+    main()

@@ -1281,7 +1281,7 @@ class ProjectPayoutInterface {
       
       // Initialize contracts
       try {
-        this.initializeContracts();
+        await this.initializeContracts();
         console.log('Contracts initialized');
       } catch (error) {
         console.error('Contract initialization error:', error);
@@ -1480,17 +1480,80 @@ class ProjectPayoutInterface {
     }
   }
 
-  initializeContracts() {
+  // Функция для обновления UI с адресами контрактов
+  updateContractAddressesUI(multisigAddress, treasuryAddress, projectsAddress) {
+    try {
+      // Update multisig address field
+      const multisigField = document.getElementById('multisig-address');
+      if (multisigField) {
+        multisigField.value = multisigAddress || '';
+      }
+      
+      // Update treasury address field
+      const treasuryField = document.getElementById('treasury-address');
+      if (treasuryField) {
+        treasuryField.value = treasuryAddress || '';
+      }
+      
+      // Update projects address field
+      const projectsField = document.getElementById('projects-address');
+      if (projectsField) {
+        projectsField.value = projectsAddress || '';
+      }
+      
+      console.log('UI updated with contract addresses');
+    } catch (error) {
+      console.warn('Failed to update UI with contract addresses:', error);
+    }
+  }
+
+  // Функция для загрузки ABI контракта через API
+  async getContractABI(contractName) {
+    try {
+      const response = await fetch(`http://localhost:8000/api/v1/admin/contracts/abi/${contractName}`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      const data = await response.json();
+      return data.abi;
+    } catch (error) {
+      console.error(`Ошибка получения ABI для ${contractName}:`, error);
+      return null;
+    }
+  }
+
+  // Функция для получения конфигурации контрактов через API
+  async getContractConfig() {
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/admin/system/config');
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      const config = await response.json();
+      
+      return {
+        treasury_address: config.treasury_address,
+        projects_address: config.projects_address,
+        multisig_address: config.multisig_address
+      };
+    } catch (error) {
+      console.error('Ошибка получения конфигурации контрактов:', error);
+      return null;
+    }
+  }
+
+  async initializeContracts() {
     try {
       // Try to get addresses from CONTRACT_CONFIG first
       let multisigAddress, treasuryAddress, projectsAddress;
       
-      if (typeof CONTRACT_CONFIG !== 'undefined' && CONTRACT_CONFIG.addresses) {
-        // Use addresses from CONTRACT_CONFIG
-        multisigAddress = CONTRACT_CONFIG.addresses.multisig;
-        treasuryAddress = CONTRACT_CONFIG.addresses.treasury;
-        projectsAddress = CONTRACT_CONFIG.addresses.projects;
-        console.log('Using contract addresses from CONTRACT_CONFIG');
+      const contractConfig = await this.getContractConfig();
+      if (contractConfig) {
+        // Use addresses from API
+        multisigAddress = contractConfig.multisig_address;
+        treasuryAddress = contractConfig.treasury_address;
+        projectsAddress = contractConfig.projects_address;
+        console.log('Using contract addresses from API');
       } else {
         // Fallback to DOM elements or default addresses
         let multisigAddressElement = document.getElementById('multisig-address');
@@ -1519,9 +1582,27 @@ class ProjectPayoutInterface {
       
       console.log('Contract addresses:', { multisigAddress, treasuryAddress, projectsAddress });
       
-      this.contracts.multisig = new this.web3.eth.Contract(this.abis.multisig, multisigAddress);
-      this.contracts.treasury = new this.web3.eth.Contract(this.abis.treasury, treasuryAddress);
-      this.contracts.projects = new this.web3.eth.Contract(this.abis.projects, projectsAddress);
+      // Update UI with contract addresses
+      this.updateContractAddressesUI(multisigAddress, treasuryAddress, projectsAddress);
+      
+      // Load contract ABIs from API
+      const multisigABI = await this.getContractABI('CommunityMultisig');
+      const treasuryABI = await this.getContractABI('Treasury');
+      const projectsABI = await this.getContractABI('Projects');
+      
+      // Use API ABIs if available, otherwise fallback to hardcoded ones
+      const finalMultisigABI = multisigABI || this.abis.multisig;
+      const finalTreasuryABI = treasuryABI || this.abis.treasury;
+      const finalProjectsABI = projectsABI || this.abis.projects;
+      
+      console.log('Using ABI for Projects:', finalProjectsABI ? 'API ABI' : 'Fallback ABI');
+      if (finalProjectsABI) {
+        console.log('Projects ABI methods:', finalProjectsABI.filter(item => item.type === 'function').map(f => f.name));
+      }
+      
+      this.contracts.multisig = new this.web3.eth.Contract(finalMultisigABI, multisigAddress);
+      this.contracts.treasury = new this.web3.eth.Contract(finalTreasuryABI, treasuryAddress);
+      this.contracts.projects = new this.web3.eth.Contract(finalProjectsABI, projectsAddress);
     } catch (error) {
       console.error('Error initializing contracts:', error);
     }
@@ -1558,10 +1639,32 @@ class ProjectPayoutInterface {
           let projects = [];
           try {
             // Попробуем получить проекты из контракта
-            const projectIds = await this.contracts.projects.methods.projectIds().call();
-            console.log('Project IDs from contract:', projectIds);
+            console.log('Calling listIds() method on Projects contract...');
+            console.log('Projects contract address:', this.contracts.projects._address);
+            console.log('Projects contract ABI methods:', Object.keys(this.contracts.projects.methods));
             
-            if (projectIds && projectIds.length > 0) {
+            // Сначала проверим, есть ли проекты через другие методы
+            try {
+              const adminAddress = await this.contracts.projects.methods.admin().call();
+              console.log('Projects contract admin:', adminAddress);
+            } catch (adminError) {
+              console.warn('Failed to get admin address:', adminError);
+            }
+            
+            try {
+              const globalSoftCap = await this.contracts.projects.methods.globalSoftCapEnabled().call();
+              console.log('Global soft cap enabled:', globalSoftCap);
+            } catch (softCapError) {
+              console.warn('Failed to get global soft cap:', softCapError);
+            }
+            
+            const projectIds = await this.contracts.projects.methods.listIds().call();
+            console.log('Project IDs from contract:', projectIds);
+            console.log('Project IDs type:', typeof projectIds);
+            console.log('Project IDs length:', projectIds ? projectIds.length : 'null');
+            
+            // Проверяем, что projectIds - это массив и он не пустой
+            if (projectIds && Array.isArray(projectIds) && projectIds.length > 0) {
               for (let i = 0; i < projectIds.length; i++) {
                 try {
                   const projectId = projectIds[i];
@@ -1590,9 +1693,16 @@ class ProjectPayoutInterface {
                   console.warn(`Failed to get project ${i}:`, projectError);
                 }
               }
+            } else {
+              console.log('No projects found in contract (empty array or null)');
             }
           } catch (contractError) {
             console.warn('Failed to get projects from contract, using demo data:', contractError);
+            console.log('Contract error details:', {
+              message: contractError.message,
+              code: contractError.code,
+              stack: contractError.stack
+            });
           }
           
           // Если не удалось получить проекты из контракта, показываем сообщение об отсутствии проектов

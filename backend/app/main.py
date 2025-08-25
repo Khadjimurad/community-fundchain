@@ -27,7 +27,21 @@ def get_cors_origins():
     origins = settings.api_cors_origins
     if origins == "*":
         return ["*"]
-    return [origin.strip() for origin in origins.split(",") if origin.strip()]
+    
+    # Add development origins
+    dev_origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000", 
+        "http://frontend:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "null"  # For local HTML files opened directly in browser
+    ]
+    
+    parsed_origins = [origin.strip() for origin in origins.split(",") if origin.strip()]
+    return list(set(parsed_origins + dev_origins))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

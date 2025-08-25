@@ -48,18 +48,18 @@ contract Deploy is Script {
         // Configure cross-contract relationships
         configureContracts();
         
-        // Initialize with demo data if local network
-        if (block.chainid == 31337) { // Anvil
-            initializeDemoData();
-        }
+        // Initialize with demo data if local network (disabled - tests will create their own data)
+        // if (block.chainid == 31337) { // Anvil
+        //     initializeDemoData();
+        // }
         
         vm.stopBroadcast();
         
         // Log deployment results
         logDeploymentResults();
         
-        // Write deployment artifacts
-        writeDeploymentArtifacts();
+        // Write deployment artifacts (disabled due to file system restrictions)
+        // writeDeploymentArtifacts();
     }
     
     function getDeploymentConfig(address deployer) internal pure returns (DeploymentConfig memory) {
@@ -205,7 +205,7 @@ contract Deploy is Script {
     
     function writeDeploymentArtifacts() internal {
         string memory chainId = vm.toString(block.chainid);
-        string memory deploymentsDir = string.concat("./deployments/", chainId);
+        string memory deploymentsDir = string.concat("../deployments/", chainId);
         
         // Create deployments directory structure
         vm.createDir(deploymentsDir, true);

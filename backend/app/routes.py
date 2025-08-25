@@ -699,7 +699,7 @@ async def get_overview_stats(db: AsyncSession = Depends(get_db)):
     seven_days_ago = datetime.utcnow() - timedelta(days=7)
     
     donations_7d_query = select(func.sum(Donation.amount)).where(Donation.timestamp >= seven_days_ago)
-    donations_7d_result = await db.execute(donations_7d_query)
+    donations_7d_result = db.execute(donations_7d_query)
     donations_7d = donations_7d_result.scalar() or 0
     
     return {
@@ -983,3 +983,68 @@ async def api_create_system_log(
     """Create a new system log entry."""
     from .api import create_system_log
     return await create_system_log(level, message, module, details, user_address, ip_address, db)
+
+# System configuration endpoint
+@router.get("/admin/system/config", tags=["⚙️ Admin"])
+async def get_system_config():
+    """Get system configuration including contract addresses."""
+    try:
+        from .web3_client import get_web3_client
+        
+        web3_client = get_web3_client()
+        
+        # Get contract addresses from web3 client
+        contract_addresses = web3_client.contract_addresses
+        
+        # Map contract names to expected field names
+        config = {
+            "treasury_address": contract_addresses.get("Treasury"),
+            "projects_address": contract_addresses.get("Projects"),
+            "sbt_address": contract_addresses.get("GovernanceSBT"),
+            "ballot_address": contract_addresses.get("BallotCommitReveal"),
+            "multisig_address": contract_addresses.get("CommunityMultisig"),  # Now deployed
+            "k_anonymity_threshold": 5,
+            "max_export_records": 10000,
+            "default_commit_duration": 168,
+            "default_reveal_duration": 72,
+            "enable_privacy_filters": True,
+            "require_sbt_voting": True,
+            "enable_auto_finalization": False
+        }
+        
+        return config
+        
+    except Exception as e:
+        logger.error(f"Failed to get system config: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get system configuration: {str(e)}"
+        )
+
+# Contract ABI endpoint
+@router.get("/admin/contracts/abi/{contract_name}", tags=["⚙️ Admin"])
+async def get_contract_abi(contract_name: str):
+    """Get contract ABI by name."""
+    try:
+        from .web3_client import get_web3_client
+        
+        web3_client = get_web3_client()
+        
+        # Get ABI from web3 client
+        if contract_name in web3_client.contract_abis:
+            return {
+                "contract_name": contract_name,
+                "abi": web3_client.contract_abis[contract_name]
+            }
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail=f"ABI for contract {contract_name} not found"
+            )
+        
+    except Exception as e:
+        logger.error(f"Failed to get contract ABI: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get contract ABI: {str(e)}"
+        )

@@ -44,22 +44,64 @@ class VotingCycleTester:
         self.anvil_url = "http://anvil:8545"
         self.private_key = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"  # Anvil account 0
         
-        # Updated contract addresses from successful deployment
-        self.contract_addresses = {
-            "GovernanceSBT": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-            "BallotCommitReveal": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
-            "Projects": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
-            "Treasury": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0"
-        }
+        # Contract addresses will be loaded from deployed_contracts.json
+        self.contract_addresses = {}
+        
+        # Initialize voting_accounts as empty list
+        self.voting_accounts = []
     
     def load_contract_addresses(self):
         """Load contract addresses from deployed_contracts.json."""
         try:
-            if os.path.exists("deployed_contracts.json"):
-                with open("deployed_contracts.json", 'r') as f:
+            # Try multiple possible paths for the deployment file
+            deployment_paths = [
+                "deployed_contracts.json/run-latest.json",
+                "contracts/broadcast/Deploy.s.sol/31337/run-latest.json",
+                "deployed_contracts.json"
+            ]
+            
+            deployment_file = None
+            for path in deployment_paths:
+                if os.path.exists(path):
+                    deployment_file = path
+                    break
+            
+            if deployment_file:
+                with open(deployment_file, 'r') as f:
                     deployment_data = json.load(f)
-                    self.contract_addresses = deployment_data["contracts"]
-                    logger.info("✅ Loaded contract addresses from deployed_contracts.json")
+                    
+                    # Extract contract addresses from the deployment data
+                    # Look for CREATE transactions (contract deployments)
+                    if "transactions" in deployment_data:
+                        contracts = {}
+                        for tx in deployment_data["transactions"]:
+                            # Only look at CREATE transactions (new contract deployments)
+                            if (tx.get("transactionType") == "CREATE" and 
+                                "contractName" in tx and "contractAddress" in tx):
+                                contract_name = tx["contractName"]
+                                contract_address = tx["contractAddress"]
+                                contracts[contract_name] = contract_address
+                        
+                        if contracts:
+                            # Convert addresses to checksum format for Web3.py compatibility
+                            from web3 import Web3
+                            checksum_contracts = {}
+                            for name, address in contracts.items():
+                                try:
+                                    checksum_address = Web3.to_checksum_address(address)
+                                    checksum_contracts[name] = checksum_address
+                                except Exception as e:
+                                    logger.warning(f"⚠️ Failed to convert address for {name}: {e}")
+                                    checksum_contracts[name] = address
+                            
+                            self.contract_addresses.update(checksum_contracts)
+                            logger.info("✅ Loaded contract addresses from deployed_contracts.json")
+                            logger.info(f"   Found contracts: {list(checksum_contracts.keys())}")
+                        else:
+                            logger.warning("⚠️ No contract deployments found in deployed_contracts.json")
+                    else:
+                        logger.warning("⚠️ Unexpected format in deployed_contracts.json")
+                        
             else:
                 logger.warning("⚠️ deployed_contracts.json not found, using default addresses")
         except Exception as e:
@@ -175,6 +217,7 @@ class VotingCycleTester:
             sbt_contract = self.contracts["GovernanceSBT"]
             
             # Use the first 8 Anvil accounts (excluding deployer and last one)
+            # Store addresses before they might be overwritten
             demo_addresses = [
                 self.voting_accounts[1]['address'],  # Account 1
                 self.voting_accounts[2]['address'],  # Account 2
@@ -185,6 +228,9 @@ class VotingCycleTester:
                 self.voting_accounts[7]['address'],  # Account 7
                 self.voting_accounts[8]['address']   # Account 8
             ]
+            
+            # Store these addresses for later use in voting
+            self.participant_addresses = demo_addresses.copy()
             
             # Demo donation amounts (in wei) - higher amounts for better voting power
             demo_donations = [
@@ -358,6 +404,11 @@ class VotingCycleTester:
             # Load contract ABIs
             self.load_contract_abis()
             
+            # Create Anvil accounts first (needed for participants)
+            if not self.create_anvil_accounts():
+                logger.error("❌ Failed to create Anvil accounts")
+                return False
+            
             # Load participants from SBT contract
             self.load_participants_from_sbt()
             
@@ -375,10 +426,7 @@ class VotingCycleTester:
         try:
             logger.info("🗳️ Starting complete voting cycle tests with smart contracts...")
             
-            # Create Anvil accounts for voting
-            if not self.create_anvil_accounts():
-                logger.error("❌ Failed to create Anvil accounts")
-                return False
+            # Anvil accounts already created in initialize(), just fund them if needed
             
             # Fund Anvil accounts with ETH
             if not self.fund_anvil_accounts():
@@ -441,8 +489,8 @@ class VotingCycleTester:
             
             # Start a new voting round
             txn = ballot_contract.functions.startRound(
-                7 * 24 * 3600,  # 7 days commit duration
-                3 * 24 * 3600,  # 3 days reveal duration
+                300,  # 5 minutes commit duration
+                300,  # 5 minutes reveal duration
                 project_ids,
                 0,  # CountingMethod.Simple (0)
                 True  # enableAutoCancellation
@@ -475,8 +523,8 @@ class VotingCycleTester:
             
             ballot_contract = self.contracts["BallotCommitReveal"]
             
-            # Get the latest round ID (assuming it's 1 for the first round)
-            round_id = 1
+            # Get the latest round ID from the contract
+            round_id = ballot_contract.functions.lastRoundId().call()
             
             # Get round info
             round_info = ballot_contract.functions.getRoundInfo(round_id).call()
@@ -525,8 +573,8 @@ class VotingCycleTester:
             
             ballot_contract = self.contracts["BallotCommitReveal"]
             
-            # Get the latest round ID
-            round_id = 1
+            # Get the latest round ID from the contract
+            round_id = ballot_contract.functions.lastRoundId().call()
             
             # Simulate reveal phase for participants
             for participant in self.participants[:3]:  # First 3 participants
@@ -559,8 +607,8 @@ class VotingCycleTester:
             
             ballot_contract = self.contracts["BallotCommitReveal"]
             
-            # Get the latest round ID
-            round_id = 1
+            # Get the latest round ID from the contract
+            round_id = ballot_contract.functions.lastRoundId().call()
             
             # Get round info
             round_info = ballot_contract.functions.getRoundInfo(round_id).call()
@@ -775,31 +823,16 @@ class VotingCycleTester:
     def create_multiple_voting_rounds(self):
         """Create multiple voting rounds for testing."""
         try:
-            logger.info("🗳️ Creating multiple voting rounds for testing...")
+            logger.info("🗳️ Creating single voting round with multiple projects...")
             
             ballot_contract = self.contracts["BallotCommitReveal"]
             
-            # Create different project combinations for each round
+            # Create one round with all projects
             round_configs = [
                 {
-                    'name': 'Infrastructure Round',
-                    'projects': ['demo-project-1'],  # Колодец для общины
-                    'duration': (3, 1)  # 3 days commit, 1 day reveal
-                },
-                {
-                    'name': 'Healthcare Round', 
-                    'projects': ['demo-project-2'],  # Медицинские принадлежности
-                    'duration': (2, 1)  # 2 days commit, 1 day reveal
-                },
-                {
-                    'name': 'Education Round',
-                    'projects': ['demo-project-3'],  # Школьное оборудование
-                    'duration': (4, 2)  # 4 days commit, 2 days reveal
-                },
-                {
-                    'name': 'Mixed Projects Round',
+                    'name': 'All Projects Round',
                     'projects': ['demo-project-1', 'demo-project-2', 'demo-project-3'],
-                    'duration': (5, 2)  # 5 days commit, 2 days reveal
+                    'duration': (300, 300)  # 5 minutes commit, 5 minutes reveal
                 }
             ]
             
@@ -812,8 +845,8 @@ class VotingCycleTester:
                     
                     # Start voting round
                     txn = ballot_contract.functions.startRound(
-                        config['duration'][0] * 24 * 3600,  # commit duration in seconds
-                        config['duration'][1] * 24 * 3600,  # reveal duration in seconds
+                        config['duration'][0],  # commit duration in seconds
+                        config['duration'][1],  # reveal duration in seconds
                         project_ids,
                         0,  # CountingMethod.Simple (0)
                         True  # enableAutoCancellation
@@ -829,7 +862,8 @@ class VotingCycleTester:
                     receipt = self.web3.eth.wait_for_transaction_receipt(tx_hash)
                     
                     if receipt.status == 1:
-                        round_id = i + 1  # Round IDs start from 1
+                        # Read actual round id from contract to avoid mismatches
+                        round_id = ballot_contract.functions.lastRoundId().call()
                         round_info = {
                             'id': round_id,
                             'name': config['name'],
@@ -865,16 +899,42 @@ class VotingCycleTester:
             round_info = ballot_contract.functions.getRoundInfo(round_id).call()
             logger.info(f"📊 Round {round_id} info: {round_info}")
             
+            # Check if round is properly initialized
+            if round_info[0] == 0:  # startCommit is 0
+                logger.warning(f"⚠️ Round {round_id} is not properly initialized (startCommit = 0)")
+                logger.warning(f"   This round may not be ready for voting")
+                return False
+            
+            # Check current blockchain time vs round timing
+            current_time = self.web3.eth.get_block('latest')['timestamp']
+            start_commit = round_info[0]
+            end_commit = round_info[1]
+            
+            logger.info(f"⏰ Current time: {current_time}")
+            logger.info(f"⏰ Round {round_id} commit phase: {start_commit} - {end_commit}")
+            logger.info(f"⏰ Commit phase active: {start_commit <= current_time <= end_commit}")
+            
+            if not (start_commit <= current_time <= end_commit):
+                logger.warning(f"⚠️ Round {round_id} commit phase is not active!")
+                logger.warning(f"   Current time: {current_time}")
+                logger.warning(f"   Commit phase: {start_commit} - {end_commit}")
+                return False
+            
             # Store commit data for reveal phase
             self.commit_data = []
             
             # Simulate commit phase for multiple participants
             for i, participant in enumerate(self.participants[:5]):  # First 5 participants
                 try:
-                    # Get unused voting account
-                    voting_account = self.get_unused_voting_account()
+                    # Find the voting account that matches this participant's address
+                    voting_account = None
+                    for account in self.voting_accounts:
+                        if account['address'].lower() == participant['address'].lower():
+                            voting_account = account
+                            break
+                    
                     if not voting_account:
-                        logger.warning(f"⚠️ No unused voting accounts for participant {participant['id']}")
+                        logger.warning(f"⚠️ No matching voting account for participant {participant['id']} at {participant['address']}")
                         continue
                     
                     # Create vote choices for all projects in this round
@@ -904,6 +964,24 @@ class VotingCycleTester:
                     self.commit_data.append(commit_info)
                     
                     # Commit vote using the voting account
+                    logger.info(f"🔐 Attempting to commit vote for {participant['id']} in round {round_id}")
+                    logger.info(f"   Using account: {voting_account['address']}")
+                    logger.info(f"   Vote hash: {vote_hash.hex()[:16]}...")
+                    
+                    # Check if participant has SBT token
+                    try:
+                        sbt_contract = self.contracts["GovernanceSBT"]
+                        has_token = sbt_contract.functions.hasToken(voting_account['address']).call()
+                        token_weight = sbt_contract.functions.weightOf(voting_account['address']).call()
+                        logger.info(f"   SBT check: hasToken={has_token}, weight={token_weight}")
+                        
+                        if not has_token:
+                            logger.warning(f"⚠️ Participant {participant['id']} does not have SBT token!")
+                            continue
+                    except Exception as e:
+                        logger.warning(f"⚠️ Failed to check SBT for {participant['id']}: {e}")
+                        continue
+                    
                     txn = ballot_contract.functions.commit(round_id, vote_hash).build_transaction({
                         'from': voting_account['address'],
                         'nonce': self.web3.eth.get_transaction_count(voting_account['address']),
@@ -920,11 +998,17 @@ class VotingCycleTester:
                         logger.info(f"✅ Participant {participant['id']} committed vote using {voting_account['id']}")
                         logger.info(f"   Vote choices: {vote_choices} for {len(project_ids)} projects")
                         logger.info(f"   Vote hash: {vote_hash.hex()[:16]}...")
+                        logger.info(f"   Transaction: {tx_hash.hex()}")
                     else:
-                        logger.warning(f"⚠️ Commit failed for participant {participant['id']}")
+                        logger.warning(f"⚠️ Commit failed for participant {participant['id']} - transaction failed")
+                        logger.warning(f"   Transaction hash: {tx_hash.hex()}")
+                        logger.warning(f"   Receipt status: {receipt.status}")
                         
                 except Exception as e:
                     logger.warning(f"⚠️ Failed to commit vote for {participant['id']}: {e}")
+                    logger.warning(f"   Error type: {type(e).__name__}")
+                    if hasattr(e, 'args'):
+                        logger.warning(f"   Error args: {e.args}")
                     continue
             
             logger.info(f"✅ Commit phase completed for Round {round_id}")
@@ -1054,22 +1138,12 @@ class VotingCycleTester:
             
             ballot_contract = self.contracts["BallotCommitReveal"]
             
-            # Fast test round configurations (very short durations for testing)
+            # Fast test round configuration (single round with all projects)
             fast_round_configs = [
                 {
-                    'name': 'Fast Test - Infrastructure',
-                    'projects': ['demo-project-1'],  # Колодец для общины
-                    'duration': (60, 60)  # 1 minute commit, 1 minute reveal
-                },
-                {
-                    'name': 'Fast Test - Healthcare',
-                    'projects': ['demo-project-2'],  # Медицинские принадлежности
-                    'duration': (60, 60)  # 1 minute commit, 1 minute reveal
-                },
-                {
-                    'name': 'Fast Test - Education',
-                    'projects': ['demo-project-3'],  # Школьное оборудование
-                    'duration': (60, 60)  # 1 minute commit, 1 minute reveal
+                    'name': 'Fast Test - All Projects',
+                    'projects': ['demo-project-1', 'demo-project-2', 'demo-project-3'],
+                    'duration': (300, 300)  # 5 minutes commit, 5 minutes reveal
                 }
             ]
             
@@ -1099,7 +1173,8 @@ class VotingCycleTester:
                     receipt = self.web3.eth.wait_for_transaction_receipt(tx_hash)
                     
                     if receipt.status == 1:
-                        round_id = i + 100  # Use 100+ IDs for fast test rounds
+                        # Read actual round id from contract to avoid mismatches
+                        round_id = ballot_contract.functions.lastRoundId().call()
                         round_info = {
                             'id': round_id,
                             'name': config['name'],

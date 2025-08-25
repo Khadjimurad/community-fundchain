@@ -8,13 +8,9 @@ class Web3Client:
         # Connect to Anvil
         self.w3 = Web3(Web3.HTTPProvider("http://anvil:8545"))
         
-        # Contract addresses (from deployment)
-        self.contract_addresses = {
-            "GovernanceSBT": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-            "BallotCommitReveal": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
-            "Projects": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
-            "Treasury": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0"
-        }
+        # Contract addresses will be loaded from deployment files
+        self.contract_addresses = {}
+        self.load_contract_addresses()
         
         # Contract ABIs
         self.contract_abis = {}
@@ -24,6 +20,57 @@ class Web3Client:
         self.contracts = {}
         self.initialize_contracts()
     
+    def load_contract_addresses(self):
+        """Load contract addresses from deployment files."""
+        try:
+            # Try multiple possible paths for the deployment file
+            deployment_paths = [
+                "deployed_contracts.json/run-latest.json",
+                "contracts/broadcast/Deploy.s.sol/31337/run-latest.json",
+                "deployed_contracts.json"
+            ]
+            
+            deployment_file = None
+            for path in deployment_paths:
+                if os.path.exists(path):
+                    deployment_file = path
+                    break
+            
+            if deployment_file:
+                with open(deployment_file, 'r') as f:
+                    deployment_data = json.load(f)
+                    
+                    # Look for CREATE transactions (contract deployments)
+                    if "transactions" in deployment_data:
+                        for tx in deployment_data["transactions"]:
+                            # Only look at CREATE transactions (new contract deployments)
+                            if (tx.get("transactionType") == "CREATE" and 
+                                "contractName" in tx and "contractAddress" in tx):
+                                contract_name = tx["contractName"]
+                                contract_address = tx["contractAddress"]
+                                
+                                # Convert to checksum address for Web3.py compatibility
+                                try:
+                                    checksum_address = Web3.to_checksum_address(contract_address)
+                                    self.contract_addresses[contract_name] = checksum_address
+                                    print(f"✅ Loaded {contract_name}: {checksum_address}")
+                                except Exception as e:
+                                    print(f"⚠️ Failed to convert address for {contract_name}: {e}")
+                                    self.contract_addresses[contract_name] = contract_address
+                                    print(f"✅ Loaded {contract_name}: {contract_address} (non-checksum)")
+                        
+                        if self.contract_addresses:
+                            print(f"✅ Loaded {len(self.contract_addresses)} contract addresses from {deployment_file}")
+                        else:
+                            print("⚠️ No contracts found in deployment file")
+                    else:
+                        print("⚠️ Unexpected format in deployment file")
+            else:
+                print("⚠️ No deployment file found, contracts will not be available")
+                
+        except Exception as e:
+            print(f"❌ Failed to load contract addresses: {e}")
+    
     def load_contract_abis(self):
         """Load contract ABIs from compiled contracts."""
         try:
@@ -32,7 +79,8 @@ class Web3Client:
                 "GovernanceSBT": "out/GovernanceSBT.sol/GovernanceSBT.json",
                 "BallotCommitReveal": "out/BallotCommitReveal.sol/BallotCommitReveal.json",
                 "Projects": "out/Projects.sol/Projects.json",
-                "Treasury": "out/Treasury.sol/Treasury.json"
+                "Treasury": "out/Treasury.sol/Treasury.json",
+                "CommunityMultisig": "out/CommunityMultisig.sol/CommunityMultisig.json"
             }
             
             for contract_name, abi_path in abi_paths.items():

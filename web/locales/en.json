@@ -61,7 +61,8 @@
     "not_participating": "Not Participating",
     "turnout": "Turnout",
     "priority": "Priority",
-    "final_priority": "Final Priority"
+    "final_priority": "Final Priority",
+    "payout_status": "Payout Status"
   },
   "projects": {
     "title": "Projects",

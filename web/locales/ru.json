@@ -61,7 +61,8 @@
     "not_participating": "Не участвует",
     "turnout": "Явка",
     "priority": "Приоритет",
-    "final_priority": "Итоговый приоритет"
+    "final_priority": "Итоговый приоритет",
+    "payout_status": "Статус выплаты"
   },
   "projects": {
     "title": "Проекты",

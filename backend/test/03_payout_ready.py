@@ -53,7 +53,7 @@ class PayoutReadyTester:
             async with self.db_manager.get_session() as session:
                 # Load existing members
                 from sqlalchemy import text
-                members_result = await session.execute(text("SELECT address, weight FROM members"))
+                members_result = session.execute(text("SELECT address, weight FROM members"))
                 members = members_result.fetchall()
                 
                 self.participants = [
@@ -68,7 +68,7 @@ class PayoutReadyTester:
                 ]
                 
                 # Load existing projects
-                projects_result = await session.execute(text("SELECT id, name, status FROM projects"))
+                projects_result = session.execute(text("SELECT id, name, status FROM projects"))
                 projects = projects_result.fetchall()
                 
                 self.projects = [
@@ -121,14 +121,14 @@ class PayoutReadyTester:
                 
                 for project in self.projects:
                     # Get project funding info
-                    project_funding = await session.execute(
+                    project_funding = session.execute(
                         text("SELECT SUM(amount) FROM allocations WHERE project_id = :project_id"),
                         {"project_id": project['id']}
                     )
                     total_funding = project_funding.fetchone()[0] or 0
                     
                     # Get project target
-                    project_target = await session.execute(
+                    project_target = session.execute(
                         text("SELECT target FROM projects WHERE id = :project_id"),
                         {"project_id": project['id']}
                     )
@@ -164,8 +164,12 @@ class PayoutReadyTester:
             async with self.db_manager.get_session() as session:
                 from sqlalchemy import text
                 
-                # Check voting rounds
-                voting_rounds_result = await session.execute(text("SELECT * FROM voting_rounds ORDER BY round_id DESC LIMIT 1"))
+                # Check voting rounds (select only needed columns in expected order)
+                voting_rounds_result = session.execute(text(
+                    "SELECT round_id, start_commit, end_commit, end_reveal, finalized, "
+                    "snapshot_block, counting_method, cancellation_threshold, auto_cancellation_enabled "
+                    "FROM voting_rounds ORDER BY round_id DESC LIMIT 1"
+                ))
                 latest_round = voting_rounds_result.fetchone()
                 
                 if latest_round:
@@ -181,7 +185,7 @@ class PayoutReadyTester:
                         logger.info("   ✅ Voting round finalized")
                         
                         # Check vote results
-                        vote_results_result = await session.execute(
+                        vote_results_result = session.execute(
                             text("SELECT COUNT(*) FROM vote_results WHERE round_id = :round_id"),
                             {"round_id": round_id}
                         )
@@ -222,7 +226,7 @@ class PayoutReadyTester:
                         ready_projects.append(project)
                         
                         # Get funding details
-                        project_funding = await session.execute(
+                        project_funding = session.execute(
                             text("SELECT SUM(amount) FROM allocations WHERE project_id = :project_id"),
                             {"project_id": project['id']}
                         )
@@ -259,7 +263,7 @@ class PayoutReadyTester:
                 for project in self.projects:
                     if project['status'] == '5':  # ready_to_payout
                         # Get project funding
-                        project_funding = await session.execute(
+                        project_funding = session.execute(
                             text("SELECT SUM(amount) FROM allocations WHERE project_id = :project_id"),
                             {"project_id": project['id']}
                         )
@@ -282,7 +286,7 @@ class PayoutReadyTester:
                             
                             logger.info(f"💸 Created payout proposal for {project['name']}: {total_funding} ETH")
                 
-                await session.commit()
+                session.commit()
                 logger.info(f"✅ Created {payout_count} payout proposals")
                 self.test_results['passed'] += 1
                 

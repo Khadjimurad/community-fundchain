@@ -33,8 +33,8 @@ class Settings(BaseSettings):
     database_url: str = Field(default="sqlite+aiosqlite:///./fundchain.db", env="DATABASE_URL")
     
     # Blockchain
-    rpc_url: str = Field(default="http://127.0.0.1:8545", env="RPC_URL")
-    web3_provider_uri: str = Field(default="http://127.0.0.1:8545", env="WEB3_PROVIDER_URI")
+    rpc_url: str = Field(default="http://anvil:8545", env="RPC_URL")
+    web3_provider_uri: str = Field(default="http://anvil:8545", env="WEB3_PROVIDER_URI")
     chain_id: int = Field(default=31337, env="CHAIN_ID")
     start_block: int = Field(default=0, env="START_BLOCK")
     
@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     multisig_address: Optional[str] = Field(default=None, env="MULTISIG_ADDRESS")
     
     # Indexer settings
-    indexer_enabled: bool = Field(default=True, env="INDEXER_ENABLED")
+    indexer_enabled: bool = Field(default=False, env="INDEXER_ENABLED")
     indexer_poll_interval: int = Field(default=5, env="INDEXER_POLL_INTERVAL")
     indexer_batch_size: int = Field(default=1000, env="INDEXER_BATCH_SIZE")
     
@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     
     # API settings
     api_rate_limit: int = Field(default=100, env="API_RATE_LIMIT")  # requests per minute
-    api_cors_origins: str = Field(default="http://localhost:3000,http://127.0.0.1:3000", env="CORS_ORIGINS")
+    api_cors_origins: str = Field(default="http://localhost:3000,http://127.0.0.1:3000,http://frontend:3000", env="CORS_ORIGINS")
     
     # Cache settings
     cache_ttl: int = Field(default=300, env="CACHE_TTL")  # seconds

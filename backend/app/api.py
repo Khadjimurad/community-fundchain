@@ -45,7 +45,7 @@ async def list_projects(
     # Apply pagination
     query = query.offset(offset).limit(limit)
     
-    result = await db.execute(query)
+    result = db.execute(query)
     projects = result.scalars().all()
     
     return [ProjectResponse.from_orm(project) for project in projects]
@@ -57,7 +57,7 @@ async def get_project(
     """Get a specific project by ID."""
     
     query = select(Project).where(Project.id == project_id)
-    result = await db.execute(query)
+    result = db.execute(query)
     project = result.scalar_one_or_none()
     
     if not project:
@@ -73,7 +73,7 @@ async def get_project_progress(
     
     # Get project
     project_query = select(Project).where(Project.id == project_id)
-    project_result = await db.execute(project_query)
+    project_result = db.execute(project_query)
     project = project_result.scalar_one_or_none()
     
     if not project:
@@ -86,7 +86,7 @@ async def get_project_progress(
         func.count(func.distinct(Allocation.donor_address)).label('unique_donors')
     ).where(Allocation.project_id == project_id)
     
-    allocation_result = await db.execute(allocation_query)
+    allocation_result = db.execute(allocation_query)
     allocation_stats = allocation_result.first()
     
     # Get payout statistics
@@ -95,7 +95,7 @@ async def get_project_progress(
         func.count(Payout.id).label('payout_count')
     ).where(Payout.project_id == project_id)
     
-    payout_result = await db.execute(payout_query)
+    payout_result = db.execute(payout_query)
     payout_stats = payout_result.first()
     
     # Calculate progress metrics
@@ -148,7 +148,7 @@ async def get_projects_by_category(
     
     query = query.order_by(desc(Project.priority), desc(Project.created_at))
     
-    result = await db.execute(query)
+    result = db.execute(query)
     projects = result.scalars().all()
     
     return [ProjectResponse.from_orm(project) for project in projects]
@@ -181,7 +181,7 @@ async def list_donations(
     # Apply pagination
     query = query.offset(offset).limit(limit)
     
-    result = await db.execute(query)
+    result = db.execute(query)
     donations = result.scalars().all()
     
     # Apply privacy filtering for public queries
@@ -198,7 +198,7 @@ async def get_donation(
     
     # Get donation
     donation_query = select(Donation).where(Donation.receipt_id == receipt_id)
-    donation_result = await db.execute(donation_query)
+    donation_result = db.execute(donation_query)
     donation = donation_result.scalar_one_or_none()
     
     if not donation:
@@ -209,7 +209,7 @@ async def get_donation(
         selectinload(Allocation.project)
     ).where(Allocation.donation_id == donation.id)
     
-    allocation_result = await db.execute(allocation_query)
+    allocation_result = db.execute(allocation_query)
     allocations = allocation_result.scalars().all()
     
     return {
@@ -256,7 +256,7 @@ async def list_allocations(
     # Apply pagination
     query = query.offset(offset).limit(limit)
     
-    result = await db.execute(query)
+    result = db.execute(query)
     allocations = result.scalars().all()
     
     # Apply privacy filtering for public queries
@@ -298,14 +298,14 @@ async def get_voting_summary(
     # Get latest results if no round specified
     if not round_id:
         latest_round_query = select(func.max(VotingRound.round_id))
-        latest_round_result = await db.execute(latest_round_query)
+        latest_round_result = db.execute(latest_round_query)
         latest_round = latest_round_result.scalar()
         if latest_round:
             query = query.where(VoteResult.round_id == latest_round)
     
     query = query.order_by(desc(VoteResult.final_priority))
     
-    result = await db.execute(query)
+    result = db.execute(query)
     vote_results = result.scalars().all()
     
     # Calculate turnout percentage for each result
@@ -338,7 +338,7 @@ async def get_voting_round_details(
     
     # Get voting round
     round_query = select(VotingRound).where(VotingRound.round_id == round_id)
-    round_result = await db.execute(round_query)
+    round_result = db.execute(round_query)
     voting_round = round_result.scalar_one_or_none()
     
     if not voting_round:
@@ -349,7 +349,7 @@ async def get_voting_round_details(
         selectinload(VoteResult.project)
     ).where(VoteResult.round_id == round_id)
     
-    results_result = await db.execute(results_query)
+    results_result = db.execute(results_query)
     results = results_result.scalars().all()
     
     # Calculate overall statistics
@@ -398,7 +398,7 @@ async def get_voting_round_details(
 async def finalize_latest_round(db: AsyncSession) -> Dict[str, Any]:
     """Mark latest non-finalized round as finalized (MVP)."""
     latest_round_query = select(VotingRound).where(VotingRound.finalized == False).order_by(desc(VotingRound.round_id)).limit(1)
-    result = await db.execute(latest_round_query)
+    result = db.execute(latest_round_query)
     round_obj = result.scalar_one_or_none()
     if not round_obj:
         return {"status": "noop", "message": "No active round"}
@@ -411,7 +411,7 @@ async def get_current_voting_round_info(db: AsyncSession) -> Dict[str, Any]:
     """Get latest voting round information (active or finalized)."""
     # Берем самый последний раунд (включая финализированные)
     round_query = select(VotingRound).order_by(desc(VotingRound.round_id)).limit(1)
-    round_result = await db.execute(round_query)
+    round_result = db.execute(round_query)
     round_obj = round_result.scalar_one_or_none()
 
     if not round_obj:
@@ -455,11 +455,30 @@ async def get_current_voting_round_info(db: AsyncSession) -> Dict[str, Any]:
             phase_message = "Voting round has ended"
             time_remaining = 0
 
+    # Derive dynamic aggregates if missing in DB
+    try:
+        # Distinct voters who revealed (we only index reveals at the moment)
+        revealed_q = select(func.count(func.distinct(Vote.voter_address))).where(Vote.round_id == round_obj.round_id)
+        revealed_res = db.execute(revealed_q)
+        derived_revealed = revealed_res.scalar() or 0
+
+        # Active members (holders of SBT)
+        active_q = select(func.count(Member.id)).where(Member.has_token == True)
+        active_res = db.execute(active_q)
+        derived_active = active_res.scalar() or 0
+    except Exception:
+        derived_revealed = 0
+        derived_active = 0
+
+    effective_total_revealed = int(round_obj.total_revealed or derived_revealed or 0)
+    effective_total_participants = int(round_obj.total_participants or derived_revealed or 0)
+    effective_total_active = int(round_obj.total_active_members or derived_active or 0)
+
     projects_query = select(Project).join(
         VoteResult, VoteResult.project_id == Project.id
     ).where(VoteResult.round_id == round_obj.round_id)
 
-    projects_result = await db.execute(projects_query)
+    projects_result = db.execute(projects_query)
     projects = projects_result.scalars().all()
 
     return {
@@ -471,12 +490,12 @@ async def get_current_voting_round_info(db: AsyncSession) -> Dict[str, Any]:
         "end_commit": round_obj.end_commit.isoformat() if round_obj.end_commit else None,
         "end_reveal": round_obj.end_reveal.isoformat() if round_obj.end_reveal else None,
         "counting_method": round_obj.counting_method or "weighted",
-        "total_participants": round_obj.total_participants or 0,
-        "total_revealed": round_obj.total_revealed or 0,
-        "total_active_members": round_obj.total_active_members or 0,
+        "total_participants": effective_total_participants,
+        "total_revealed": effective_total_revealed,
+        "total_active_members": effective_total_active,
         "turnout_percentage": round(
-            (round_obj.total_revealed / round_obj.total_active_members * 100)
-            if round_obj.total_active_members and round_obj.total_revealed else 0.0, 1
+            (effective_total_revealed / effective_total_active * 100)
+            if effective_total_active and effective_total_revealed else 0.0, 1
         ),
         "projects": [
             {
@@ -498,7 +517,7 @@ async def get_user_voting_status(round_id: int, user_address: Optional[str], db:
     
     # Get voting round
     round_query = select(VotingRound).where(VotingRound.round_id == round_id)
-    round_result = await db.execute(round_query)
+    round_result = db.execute(round_query)
     voting_round = round_result.scalar_one_or_none()
     
     if not voting_round:
@@ -508,7 +527,7 @@ async def get_user_voting_status(round_id: int, user_address: Optional[str], db:
     vote_query = select(Vote).where(
         and_(Vote.round_id == round_id, Vote.voter_address == user_address)
     )
-    vote_result = await db.execute(vote_query)
+    vote_result = db.execute(vote_query)
     user_votes = vote_result.scalars().all()
     
     has_committed = len(user_votes) > 0 and any(v.committed_at for v in user_votes)
@@ -545,7 +564,7 @@ async def list_payouts(
     query = query.order_by(desc(Payout.timestamp))
     query = query.offset(offset).limit(limit)
     
-    result = await db.execute(query)
+    result = db.execute(query)
     payouts = result.scalars().all()
     
     return [
@@ -571,7 +590,7 @@ async def get_user_stats(
     
     # Get member
     member_query = select(Member).where(Member.address == user_address)
-    member_result = await db.execute(member_query)
+    member_result = db.execute(member_query)
     member = member_result.scalar_one_or_none()
     
     if not member:
@@ -590,7 +609,7 @@ async def get_user_stats(
         func.avg(Donation.amount).label('avg_donation')
     ).where(Donation.donor_address == user_address)
     
-    donation_result = await db.execute(donation_query)
+    donation_result = db.execute(donation_query)
     donation_stats = donation_result.first()
     
     # Get allocation statistics
@@ -601,7 +620,7 @@ async def get_user_stats(
         Allocation.donor_address == user_address
     ).group_by(Allocation.project_id)
     
-    allocation_result = await db.execute(allocation_query)
+    allocation_result = db.execute(allocation_query)
     allocations = allocation_result.all()
     
     # Calculate percentile ranking
@@ -618,7 +637,7 @@ async def get_user_stats(
             func.sum(Allocation.amount)
         ).where(Allocation.project_id == alloc.project_id)
         
-        project_total_result = await db.execute(project_total_query)
+        project_total_result = db.execute(project_total_query)
         project_total = project_total_result.scalar() or 0
         
         share = (alloc.total_allocated / project_total * 100) if project_total > 0 else 0
@@ -649,7 +668,7 @@ async def get_treasury_stats(
         func.count(func.distinct(Donation.donor_address)).label('unique_donors')
     )
     
-    donation_result = await db.execute(donation_query)
+    donation_result = db.execute(donation_query)
     donation_stats = donation_result.first()
     
     # Get allocation totals
@@ -657,7 +676,7 @@ async def get_treasury_stats(
         func.sum(Allocation.amount).label('total_allocated')
     )
     
-    allocation_result = await db.execute(allocation_query)
+    allocation_result = db.execute(allocation_query)
     allocation_stats = allocation_result.first()
     
     # Get payout totals (only executed payouts with multisig_tx_id)
@@ -665,7 +684,7 @@ async def get_treasury_stats(
         func.sum(Payout.amount).label('total_paid_out')
     ).where(Payout.multisig_tx_id.isnot(None))
     
-    payout_result = await db.execute(payout_query)
+    payout_result = db.execute(payout_query)
     payout_stats = payout_result.first()
     
     # Get active projects count (including new statuses)
@@ -673,7 +692,7 @@ async def get_treasury_stats(
         Project.status.in_(["active", "funding_ready", "voting", "ready_to_payout", "3", "4", "5"])
     )
     
-    active_projects_result = await db.execute(active_projects_query)
+    active_projects_result = db.execute(active_projects_query)
     active_projects_count = active_projects_result.scalar()
     
     total_donations = float(donation_stats.total_donations or 0)
@@ -704,7 +723,7 @@ async def get_treasury_transactions(
     
     # Get recent donations
     donations_query = select(Donation).order_by(desc(Donation.timestamp)).offset(offset).limit(limit)
-    donations_result = await db.execute(donations_query)
+    donations_result = db.execute(donations_query)
     donations = donations_result.scalars().all()
     
     for donation in donations:
@@ -721,7 +740,7 @@ async def get_treasury_transactions(
     
     # Get recent allocations
     allocations_query = select(Allocation).order_by(desc(Allocation.timestamp)).offset(offset).limit(limit)
-    allocations_result = await db.execute(allocations_query)
+    allocations_result = db.execute(allocations_query)
     allocations = allocations_result.scalars().all()
     
     for allocation in allocations:
@@ -738,7 +757,7 @@ async def get_treasury_transactions(
     
     # Get recent payouts
     payouts_query = select(Payout).order_by(desc(Payout.timestamp)).offset(offset).limit(limit)
-    payouts_result = await db.execute(payouts_query)
+    payouts_result = db.execute(payouts_query)
     payouts = payouts_result.scalars().all()
     
     for payout in payouts:
@@ -785,7 +804,7 @@ async def _calculate_donor_percentile(db: AsyncSession, donor_amount: float) -> 
         Member.total_donated < donor_amount
     )
     
-    lower_count_result = await db.execute(lower_count_query)
+    lower_count_result = db.execute(lower_count_query)
     lower_count = lower_count_result.scalar() or 0
     
     # Get total donors count
@@ -793,7 +812,7 @@ async def _calculate_donor_percentile(db: AsyncSession, donor_amount: float) -> 
         Member.total_donated > 0
     )
     
-    total_count_result = await db.execute(total_count_query)
+    total_count_result = db.execute(total_count_query)
     total_count = total_count_result.scalar() or 1
     
     percentile = int((lower_count / total_count) * 100) if total_count > 0 else 0
@@ -821,7 +840,7 @@ async def get_system_logs(
     # Apply pagination
     query = query.offset(offset).limit(limit)
     
-    result = await db.execute(query)
+    result = db.execute(query)
     logs = result.scalars().all()
     
     return [
@@ -893,13 +912,13 @@ async def compute_distribution_plan(
 
     # Build latest voting results map (project_id -> {final_priority, borda_points})
     latest_round_query = select(func.max(VotingRound.round_id))
-    latest_round_result = await db.execute(latest_round_query)
+    latest_round_result = db.execute(latest_round_query)
     latest_round_id = latest_round_result.scalar()
 
     vote_map: Dict[str, Dict[str, Any]] = {}
     if latest_round_id:
         vr_query = select(VoteResult).where(VoteResult.round_id == latest_round_id)
-        vr_result = await db.execute(vr_query)
+        vr_result = db.execute(vr_query)
         for r in vr_result.scalars().all():
             vote_map[r.project_id] = {
                 "final_priority": r.final_priority or 0,
@@ -907,7 +926,7 @@ async def compute_distribution_plan(
             }
 
     # Fetch projects
-    proj_result = await db.execute(select(Project))
+    proj_result = db.execute(select(Project))
     projects = proj_result.scalars().all()
 
     # Calculate needs and weights
@@ -1025,7 +1044,7 @@ async def apply_distribution(
         if amount <= 0:
             continue
         # load project for update
-        proj_result = await db.execute(select(Project).where(Project.id == pid))
+        proj_result = db.execute(select(Project).where(Project.id == pid))
         proj = proj_result.scalar_one_or_none()
         if not proj:
             continue

@@ -14,6 +14,7 @@
         
         <nav class="tabs">
             <button class="tab-button active" data-tab="contracts">Контракты</button>
+            <button class="tab-button" data-tab="projects">Проекты</button>
             <button class="tab-button" data-tab="accounts">Аккаунты</button>
         </nav>
         
@@ -21,6 +22,12 @@
             <section id="contracts-tab" class="tab-pane active">
                 <div id="contracts-content">
                     <!-- Contracts data will be loaded here -->
+                </div>
+            </section>
+            
+            <section id="projects-tab" class="tab-pane">
+                <div id="projects-content">
+                    <!-- Projects data will be loaded here -->
                 </div>
             </section>
             
@@ -32,7 +39,7 @@
         </main>
     </div>
     
-    <script src="contract-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
     <script src="anvil_front.js"></script>
 </body>
 </html>

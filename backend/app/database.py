@@ -1,5 +1,6 @@
 import os
 import asyncio
+import aiosqlite
 from sqlalchemy import create_engine, text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import sessionmaker
@@ -7,6 +8,12 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 import logging
 from .models import Base
+
+# Force aiosqlite to be loaded
+import aiosqlite
+
+# Set environment variable to silence SQLAlchemy warnings
+os.environ["SQLALCHEMY_SILENCE_UBER_WARNING"] = "1"
 
 logger = logging.getLogger(__name__)
 
@@ -18,12 +25,16 @@ if DATABASE_URL.startswith("sqlite+aiosqlite://"):
 else:
     SYNC_DATABASE_URL = os.getenv("SYNC_DATABASE_URL", "sqlite:///./fundchain.db")
 
+# Ensure aiosqlite is loaded
+try:
+    import aiosqlite
+    print(f"aiosqlite version: {aiosqlite.__version__}")
+except ImportError as e:
+    print(f"Failed to import aiosqlite: {e}")
+
 # Create engines
-async_engine = create_async_engine(
-    DATABASE_URL,
-    echo=False,  # Set to True for SQL debugging
-    future=True
-)
+async_engine = None  # Temporarily disable async engine
+logger.warning("Async engine disabled - using sync engine fallback")
 
 sync_engine = create_engine(
     SYNC_DATABASE_URL,
@@ -32,11 +43,14 @@ sync_engine = create_engine(
 )
 
 # Session makers
-AsyncSessionLocal = async_sessionmaker(
-    async_engine,
-    class_=AsyncSession,
-    expire_on_commit=False
-)
+if async_engine is not None:
+    AsyncSessionLocal = async_sessionmaker(
+        async_engine,
+        class_=AsyncSession,
+        expire_on_commit=False
+    )
+else:
+    AsyncSessionLocal = None
 
 SessionLocal = sessionmaker(
     bind=sync_engine,
@@ -47,19 +61,22 @@ SessionLocal = sessionmaker(
 @asynccontextmanager
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     """Async context manager for database sessions."""
-    async with AsyncSessionLocal() as session:
+    # Always use sync session for now
+    with SessionLocal() as session:
         try:
             yield session
-            await session.commit()
+            session.commit()
         except Exception:
-            await session.rollback()
+            session.rollback()
             raise
         finally:
-            await session.close()
+            session.close()
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """FastAPI dependency for database sessions."""
-    async with get_db_session() as session:
+    # For now, we'll use sync sessions but keep the async interface
+    # This is a temporary workaround
+    with SessionLocal() as session:
         yield session
 
 def get_db_manager():
@@ -70,17 +87,38 @@ async def init_database():
     """Initialize the database with all tables."""
     logger.info("Initializing database...")
     
-    async with async_engine.begin() as conn:
+    # Always use sync engine for now
+    with sync_engine.begin() as conn:
         # Create all tables
-        await conn.run_sync(Base.metadata.create_all)
+        Base.metadata.create_all(bind=conn)
         
         # Create additional indexes if needed
-        await create_additional_indexes(conn)
+        create_additional_indexes_sync(conn)
     
     logger.info("Database initialized successfully")
 
+def create_additional_indexes_sync(conn):
+    """Create additional database indexes for performance (sync version)."""
+    indexes = [
+        # Composite indexes for common queries
+        "CREATE INDEX IF NOT EXISTS idx_allocation_project_donor ON allocations(project_id, donor_address)",
+        "CREATE INDEX IF NOT EXISTS idx_vote_round_project ON votes(round_id, project_id)",
+        "CREATE INDEX IF NOT EXISTS idx_donation_donor_timestamp ON donations(donor_address, timestamp DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_project_status_category ON projects(status, category)",
+        
+        # Full-text search indexes (if supported)
+        "CREATE INDEX IF NOT EXISTS idx_project_name_search ON projects(name)",
+        "CREATE INDEX IF NOT EXISTS idx_project_description_search ON projects(description)",
+    ]
+    
+    for index_sql in indexes:
+        try:
+            conn.execute(text(index_sql))
+        except Exception as e:
+            logger.warning(f"Failed to create index: {index_sql}, error: {e}")
+
 async def create_additional_indexes(conn):
-    """Create additional database indexes for performance."""
+    """Create additional database indexes for performance (async version)."""
     indexes = [
         # Composite indexes for common queries
         "CREATE INDEX IF NOT EXISTS idx_allocation_project_donor ON allocations(project_id, donor_address)",
@@ -103,8 +141,13 @@ async def drop_database():
     """Drop all database tables (for testing/reset)."""
     logger.warning("Dropping all database tables...")
     
-    async with async_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+    if async_engine is not None:
+        async with async_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+    else:
+        # Use sync engine as fallback
+        with sync_engine.begin() as conn:
+            Base.metadata.drop_all(bind=conn)
     
     logger.info("Database tables dropped")
 
@@ -135,8 +178,8 @@ class DatabaseManager:
     async def check_connection():
         """Check if database connection is working."""
         try:
-            async with get_db_session() as session:
-                result = await session.execute(text("SELECT 1"))
+            with SessionLocal() as session:
+                result = session.execute(text("SELECT 1"))
                 return result.scalar() == 1
         except Exception as e:
             logger.error(f"Database connection check failed: {e}")
@@ -152,10 +195,10 @@ class DatabaseManager:
             'blockchain_events', 'indexer_state', 'aggregate_stats'
         ]
         
-        async with get_db_session() as session:
+        with SessionLocal() as session:
             for table in tables:
                 try:
-                    result = await session.execute(text(f"SELECT COUNT(*) FROM {table}"))
+                    result = session.execute(text(f"SELECT COUNT(*) FROM {table}"))
                     counts[table] = result.scalar()
                 except Exception as e:
                     logger.warning(f"Failed to count {table}: {e}")
@@ -212,8 +255,8 @@ async def database_health_check():
             health_status["tables_exist"] = all(count >= 0 for count in health_status["table_counts"].values())
             
             # Get last activity timestamp
-            async with get_db_session() as session:
-                result = await session.execute(text("SELECT MAX(timestamp) FROM donations"))
+            with SessionLocal() as session:
+                result = session.execute(text("SELECT MAX(timestamp) FROM donations"))
                 last_donation = result.scalar()
                 if last_donation:
                     # Проверяем, что это datetime объект

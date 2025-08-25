@@ -82,17 +82,18 @@ check_project_root() {
     log_success "Проверка директории проекта: OK"
 }
 
-# Function to check Docker containers
+# Function to check and stop Docker containers
 check_docker_containers() {
     log_info "Проверка Docker контейнеров..."
     
     if ! docker ps --format "table {{.Names}}\t{{.Status}}" | grep -q "community-fundchain"; then
-        log_warning "Контейнеры FundChain не запущены. Запустите их вручную:"
-        log_warning "docker-compose up -d"
-        exit 1
+        log_warning "Контейнеры FundChain не запущены."
+        return 0
     fi
     
-    log_success "Контейнеры FundChain запущены"
+    log_info "Остановка и удаление контейнеров FundChain..."
+    docker-compose down
+    log_success "Контейнеры FundChain остановлены и удалены"
 }
 
 # Function to create backup
@@ -269,8 +270,8 @@ show_cleanup_summary() {
     echo "  1. Запустите скрипт деплоя: ./deploy_contracts_improved.sh"
     echo "  2. Запустите тестовые скрипты: ./test/run_full_test_cycle.sh"
     echo ""
-    echo -e "${YELLOW}⚠️  ВНИМАНИЕ: Контейнеры НЕ были перезапущены!${NC}"
-    echo "  Если нужен перезапуск, выполните: docker-compose restart"
+    echo -e "${YELLOW}⚠️  ВНИМАНИЕ: Контейнеры были остановлены!${NC}"
+    echo "  Для запуска выполните: docker-compose up -d"
 }
 
 # Main execution
@@ -318,7 +319,7 @@ main() {
         echo "  - Тестовые данные"
         echo "  - Backend и Frontend данные"
         echo ""
-        echo -e "${YELLOW}Контейнеры НЕ будут перезапущены!${NC}"
+        echo -e "${YELLOW}Контейнеры будут остановлены и удалены!${NC}"
         echo ""
         read -p "Продолжить? (y/N): " -n 1 -r
         echo

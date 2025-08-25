@@ -74,6 +74,54 @@ class BlockchainIndexer:
         
     async def _load_contract_configs(self):
         """Load contract addresses and ABIs from deployment artifacts."""
+        # Try to load from Foundry broadcast files first
+        try:
+            import json
+            import os
+            
+            # Path to the latest deployment file
+            broadcast_path = "/app/contracts/broadcast/Deploy.s.sol/31337/run-latest.json"
+            
+            if os.path.exists(broadcast_path):
+                with open(broadcast_path, 'r') as f:
+                    broadcast_data = json.load(f)
+                
+                # Extract contract addresses from CREATE transactions
+                for tx in broadcast_data.get('transactions', []):
+                    if (tx.get('transactionType') == 'CREATE' and 
+                        tx.get('contractAddress') and 
+                        tx.get('contractName')):
+                        
+                        contract_name = tx['contractName']
+                        contract_address = tx['contractAddress']
+                        
+                        # Convert to checksum address for web3.py compatibility
+                        try:
+                            checksum_address = self.w3.to_checksum_address(contract_address)
+                        except Exception as e:
+                            logger.warning(f"Failed to convert address {contract_address} to checksum: {e}")
+                            checksum_address = contract_address
+                        
+                        # Load ABI
+                        abi = self._get_contract_abi(contract_name)
+                        
+                        self.contract_configs[contract_name] = ContractConfig(
+                            address=checksum_address,
+                            abi=abi,
+                            start_block=self.settings.start_block
+                        )
+                        
+                        logger.info(f"Loaded {contract_name} from deployment: {checksum_address}")
+                
+                if self.contract_configs:
+                    logger.info(f"Successfully loaded {len(self.contract_configs)} contracts from deployment")
+                    return
+            
+        except Exception as e:
+            logger.warning(f"Failed to load from deployment file: {e}")
+        
+        # Fallback to environment variables if deployment file not found
+        logger.info("Falling back to environment variables for contract addresses")
         contracts = {
             'Treasury': self.settings.treasury_address,
             'Projects': self.settings.projects_address,
@@ -87,7 +135,7 @@ class BlockchainIndexer:
                 logger.warning(f"No address configured for {name}")
                 continue
                 
-            # Load ABI (in production, you'd load from files)
+            # Load ABI (in production, you'd load from JSON files)
             abi = self._get_contract_abi(name)
             
             self.contract_configs[name] = ContractConfig(
@@ -321,7 +369,7 @@ class BlockchainIndexer:
         async with get_db_session() as session:
             # Get last processed block
             stmt = select(IndexerState).where(IndexerState.contract_address == contract.address)
-            result = await session.execute(stmt)
+            result = session.execute(stmt)
             indexer_state = result.scalar_one_or_none()
             
             if indexer_state is None:
@@ -330,7 +378,8 @@ class BlockchainIndexer:
                     last_processed_block=self.contract_configs[contract_name].start_block
                 )
                 session.add(indexer_state)
-                await session.flush()
+                # sync session
+                session.flush()
             
             from_block = indexer_state.last_processed_block + 1
             latest_block = self.w3.eth.block_number
@@ -352,10 +401,14 @@ class BlockchainIndexer:
                     
                 try:
                     event_filter = getattr(events, event_name)
-                    logs = event_filter.get_logs(fromBlock=from_block, toBlock=to_block)
-                    
-                    for log in logs:
-                        await self._process_event(session, contract_name, event_name, log)
+                    if hasattr(event_filter, 'get_logs'):
+                        logs = event_filter.get_logs(fromBlock=from_block, toBlock=to_block)
+                        
+                        for log in logs:
+                            try:
+                                await self._process_event(session, contract_name, event_name, log)
+                            except Exception as e:
+                                logger.error(f"Error processing event {contract_name}.{event_name}: {e}")
                         
                 except Exception as e:
                     logger.error(f"Error processing {event_name} events: {e}")
@@ -364,7 +417,8 @@ class BlockchainIndexer:
             indexer_state.last_processed_block = to_block
             indexer_state.last_updated = datetime.utcnow()
             
-            await session.commit()
+            # sync session
+            session.commit()
     
     async def _process_event(self, session: AsyncSession, contract_name: str, event_name: str, event_data: EventData):
         """Process a single blockchain event."""
@@ -376,19 +430,40 @@ class BlockchainIndexer:
             processor_method = f"_process_{contract_name.lower()}_{event_name.lower()}"
             if hasattr(self, processor_method):
                 processor = getattr(self, processor_method)
-                await processor(session, event_data)
+                if processor is not None and callable(processor):
+                    try:
+                        await processor(session, event_data)
+                    except Exception as e:
+                        logger.error(f"Error in processor {processor_method}: {e}")
+                else:
+                    logger.warning(f"Processor {processor_method} is not callable")
             else:
                 logger.warning(f"No processor for {contract_name}.{event_name}")
                 
         except Exception as e:
             logger.error(f"Error processing event {contract_name}.{event_name}: {e}")
+            logger.error(f"Event data: {event_data}")
     
     async def _store_raw_event(self, session: AsyncSession, contract_name: str, event_name: str, event_data: EventData):
         """Store raw blockchain event."""
+        def to_jsonable(value: Any) -> Any:
+            try:
+                from hexbytes import HexBytes
+            except Exception:
+                HexBytes = bytes  # fallback typing
+            if isinstance(value, (bytes, bytearray, HexBytes)):
+                return Web3.to_hex(value)
+            if isinstance(value, (list, tuple)):
+                return [to_jsonable(v) for v in value]
+            if isinstance(value, dict):
+                return {k: to_jsonable(v) for k, v in value.items()}
+            return value
+
+        json_args = to_jsonable(dict(event_data.args))
         blockchain_event = BlockchainEvent(
             contract_address=event_data.address,
             event_name=f"{contract_name}.{event_name}",
-            event_data=dict(event_data.args),
+            event_data=json_args,
             tx_hash=event_data.transactionHash.hex(),
             block_number=event_data.blockNumber,
             log_index=event_data.logIndex,
@@ -463,14 +538,14 @@ class BlockchainIndexer:
     # Event processors for GovernanceSBT contract
     async def _process_governancesbt_minted(self, session: AsyncSession, event_data: EventData):
         """Process GovernanceSBT Minted event."""
-        member = await self._get_or_create_member(session, event_data.args.to)
+        member = self._get_or_create_member(session, event_data.args.to)
         member.has_token = True
         member.weight = event_data.args.weight
         member.total_donated = float(self.w3.from_wei(event_data.args.totalDonated, 'ether'))
     
     async def _process_governancesbt_weightupdated(self, session: AsyncSession, event_data: EventData):
         """Process GovernanceSBT WeightUpdated event."""
-        member = await self._get_or_create_member(session, event_data.args.who)
+        member = self._get_or_create_member(session, event_data.args.who)
         member.weight = event_data.args.newWeight
         member.total_donated = float(self.w3.from_wei(event_data.args.totalDonated, 'ether'))
     
@@ -491,6 +566,20 @@ class BlockchainIndexer:
         """Process BallotCommitReveal VoteRevealed event."""
         block = self.w3.eth.get_block(event_data.blockNumber)
         
+        # Detect if this voter is revealing in this round for the first time
+        new_voter_reveal = False
+        try:
+            stmt_exist = select(Vote.id).where(
+                Vote.round_id == event_data.args.roundId,
+                Vote.voter_address == event_data.args.voter
+            ).limit(1)
+            res_exist = session.execute(stmt_exist)
+            if res_exist.scalar_one_or_none() is None:
+                new_voter_reveal = True
+        except Exception:
+            # If check fails, fall back to incrementing later
+            new_voter_reveal = True
+
         # Process each vote in the revelation
         for i, project_id in enumerate(event_data.args.projects):
             if i < len(event_data.args.choices):
@@ -508,33 +597,81 @@ class BlockchainIndexer:
                     block_number=event_data.blockNumber
                 )
                 session.add(vote)
+
+                # Upsert aggregate result for this round/project
+                try:
+                    stmt_res = select(VoteResult).where(
+                        VoteResult.round_id == event_data.args.roundId,
+                        VoteResult.project_id == project_id.hex()
+                    )
+                    res = session.execute(stmt_res)
+                    vr = res.scalar_one_or_none()
+                    if vr is None:
+                        vr = VoteResult(
+                            round_id=event_data.args.roundId,
+                            project_id=project_id.hex(),
+                            for_weight=0,
+                            against_weight=0,
+                            abstained_count=0,
+                            not_participating_count=0,
+                            borda_points=0,
+                            final_priority=0
+                        )
+                        session.add(vr)
+                        # Обеспечиваем немедленную материализацию строки для предотвращения дублей
+                        session.flush()
+
+                    if choice == "for":
+                        vr.for_weight = int((vr.for_weight or 0) + int(event_data.args.weight))
+                    elif choice == "against":
+                        vr.against_weight = int((vr.against_weight or 0) + int(event_data.args.weight))
+                    elif choice == "abstain":
+                        vr.abstained_count = int((vr.abstained_count or 0) + 1)
+                    else:
+                        vr.not_participating_count = int((vr.not_participating_count or 0) + 1)
+                except Exception as e:
+                    logger.error(f"Error updating VoteResult aggregate: {e}")
+
+        # Update round aggregate counters
+        try:
+            stmt_round = select(VotingRound).where(VotingRound.round_id == event_data.args.roundId)
+            res_round = session.execute(stmt_round)
+            round_row = res_round.scalar_one_or_none()
+            if round_row is not None and new_voter_reveal:
+                round_row.total_revealed = int((round_row.total_revealed or 0) + 1)
+        except Exception as e:
+            logger.error(f"Error updating VotingRound counters: {e}")
     
     # Utility methods
-    async def _get_or_create_member(self, session: AsyncSession, address: str) -> Member:
+    def _get_or_create_member(self, session: AsyncSession, address: str) -> Member:
         """Get or create a member by address."""
-        stmt = select(Member).where(Member.address == address)
-        result = await session.execute(stmt)
-        member = result.scalar_one_or_none()
-        
-        if member is None:
-            member = Member(address=address)
-            session.add(member)
-            await session.flush()
-        
-        return member
+        try:
+            stmt = select(Member).where(Member.address == address)
+            result = session.execute(stmt)
+            member = result.scalar_one_or_none()
+            
+            if member is None:
+                member = Member(address=address)
+                session.add(member)
+                session.flush()
+            
+            return member
+        except Exception as e:
+            logger.error(f"Error in _get_or_create_member for address {address}: {e}")
+            raise
     
     async def _update_project_funding(self, session: AsyncSession, project_id: str):
         """Update project funding totals."""
         # Sum allocations for this project
         stmt = select(Allocation).where(Allocation.project_id == project_id)
-        result = await session.execute(stmt)
+        result = session.execute(stmt)
         allocations = result.scalars().all()
         
         total_allocated = sum(a.amount for a in allocations)
         
         # Update project
         stmt = update(Project).where(Project.id == project_id).values(total_allocated=total_allocated)
-        await session.execute(stmt)
+        session.execute(stmt)
     
     async def force_reindex(self, contract_name: Optional[str] = None, from_block: Optional[int] = None):
         """Force reindex from a specific block."""
@@ -554,7 +691,7 @@ class BlockchainIndexer:
                 
                 # Reset indexer state
                 stmt = select(IndexerState).where(IndexerState.contract_address == contract.address)
-                result = await session.execute(stmt)
+                result = session.execute(stmt)
                 indexer_state = result.scalar_one_or_none()
                 
                 if indexer_state:
@@ -566,7 +703,7 @@ class BlockchainIndexer:
                     )
                     session.add(indexer_state)
             
-            await session.commit()
+            session.commit()
         
         logger.info("Reindex completed")
 
